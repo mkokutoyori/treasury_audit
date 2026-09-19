@@ -30,3 +30,16 @@ def ctr():
     return d
 
 def ckey(): return rd('calypson_key_account_*.csv')
+
+def cr():
+    d=pd.read_csv(os.path.join(BASE,'creance_rattaché.csv'), dtype=str, keep_default_na=False,
+                  na_values=[''], encoding='cp1252', low_memory=False)
+    for c in d.columns:
+        if d[c].dtype==object or str(d[c].dtype).startswith('str'):
+            d[c]=d[c].str.replace('\xa0',' ',regex=False).str.strip()
+    for c in ['FCY_AMOUNT','LCY_AMOUNT']:
+        d[c]=pd.to_numeric(d[c], errors='coerce')
+    d['TRN_DT_d']=pd.to_datetime(d.TRN_DT, format='%d-%b-%y', errors='coerce')
+    d['STMT_DT_d']=pd.to_datetime(d.STMT_DT, format='%d-%b-%y', errors='coerce')
+    d['__src']='creance_rattaché.csv'
+    return d

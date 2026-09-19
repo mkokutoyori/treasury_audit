@@ -11,9 +11,13 @@ zéros de tête et d'éviter toute conversion numérique parasite.
 **Référentiel comptable applicable** : Plan Comptable des Établissements de Crédit (PCEC) de la
 CEMAC — COBAC.
 
-> **Version 2** — intègre la seconde extraction (comptes généraux Calypso) fournie en cours de
-> mission. Les constats revus par cette seconde exploration sont signalés comme tels ; aucun n'a
-> été supprimé, afin de préserver la piste d'audit.
+> **Version 3** — intègre la seconde extraction (comptes généraux Calypso, §11) et la troisième
+> (historique complet du compte `511800100`, §12), fournies en cours de mission. Les constats revus
+> ou retirés sont signalés comme tels et conservés dans le corps du rapport, afin de préserver la
+> piste d'audit.
+>
+> ⚠ **Le constat initial du §8.1, repris et amplifié au §11.10, est RETIRÉ.** Il reposait sur une
+> extraction limitée au module MM. Voir le **§12**, qui le remplace.
 >
 > Ce document est un **rapport d'exploration** : il décrit ce que contiennent les données, comment
 > le métier y est codifié, et signale les points qui méritent investigation. Il ne constitue pas
@@ -34,6 +38,7 @@ CEMAC — COBAC.
 | **Écritures de change clientèle** | `FX_TRANSACTIONS.csv` | 48 122 | 27/09/2023 → 18/09/2026 | Transferts et change clientèle (module FT) |
 | **Historique des comptes clés** | `transaction_history_of_key_account_…part_1..4.csv` | 190 467 | 27/09/2023 → 18/09/2026 | Tous les mouvements des nostri, du compte BEAC et du compte courtier |
 | **Historique des comptes généraux Calypso** | `calypson_key_account_…part_1..3.csv` | 143 953 | 27/09/2023 → 18/09/2026 | Mouvements des comptes généraux utilisés par Calypso (position de change, comptes de liaison, courus, régularisation) — *seconde extraction, cf. §11* |
+| **Historique du compte d'intérêts courus** | `creance_rattaché.csv` | 32 937 | 16/08/2022 → 31/07/2025 | Historique **complet, tous modules**, du compte `511800100` — *troisième extraction, cf. §12* |
 
 Les fichiers `part_N` sont bien des **découpages d'un même export** (mêmes en-têtes, même encodage
 UTF‑8 avec BOM, continuité chronologique) ; ils ont été rechargés par concaténation.
@@ -557,33 +562,16 @@ alors qu'elles sont logées dans un compte d'emprunt au jour le jour (cf. §8.6)
 > fournis. Ils doivent être **confirmés auprès de la banque** — notamment parce qu'aucun fichier ne
 > contient de **solde d'ouverture** (cf. §9).
 
-### 8.1 — PRIORITÉ HAUTE — Le compte d'intérêts courus sur placements n'est jamais apuré
-Sur l'ensemble des **cinq** fichiers et des 21 mois du module MM, le compte **`511800100` « créances
-rattachées — placement »** enregistre **24 186 lignes, toutes au débit**, pour un solde net de
-**8 414 808 583 XAF**. Le compte de produits `733400100` est crédité du même montant exact.
-
-> **Précision apportée par la seconde exploration.** Flexcube comptabilise ses contre-passations
-> non pas par une écriture de sens inverse, mais par un **débit de montant négatif**. Le compte
-> comporte ainsi **24 035 débits positifs (8 612 544 476 XAF)** et **151 débits négatifs
-> (−197 735 893 XAF)**. Le solde net est inchangé. La formulation exacte est donc : le compte
-> connaît des **corrections d'écritures** pour 2,3 % de son volume, mais **aucune opération
-> d'apurement** — pas un encaissement de coupon, pas une reprise à la liquidation, pas de solde à
-> la migration. Le constat de fond est confirmé, et renforcé par le fait que l'étiquette
-> `INT_BT_LIQD` (encaissement d'intérêt) n'existe **que pour les bons du Trésor** (76 opérations,
-> 5 005 855 000 XAF) et **jamais pour les obligations**.
-
-Autrement dit : **aucun encaissement de coupon sur obligations n'apparaît dans le module MM**,
-ni aucune reprise de couru lors des liquidations, ni aucun solde lors de la migration du 16/06/2025
-(qui a réintroduit les courus dans un **autre** compte, le `512800100`).
-
-Deux hypothèses à instruire :
-- les coupons sont encaissés **hors du module MM** (écriture manuelle en module `DE`) — auquel cas
-  il faut obtenir ces écritures et rapprocher ;
-- le compte porte une **créance non apurée**, ce qui conduirait à une **surévaluation simultanée de
-  l'actif et du produit net bancaire**.
-
-*Éléments à demander* : balance générale détaillée du compte `511800100` aux dates de clôture,
-échéancier des coupons attendus, justification du solde.
+### 8.1 — ~~Le compte d'intérêts courus sur placements n'est jamais apuré~~ — **CONSTAT RETIRÉ**
+> **Ce constat est retiré.** Il reposait sur une extraction du compte `511800100` **limitée au
+> module MM**, dans laquelle les écritures d'apurement — passées en module `DE` — étaient invisibles.
+> L'extraction complète du compte, obtenue depuis, montre **801 crédits pour 15 005 402 277 XAF**
+> et un **solde net strictement nul**. Les coupons sont bien encaissés, en trésorerie, sur le compte
+> BEAC.
+>
+> Le **§12** remplace intégralement le présent constat et expose ce que l'historique complet révèle
+> réellement — notamment un **sur-apurement de 1 205 231 891 XAF à la migration**, non corrigé
+> pendant 45 jours et traversant l'arrêté semestriel du 30/06/2025.
 
 ### 8.2 — PRIORITÉ HAUTE — Les volumes bruts du module MM ne sont pas des flux économiques
 Comme établi au §3.6, la pratique de liquidation/réouverture gonfle massivement les volumes :
@@ -731,9 +719,10 @@ Il faut souligner les points positifs, qui sont nombreux et significatifs :
    période.
 4. **Absence de données de marché** : aucun cours de valorisation, aucune courbe de taux, ce qui
    interdit tout recalcul indépendant des valorisations et des dépréciations.
-5. **Le compte `511800100` n'est extrait que depuis le module MM.** La seconde extraction ne le
-   couvre pas. Il est donc impossible d'exclure une écriture d'apurement passée depuis un autre
-   module, et impossible de connaître son solde réel (cf. §11.10).
+5. **Les extractions filtrées par module peuvent masquer des écritures structurantes.** Le module
+   `DE` (écriture directe) porte l'apurement des coupons, les corrections et les écritures de
+   migration. Le compte `511800100` en a fourni la démonstration (§12.7) ; les constats reposant
+   encore sur des extractions partielles doivent être confirmés selon cette règle.
 
 ### 9.2 Documents et fichiers à demander
 
@@ -751,9 +740,10 @@ Il faut souligner les points positifs, qui sont nombreux et significatifs :
 | 10 | Limites internes de contrepartie et de concentration + suivi de leur respect | Instruire le §8.10 |
 | 11 | Note sur la migration du 16/06/2025 (reclassement placement → transaction) | Instruire le §5.2 |
 | 12 | Règle d'affectation entre les comptes `733xxx` et `734xxx` | Instruire le §8.11 |
-| 13 | **Historique complet et soldes du compte `511800100`, tous modules** | **Instruire le §11.10 (priorité maximale)** |
-| 14 | Note de migration : traitement réservé au compte `511800100` | Instruire le §11.10 |
-| 15 | Justificatifs d'encaissement des coupons d'État 2023-2025 (relevés BEAC, avis des Trésors) | Instruire le §11.10 |
+| 13 | ~~Historique complet du compte `511800100`~~ | ✔ **obtenu** — cf. §12 |
+| 14 | **États financiers au 30/06/2025** et rapprochement du nostro BEAC de juin-juillet 2025 | **Instruire le §12.5** |
+| 15 | Procédure de contrôle de la migration : calcul des courus repris | Instruire le §12.5 |
+| 20 | Troisième jambe de l'écriture de correction du 31/07/2025 (1 994 516 XAF) | Instruire le §12.5 |
 | 16 | Mouvements des comptes de gains et pertes de change (classes 63/73 PCEC) | Instruire le §11.4 |
 | 17 | Conventions-cadres **Sell-Buy-Back** et doctrine comptable retenue | Instruire le §11.5 |
 | 18 | Paramétrage des comptes `475000160` / `476000160` (intitulés inversés) | Instruire le §11.6 |
@@ -999,82 +989,19 @@ la marge devant être enregistrée distinctement en produit de commission. Ce tr
 incidence sur la **présentation du produit net bancaire** (marge de change contre commissions) et
 sur la **base taxable**.
 
-### 11.10 — PRIORITÉ MAXIMALE — Le compte d'intérêts courus a été abandonné en l'état à la migration
-
-La banque a confirmé, par vérification dans le système, que **Calypso n'impacte jamais le compte
-`511800100`, ni au débit ni au crédit**. Les fichiers fournis le corroborent sans ambiguïté :
-
-| Test sur le compte `511800100` | Résultat |
-|---|---|
-| Lignes portant l'utilisateur `CALYPSOUSR` | **0** |
-| Lignes portant le module `DE` (interface Calypso) | **0** |
-| Lignes portant le produit `MNIP` (interface Calypso) | **0** |
-| Présence dans la seconde extraction des comptes Calypso | **absent** |
-| Sources où le compte apparaît | **le seul fichier du module MM** |
-| **Date du dernier mouvement** | **16/06/2025** — jour de la migration |
-| Immobilité au 18/09/2026 | **459 jours sans aucun mouvement** |
-
-Ventilation des 24 186 lignes, toutes au débit :
-
-| Utilisateur | Lignes | Montant (XAF) | Période |
-|---|---:|---:|---|
-| `SYSTEM` (accrual de fin de journée) | 23 877 | 8 406 983 999 | 27/09/2023 → 16/06/2025 |
-| `BINEID00087` | 154 | 332 465 | 09/10/2023 → 05/02/2025 |
-| `CHEICHEID059` | 143 | −2 955 393 | 03/10/2023 → 04/06/2025 |
-| `ELANGUEID060` | 4 | 8 076 896 | 04/03/2024 |
-| `NDJOCKOS0067` | 8 | 2 370 862 | 25/07/2024 → 04/06/2025 |
-
-**Le compte n'a donc pas été soldé lors de la migration : il a été purement et simplement
-abandonné.** Calypso a démarré sur un autre compte (`512800100`) sans reprendre ni apurer le solde
-du compte source. Une migration correctement conduite exige que le compte d'origine soit ramené à
-zéro lorsque son solde est repris par le système cible.
-
-#### Conséquence : une double comptabilisation des intérêts courus
-
-Le test décisif porte sur les **65 contrats migrés le 16/06/2025** :
-
-| Élément | Montant (XAF) |
-|---|---:|
-| Courus accumulés sur `511800100` pour ces 65 contrats (27/09/2023 → 16/06/2025) | **4 121 144 342** |
-| Courus **re-comptabilisés par Calypso** en `512800100` le 16/06/2025 (`ACCRUAL_BS`, 55 lignes) | **3 089 462 049** |
-| Courus accumulés sur `511800100`, **tous contrats confondus** | **8 414 808 583** |
-
-Calypso a donc **reconnu à nouveau 3 089 462 049 XAF d'intérêts courus** sur des positions dont les
-courus étaient déjà portés — et jamais apurés — au compte `511800100` de Flexcube.
-
-**Sauf écriture manuelle d'apurement hors du périmètre des cinq extractions, les mêmes intérêts
-courus figurent deux fois à l'actif du bilan** : une fois au compte `511800100` (Flexcube, figé
-depuis le 16/06/2025) et une fois au compte `512800100` (Calypso, vivant).
-
-*Nuance à instruire* : l'écart entre 4,12 Md et 3,09 Md s'explique vraisemblablement par le fait que
-Calypso ne reprend que le couru **depuis le dernier détachement de coupon**, alors que le cumul
-Flexcube couvre toute la période depuis septembre 2023 — donc y compris des périodes pour lesquelles
-des coupons ont normalement été encaissés. Cet écart de **1 031 682 293 XAF** représente précisément
-les coupons qui auraient dû venir apurer le compte `511800100` et ne l'ont jamais fait.
-
-#### Comparaison avec le compte équivalent alimenté par Calypso
-
-| Compte | Débits | Crédits | Solde net (XAF) | Apurement |
-|---|---:|---:|---:|---|
-| `511800100` — créances rattachées **placement** (Flexcube MM) | 24 186 | **0** | +8 414 808 583 | **aucun** |
-| `512800100` — créances rattachées **transaction** (Calypso) | 21 358 | 20 841 | +23 096 148 281 | **normal** |
-
-Le compte alimenté par Calypso **fonctionne dans les deux sens**. Celui alimenté par Flexcube MM
-ne connaît que des débits. **L'anomalie est donc strictement localisée au module MM de Flexcube**,
-sur la période du 27/09/2023 au 16/06/2025, et **figée depuis**.
-
-#### Ce qu'il faut demander
-
-1. Le **solde comptable du compte `511800100`** aux 31/12/2023, 31/12/2024, 30/06/2025, 31/12/2025
-   et 30/06/2026 (extrait de la balance générale), afin de mesurer l'encours réel — le solde
-   d'ouverture antérieur au 27/09/2023 n'étant pas connu.
-2. L'**historique complet du compte, tous modules confondus**, pour vérifier l'absence d'écriture
-   manuelle d'apurement en dehors du module MM.
-3. La **note de migration** : le traitement réservé au compte `511800100` a-t-il été formalisé,
-   revu et validé ?
-4. Le **justificatif des encaissements de coupons** sur obligations d'État sur la période
-   2023-2025 : relevés BEAC, avis de paiement des Trésors nationaux.
-5. La position du **commissaire aux comptes** sur ce compte lors des arrêtés 2023, 2024 et 2025.
+### 11.10 — ~~Le compte d'intérêts courus a été abandonné en l'état à la migration~~ — **CONSTAT RETIRÉ**
+> **Ce constat est retiré**, comme celui du §8.1 qu'il amplifiait. Les tests qui le fondaient
+> étaient exacts — Calypso n'impacte effectivement jamais le compte `511800100` (0 ligne
+> `CALYPSOUSR`, 0 module `DE` côté Calypso, 0 produit `MNIP`) — mais la **conclusion qui en était
+> tirée était fausse** : l'apurement n'est pas assuré par Calypso, il l'est par des **écritures
+> manuelles de Flexcube en module `DE`**, qui ne figuraient dans aucune des extractions alors
+> disponibles.
+>
+> En particulier, l'hypothèse d'une **double comptabilisation de 3 089 462 049 XAF est infirmée** :
+> l'apurement passé le 16/06/2025 (4 169 123 793 XAF) est **supérieur** au montant re-comptabilisé
+> par Calypso, et non redondant avec lui.
+>
+> Le **§12** expose la situation réelle.
 
 ### 11.11 Découverte technique — les contre-passations sont des montants négatifs
 La seconde extraction a mis en évidence un mécanisme de Flexcube qui n'avait pas été identifié :
@@ -1100,6 +1027,162 @@ de correction **opposées**, ce dont il faut tenir compte dans tout rapprochemen
 
 ---
 
+## 12. Troisième exploration — historique complet du compte `511800100`
+
+La banque a fourni l'historique intégral du compte d'intérêts courus sur titres de placement
+(`creance_rattaché.csv`, **32 937 lignes, 16/08/2022 → 31/07/2025**, tous modules confondus).
+Le fichier est encodé en **CP1252** et non en UTF‑8, et comporte 43 espaces insécables (`0xA0`)
+dans les libellés ; il utilise par ailleurs un format de date `JJ-MMM-AA` différent des autres
+extractions. Un chargeur dédié a été ajouté (`scripts/load.py`, fonction `cr()`).
+
+### 12.1 Le constat initial est infirmé : le compte fonctionne normalement
+
+| Contrôle | Résultat |
+|---|---|
+| Débits | 32 136 lignes — **15 005 402 277,00 XAF** |
+| **Crédits** | **801 lignes — 15 005 402 277,00 XAF** |
+| **Solde net sur tout l'historique** | **0,00 XAF** |
+
+**Le compte est intégralement apuré.** Les crédits existent bien — ils étaient simplement
+**invisibles dans l'extraction précédente, filtrée sur le module MM**, car ils sont passés en
+**module `DE` (écriture directe)**.
+
+**Où était l'erreur de raisonnement.** Le premier fichier ne contenait que le module `MM`. J'en
+avais conclu à l'absence d'apurement, alors qu'il n'y avait qu'une absence d'apurement *dans ce
+module*. J'avais bien posé l'hypothèse alternative dès le §8.1 (« les coupons sont encaissés hors
+du module MM ») et demandé l'extraction tous modules — c'est elle qui tranche, et elle tranche en
+faveur de la banque.
+
+### 12.2 Comment les coupons sont réellement comptabilisés
+La contrepartie des 801 apurements a été retrouvée dans les autres extractions : il s'agit du
+**compte BEAC `099ACO00001`** (499 débits pour 31 309 830 000 XAF, plus les mouvements liés aux
+bons via `472200106`). **Les coupons sont donc bien encaissés en trésorerie.**
+
+Schéma réel, qui complète le cycle de vie décrit au §3.5 :
+```
+  ② chaque jour (module MM, automatique)
+     D 511800100 / C 733400100                     ← couru quotidien
+  ③ au détachement du coupon (module DE, MANUEL)
+     D 099ACO00001 (BEAC) / C 511800100            ← encaissement, apurement de la créance
+```
+
+### 12.3 Profil du compte — un fonctionnement sain
+| Date | Solde (XAF) |
+|---|---:|
+| 31/12/2022 | 235 739 034 |
+| 31/12/2023 | 662 336 797 |
+| 30/06/2024 | 1 975 466 036 |
+| 31/12/2024 | 2 455 219 083 |
+| **Maximum — 22/05/2025** | **3 298 021 048** |
+| 13/06/2025 (veille de bascule) | 2 927 747 645 |
+| **16/06/2025 (bascule)** | **−1 205 231 891** |
+| **30/06/2025 (arrêté semestriel)** | **−1 205 231 891** |
+| 31/07/2025 | **0** |
+
+Le compte **oscille normalement** : il monte entre deux coupons et retombe à chaque encaissement.
+C'est le profil attendu d'un compte de créances rattachées.
+
+### 12.4 Qualité du contrôle interne sur ces apurements — satisfaisante
+Les 801 écritures d'apurement présentent un **contrôle « 4 yeux » sans faille** :
+
+| Contrôle | Résultat |
+|---|---|
+| Écritures auto-validées (`USER_ID` = `AUTH_ID`) | **0 sur 801** |
+| Écritures sans validateur (`AUTH_ID` vide) | **0 sur 801** |
+| Saisisseurs distincts | 7 (`BINEID00087` 431, `CHEICHEID059` 264, `NDJOCKOS0067` 52, …) |
+| Valideurs distincts | 7 (`MBATOHID0012` 577, `CELESID0018` 124, `MBOGID000083` 69, …) |
+
+Les libellés sont par ailleurs **remarquablement documentés** : ils portent la référence du contrat
+MM, le code du titre, le nominal, le montant couru et le taux — par exemple
+`099OTAP242490004 GA2B00000109 4000000000 194299723 6.25 %`. C'est une excellente piste d'audit.
+
+**Observation résiduelle** : l'apurement est **entièrement manuel** (801 écritures en trois ans), là
+où le module MM de Flexcube dispose d'un événement de liquidation d'intérêts automatique
+(`INT_BT_LIQD`), utilisé pour les bons du Trésor mais **jamais pour les obligations**. Ce choix de
+paramétrage fait reposer l'apurement sur une intervention humaine récurrente. Il est bien contrôlé
+aujourd'hui, mais il constitue un point de fragilité opérationnelle à signaler.
+
+### 12.5 — CONSTAT — Sur-apurement de 1,2 Md XAF à la migration, non corrigé pendant 45 jours
+
+C'est le constat que révèle réellement l'historique complet.
+
+**Le 16/06/2025**, l'écriture manuelle `099001b251670001` (saisie `CHEICHEID059`, validée
+`MBATOHID0012`) solde le compte en 55 lignes, contrat par contrat :
+
+| Élément | Montant (XAF) |
+|---|---:|
+| Solde du compte au 13/06/2025 | 2 927 747 645 |
+| Courus du 16/06/2025 (dernier accrual automatique) | 36 144 257 |
+| **Solde réel à apurer** | **2 963 891 902** |
+| **Crédit effectivement passé** | **4 169 123 793** |
+| **SUR-APUREMENT** | **1 205 231 891** |
+
+**Cause identifiée.** Le rapprochement contrat par contrat montre que l'écriture a crédité, pour
+chaque contrat, **le cumul des intérêts courus depuis son origine**, sans déduire **les coupons
+déjà encaissés**. Exemple :
+
+> Contrat `099OTAP232130001` — cumul des courus depuis le 01/08/2023 : **353 424 658 XAF** ;
+> coupon déjà encaissé avant la bascule : **181 572 816 XAF** ; solde réel restant :
+> **171 851 842 XAF**. Montant crédité à la migration : **353 424 658 XAF**,
+> soit **181 572 816 XAF de trop**.
+
+**23 des 55 contrats** sont concernés, pour un écart cumulé de **1 444 094 752 XAF** au niveau
+contrat (l'écart au niveau du compte, 1 205 231 891 XAF, est net des courus du jour).
+
+**Conséquences, sur deux comptes à la fois :**
+1. Le compte `511800100`, qui est un **compte d'actif**, a présenté un **solde créditeur de
+   1 205 231 891 XAF** — une position anormale par construction ;
+2. la contrepartie étant un **débit du compte BEAC `099ACO00001`**, la banque a enregistré
+   **4 169 123 793 XAF d'encaissement** là où la créance réelle était de 2 963 891 902 XAF :
+   le **nostro BEAC a été surévalué de 1,2 Md XAF** sur la même période.
+
+**Durée de l'anomalie : 45 jours**, du 16/06/2025 au 30/07/2025 inclus — **l'arrêté semestriel du
+30/06/2025 est traversé**. La correction n'intervient que le **31/07/2025**, par l'écriture
+`099000b252120001` (saisie `NDJOCKOS0067`, validée `MBATOHID0012`), libellée
+**« ACCRUALS LIQUIDATION RELATED TO CALYPSO GO LIVE »** : D `511800100` 1 205 231 891 /
+C `099ACO00001` 1 207 226 407. L'écart de **1 994 516 XAF** entre les deux jambes indique une
+troisième jambe, non identifiée dans les extractions disponibles.
+
+**Ce qu'il faut instruire :**
+1. Les **états financiers au 30/06/2025** portaient-ils ce solde créditeur de 1,2 Md sur un compte
+   d'actif, et un nostro BEAC surévalué d'autant ? Si un arrêté semestriel a été publié, l'anomalie
+   y figure.
+2. Le **rapprochement du nostro BEAC** de juin et juillet 2025 : un écart de 1,2 Md aurait dû être
+   détecté par le rapprochement bancaire mensuel. Pourquoi 45 jours ?
+3. La **troisième jambe** de l'écriture de correction (1 994 516 XAF).
+4. La **procédure de contrôle de la migration** : le calcul des courus à reprendre a été effectué
+   à partir du cumul théorique par contrat et non du solde comptable ; ce mode opératoire a-t-il
+   été revu ?
+
+### 12.6 Contrôle positif : l'exactitude du calcul des intérêts courus
+Le recoupement entre les données portées par les libellés (nominal, taux, montant couru) et la
+durée effective de détention confirme l'**exactitude du calcul des courus**. Exemple :
+
+> Contrat `099OTAP243480002` — nominal 4 000 000 000 XAF à 6,70 %, couru du 13/12/2024 au
+> 16/06/2025 (185 jours). Attendu : 4 000 000 000 × 6,70 % × 185/365 = **135 890 411 XAF**.
+> Comptabilisé : **135 797 500 XAF**, soit un écart de 0,07 % (convention de décompte des jours).
+
+Sur les 55 contrats migrés, 31 n'avaient encaissé aucun coupon avant la bascule et 24 en avaient
+encaissé un — répartition cohérente avec des titres acquis majoritairement en 2024 et 2025 et
+portant des coupons annuels. **Aucun indice d'arriéré de paiement des États émetteurs** n'est
+décelable dans ces données.
+
+### 12.7 Enseignement de méthode
+Cet épisode illustre une limite à garder présente à l'esprit pour toute la suite des travaux :
+**une extraction filtrée par module peut faire apparaître une anomalie qui n'existe pas.** Le
+module `DE` (écriture directe) de Flexcube porte des opérations structurantes — apurement des
+coupons, corrections, écritures de migration — qui n'apparaissent dans aucune extraction filtrée
+sur un module fonctionnel.
+
+**Règle retenue pour la suite** : tout constat portant sur le solde ou le comportement d'un compte
+doit être établi sur une extraction **du compte, tous modules confondus**, et non sur une
+extraction par module. Les constats du présent rapport qui reposent encore sur des extractions
+partielles sont signalés comme tels et devront être confirmés selon cette règle — en particulier
+le §11.4 (réévaluation de change sans impact résultat), dont la contrepartie en compte de résultat
+pourrait se trouver, comme ici, dans un module non extrait.
+
+---
+
 ## 10. Synthèse
 
 L'exploration permet d'établir une compréhension **solide et vérifiée** du dispositif :
@@ -1118,23 +1201,30 @@ Trois enseignements structurent la suite des travaux :
    quotidien double les flux de courus. **Tout travail quantitatif doit être mené sur des données
    retraitées.**
 
-2. **Cinq pistes d'audit prioritaires**, dont deux issues de la seconde exploration :
-   - le compte d'intérêts courus **`511800100` abandonné en l'état à la migration** — Calypso ne
-     l'impacte jamais, son dernier mouvement date du 16/06/2025, et **3,09 Md XAF de courus ont été
-     re-comptabilisés par Calypso** sur des positions dont les courus y figuraient déjà (§11.10) ;
+2. **Quatre pistes d'audit prioritaires** :
    - **215 opérations de Sell-Buy-Back** (896 Md XAF réglés) comptabilisées en cession et
      acquisition fermes au lieu d'un financement garanti, un même titre étant recyclé jusqu'à
      **9 fois** avec la même contrepartie (§11.5) ;
-   - la **réévaluation de change ne touche aucun compte de résultat** : +3,54 Md XAF de variation
-     cumulée sur la position USD sans impact visible en résultat (§11.4) ;
-   - les **3 076 écritures manuelles sans validateur** (1 231 Md XAF, §8.8) ;
-   - les **pensions livrées de 6 à 98 jours** logées en emprunt au jour le jour (832 Md XAF), avec
-     un rattachement des charges défaillant (§8.6).
+   - la **réévaluation de change ne touche aucun compte de résultat** dans les données extraites :
+     +3,54 Md XAF de variation cumulée sur la position USD (§11.4) — *à confirmer sur une
+     extraction tous modules, cf. §12.7* ;
+   - le **sur-apurement de 1 205 231 891 XAF** du compte d'intérêts courus à la migration, laissant
+     un **compte d'actif en solde créditeur et le nostro BEAC surévalué d'autant pendant 45 jours**,
+     **arrêté semestriel du 30/06/2025 compris** (§12.5) ;
+   - les **3 076 écritures manuelles sans validateur** (1 231 Md XAF, §8.8) et les **pensions
+     livrées de 6 à 98 jours** logées en emprunt au jour le jour (832 Md XAF, §8.6).
 
-3. **Deux zones d'ombre à lever d'urgence** : l'absence du **référentiel des deals Calypso**, qui
-   prive l'audit de toute donnée contractuelle sur 65 % de la période, et l'absence d'une
-   **extraction du compte `511800100` tous modules confondus**, seule façon de trancher
-   définitivement le constat du §11.10.
+   **Deux constats antérieurs sont retirés** (§8.1 et §11.10) : l'extraction complète du compte
+   `511800100` montre qu'il est **intégralement apuré, solde net nul**, les coupons étant bien
+   encaissés en trésorerie sur le compte BEAC par des écritures manuelles en module `DE`.
+
+3. **Une zone d'ombre à lever d'urgence** : l'absence du **référentiel des deals Calypso**, qui
+   prive l'audit de toute donnée contractuelle sur 65 % de la période.
+
+   S'y ajoute une **règle de méthode désormais acquise** (§12.7) : tout constat portant sur le solde
+   ou le comportement d'un compte doit être établi sur une extraction **du compte, tous modules
+   confondus**. Une extraction filtrée par module peut faire apparaître une anomalie inexistante —
+   c'est précisément ce qui s'est produit sur le compte `511800100`.
 
 4. **Une source de preuve nouvelle et sous-exploitée** : les **22 847 commentaires libres** saisis
    par la salle des marchés dans le champ `DESCRIPTION` documentent l'**intention économique** des

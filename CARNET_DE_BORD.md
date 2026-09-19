@@ -798,3 +798,153 @@ et ne l'ont jamais fait (Calypso ne reprend que le couru depuis le dernier déta
 13. Nature des **7 doublons** de `MM_CONTRACT`.
 14. Justification du **reclassement placement → transaction** lors de la migration.
 15. **Balance générale** aux dates d'arrêté.
+
+---
+
+# SESSION 10 — Historique complet du compte 511800100 : le constat est infirmé
+
+**Contexte** : sur demande, la banque a fourni `creance_rattaché.csv` — l'historique intégral du
+compte d'intérêts courus, **tous modules confondus**, 32 937 lignes, **16/08/2022 → 31/07/2025**.
+
+**Difficultés techniques de chargement** (résolues) :
+- fichier encodé en **CP1252** et non UTF‑8 → 43 octets `0xA0` (espaces insécables) faisaient
+  échouer la lecture ; chargement en `cp1252` puis nettoyage des `\xa0` ;
+- format de date **`JJ-MMM-AA`** (`16-AUG-22`) différent des autres extractions ;
+- montants avec **décimales** (les autres fichiers sont en unités entières).
+→ Fonction `cr()` ajoutée à `scripts/load.py`.
+
+## 10.1 ⚠ LE CONSTAT DES SESSIONS 3 ET 9 EST INFIRMÉ
+
+| Contrôle | Résultat |
+|---|---|
+| Débits | 32 136 lignes — 15 005 402 277,00 XAF |
+| **Crédits** | **801 lignes — 15 005 402 277,00 XAF** |
+| **SOLDE NET** | **0,00 XAF** |
+
+**Le compte est intégralement apuré.** Les crédits existent, en **module `DE`** — invisibles dans
+la première extraction filtrée sur `MODULE='MM'`.
+
+**Origine de l'erreur** : j'avais conclu à l'absence d'apurement à partir d'une extraction ne
+contenant que le module MM. L'hypothèse alternative avait bien été posée dès le §8.1 du rapport
+(« les coupons sont encaissés hors du module MM ») et c'est l'extraction demandée qui tranche —
+en faveur de la banque. Constats §8.1 et §11.10 **retirés** du rapport (conservés barrés, pour la
+piste d'audit).
+
+## 10.2 Mécanique réelle d'apurement
+Contrepartie des 801 crédits retrouvée dans les autres fichiers : **compte BEAC `099ACO00001`**
+(499 débits, 31 309 830 000 XAF) et `472200106` pour les bons. **Les coupons sont bien encaissés.**
+
+```
+② chaque jour (MM, automatique)   D 511800100 / C 733400100
+③ au détachement du coupon (DE, MANUEL) D 099ACO00001 / C 511800100
+```
+
+## 10.3 Profil du compte — sain
+| Date | Solde (XAF) |
+|---|---:|
+| 31/12/2022 | 235 739 034 |
+| 31/12/2023 | 662 336 797 |
+| 30/06/2024 | 1 975 466 036 |
+| 31/12/2024 | 2 455 219 083 |
+| **max — 22/05/2025** | **3 298 021 048** |
+| 13/06/2025 | 2 927 747 645 |
+| **16/06/2025** | **−1 205 231 891** |
+| **30/06/2025 (arrêté)** | **−1 205 231 891** |
+| 31/07/2025 | **0** |
+
+Le compte monte entre deux coupons et retombe à chaque encaissement : profil attendu.
+
+## 10.4 Contrôle interne sur les apurements — satisfaisant
+- auto-validation : **0 / 801** ; sans validateur : **0 / 801**
+- 7 saisisseurs (`BINEID00087` 431, `CHEICHEID059` 264, `NDJOCKOS0067` 52, …),
+  7 valideurs (`MBATOHID0012` 577, `CELESID0018` 124, `MBOGID000083` 69, …)
+- libellés très documentés : contrat + code titre + nominal + couru + taux, ex.
+  `099OTAP242490004 GA2B00000109 4000000000 194299723 6.25 %`
+
+**Observation résiduelle** : apurement **entièrement manuel** (801 écritures en 3 ans) alors que le
+module MM dispose de `INT_BT_LIQD` (utilisé pour les bons, **jamais pour les obligations**).
+Fragilité opérationnelle, aujourd'hui bien contrôlée.
+
+## 10.5 ⚠ NOUVEAU CONSTAT — sur-apurement de 1,2 Md à la migration
+Écriture `099001b251670001` du 16/06/2025 (`CHEICHEID059` / `MBATOHID0012`), 55 lignes :
+
+| Élément | Montant (XAF) |
+|---|---:|
+| Solde au 13/06/2025 | 2 927 747 645 |
+| Courus du 16/06 | 36 144 257 |
+| **Solde réel à apurer** | **2 963 891 902** |
+| **Crédit passé** | **4 169 123 793** |
+| **SUR-APUREMENT** | **1 205 231 891** |
+
+**Cause** : l'écriture a crédité, par contrat, le **cumul des courus depuis l'origine**, sans
+déduire **les coupons déjà encaissés**.
+Exemple `099OTAP232130001` : cumul 353 424 658 ; coupon déjà encaissé 181 572 816 ; solde réel
+171 851 842 ; crédité 353 424 658 → **181 572 816 de trop**.
+**23 des 55 contrats** concernés, écart cumulé niveau contrat **1 444 094 752 XAF**.
+
+**Double conséquence** :
+1. compte d'**actif en solde créditeur** de 1 205 231 891 XAF ;
+2. contrepartie = **débit du nostro BEAC** → **BEAC surévalué de 1,2 Md** sur la même période.
+
+**Durée : 45 jours** (16/06 → 30/07/2025), **arrêté semestriel du 30/06/2025 traversé**.
+Correction le **31/07/2025** : `099000b252120001` (`NDJOCKOS0067` / `MBATOHID0012`),
+libellé **« ACCRUALS LIQUIDATION RELATED TO CALYPSO GO LIVE »**,
+D `511800100` 1 205 231 891 / C `099ACO00001` 1 207 226 407.
+→ écart de **1 994 516 XAF** entre les deux jambes : une **troisième jambe** existe, non identifiée.
+
+## 10.6 Contrôle positif — exactitude des courus
+`099OTAP243480002` : 4 000 000 000 à 6,70 %, 185 jours → attendu 135 890 411, comptabilisé
+135 797 500 (écart 0,07 %, convention de jours). Le calcul des courus est exact.
+Sur les 55 contrats migrés : 31 sans coupon encaissé, 24 avec un coupon — cohérent avec des titres
+acquis en 2024-2025 à coupon annuel. **Aucun indice d'arriéré des États émetteurs.**
+
+## 10.7 Enseignement de méthode (important pour la suite)
+**Une extraction filtrée par module peut faire apparaître une anomalie qui n'existe pas.**
+Le module `DE` porte les opérations structurantes : apurement des coupons, corrections, migration.
+
+> **Règle retenue** : tout constat sur le solde ou le comportement d'un compte doit être établi sur
+> une extraction **du compte, tous modules confondus**.
+
+**Constat à re-confirmer selon cette règle** : le §11.4 (réévaluation de change sans impact
+résultat) repose sur l'extraction des comptes `475`/`476`. La contrepartie en compte de résultat
+pourrait, comme ici, se trouver dans un module non extrait. → demander l'historique des comptes de
+gains et pertes de change (classes 63/73), tous modules.
+
+---
+
+## État d'avancement (mis à jour)
+
+| Étape | Statut |
+|---|---|
+| Exploration initiale (4 fichiers) | ✔ terminé |
+| Seconde extraction (comptes généraux Calypso) | ✔ terminé |
+| Troisième extraction (compte 511800100, tous modules) | ✔ terminé |
+| **Constat sur les créances rattachées** | ✔ **tranché — constat initial infirmé** |
+| Sur-apurement de 1,2 Md à la migration | ✔ établi et quantifié |
+| **Rapport d'exploration v3** | ✔ mis à jour (`rapport d'exploration.md`, §12) |
+| Re-confirmation du §11.4 sur extraction tous modules | ⏳ à demander |
+| Retraitement des volumes bruts | ⏳ à faire |
+| Coût de financement implicite des SBB | ⏳ à faire |
+| Reconstitution de l'encours par titre | ⏳ bloqué — référentiel deals Calypso manquant |
+| Rapprochement avec la balance générale | ⏳ bloqué — balance non fournie |
+
+## Questions ouvertes (mises à jour)
+1. **[HAUTE]** États financiers au **30/06/2025** : portaient-ils le solde créditeur de 1,2 Md sur
+   un compte d'actif et le nostro BEAC surévalué d'autant ? Rapprochement bancaire BEAC de
+   juin-juillet 2025 : pourquoi 45 jours pour détecter un écart de 1,2 Md ?
+2. **[HAUTE]** Doctrine comptable des **Sell-Buy-Back** (215 opérations, 896 Md réglés).
+3. **[HAUTE]** Constatation du **résultat de change** — demander les comptes 63/73 **tous modules**.
+4. Troisième jambe de l'écriture de correction du 31/07/2025 (1 994 516 XAF).
+5. Procédure de contrôle de la migration (calcul des courus repris).
+6. Référentiel des **deals Calypso** (65 % de la période).
+7. Pourquoi `INT_BT_LIQD` n'est-il pas paramétré pour les obligations (apurement manuel) ?
+8. Paramétrage des comptes `475000160` / `476000160` (intitulés inversés).
+9. Habilitations `ADMINUSER1` et 3 076 écritures sans validateur.
+10. Conventions de pension livrée BEAC et durées réelles.
+11. Politique de taux du change clientèle (marge intégrée au taux).
+12. Dossiers de rétrocession « non exécutés » et taux atypique de 79 %.
+13. Table de correspondance IFRS 9 ↔ PCEC dans Calypso.
+14. Règle d'affectation entre comptes `733xxx` et `734xxx`.
+15. Nature des 7 doublons de `MM_CONTRACT`.
+16. Reclassement placement → transaction à la migration.
+17. **Balance générale** aux dates d'arrêté.
