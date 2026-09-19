@@ -948,3 +948,127 @@ gains et pertes de change (classes 63/73), tous modules.
 15. Nature des 7 doublons de `MM_CONTRACT`.
 16. Reclassement placement → transaction à la migration.
 17. **Balance générale** aux dates d'arrêté.
+
+---
+
+# SESSION 11 — Les 41 comptes de trésorerie, tous modules
+
+`final_key_accounts_Export Worksheet_part_1..6.csv` — **329 884 lignes**, **08/06/2022 →
+18/09/2026**, 41 comptes, tous modules. **Encodage UTF‑8 conforme** (consigne suivie).
+Chargeur `fkey()` ajouté à `scripts/load.py` (nettoyage des `\xa0` résiduels).
+Modules : `DE` 214 511, `MM` 76 720, `FT` 22 654, `RE` 15 415, `RT` 556, **`GL` 28**.
+
+Première extraction permettant de raisonner sur des **soldes** : pour les comptes créés après
+juin 2022, le solde d'ouverture est nul, donc le cumul des mouvements **est** le solde.
+
+## 11.1 ⚠⚠ 136,5 Md XAF en comptes de liaison Calypso au 30/06/2026
+Les deux comptes ouverts au démarrage de Calypso (1ʳᵉ écriture 16/06/2025, donc ouverture à zéro) :
+
+| Fin de trimestre | `467000186` | `467000188` |
+|---|---:|---:|
+| 30/06/2025 | +15 491 672 | 0 |
+| 30/09/2025 | −5 233 940 957 | 0 |
+| 31/12/2025 | −15 685 996 937 | −5 000 000 000 |
+| 31/03/2026 | −33 604 411 774 | −93 902 460 379 |
+| **30/06/2026** | **−42 058 339 493** | **−94 451 445 974** |
+| 18/09/2026 | −48 325 343 347 | −94 549 929 809 |
+
+**Total au 30/06/2026 : −136 509 785 467 XAF**, en dérive monotone.
+Un compte de liaison est un compte de passage : il doit revenir à zéro.
+
+Concentration par portefeuille : `ABCM_MM.Plmt.Tkn.Secured` (repo BEAC) **−120,25 Md**,
+`ABCM_FVOCI.Bond` −38,01 Md, `ABCM_FI.Sales` −16,29 Md, `ABCM_FVOCI.Bills` −7,20 Md.
+
+Par événement : `NOMINAL` −278,96 Md contre `CST_S_SETTLED` +225,43 Md sur `467000186` ;
+`CST_S_SETTLED` −136,85 Md contre `PRINCIPAL_DEPOSIT` +20,00 Md sur `467000188`.
+
+## 11.2 Module `GL` / produit `ZYND` / tag `YEND` = clôture annuelle
+28 écritures aux 30/12/2022, 29/12/2023, 31/12/2024 et 31/12/2025 : chaque compte de résultat y est
+soldé. Elles donnent **le compte de résultat de l'activité** :
+
+| Exercice | Résultat (XAF) |
+|---|---:|
+| 2022 (juin-déc.) | 1 480 391 086 |
+| 2023 | 6 195 242 929 |
+| 2024 | 12 078 561 015 |
+| 2025 | 22 330 085 762 |
+
+Produits 2025 : `734400100` 10,86 Md, `733400100` 9,39 Md, `733200100` 1,27 Md, `729000125` 0,65 Md,
+`727000102` 0,64 Md. Charges 2025 : `601100100` 0,52 Md, `625000105` 4,7 M.
+→ La charge d'intérêt du repo n'apparaît qu'en 2025, cohérent avec le démarrage en novembre 2025.
+→ **Aucun compte de gains/pertes de change dans les écritures de clôture.**
+
+## 11.3 ⚠ Réévaluation de change jamais portée au résultat — CONFIRMÉ
+Trois tests concordants sur 4 ans et tous modules :
+1. couples position/contre-valeur : écart **exactement nul** (USD, EUR, GBP, ZAR) ;
+2. aucune écriture touchant `475…`/`476…` ne touche un compte de résultat, hormis des
+   **commissions** (`729000125`, `727000102`, `625000105`) ;
+3. le module `RE` (15 415 lignes) ne mouvemente que position, contre-valeur et hors bilan.
+
+Réévaluation cumulée non constatée, par exercice (compte de contre-valeur) :
+
+| Exercice | USD | EUR | GBP | ZAR | Total |
+|---|---:|---:|---:|---:|---:|
+| 2022 | 138 825 565 | 777 910 | — | — | 139 603 474 |
+| 2023 | 763 844 332 | −228 900 130 | — | 1 075 572 | 536 019 775 |
+| 2024 | 337 605 765 | 295 236 | — | — | 337 901 001 |
+| 2025 | 1 603 812 133 | 5 104 | −113 444 | — | 1 603 703 792 |
+| 2026 (18/09) | 1 234 454 827 | −24 464 783 | 24 638 501 | 29 385 710 | 1 264 014 255 |
+| **CUMUL** | **4 078 542 622** | **−252 286 663** | **24 525 057** | **30 461 282** | **3 881 242 297** |
+
+L'EUR est quasi nul (parité fixe) ; **l'USD est une position ouverte**.
+*Réserve* : requête de découverte du plan de comptes (`gl_desc LIKE '%CHANGE%'`) encore à exécuter.
+
+## 11.4 Soldes du portefeuille — extinction propre du dispositif Flexcube
+`511410100` = **0**, `512200100` = **0**, `511800100` = **0**, `591400100` = **0**.
+Encours Calypso au 18/09/2026 : `512410100` 273,88 Md, `512800100` 23,10 Md, `511210100` 11,01 Md.
+
+## 11.5 Refinancement BEAC — chiffres corrigés
+| | Estimation §7 (partielle) | Corrigé |
+|---|---:|---:|
+| Encours emprunté `552400100` | ~25 Md | **45,00 Md** |
+| Collatéral `952100100` | 77,85 Md | **71,85 Md** |
+| Sur-collatéralisation | ~53 Md | **26,85 Md** (60 % de l'encours) |
+
+Écriture isolée en 2022 sur `552400100` (3,5 Md au débit et au crédit, net nul), trois ans avant le
+démarrage du repo — à qualifier.
+
+## 11.6 Écritures techniques `i099` / `z099` du 10/06/2023
+14 comptes du périmètre reçoivent le même jour un montant **négatif** (`i099`) et le même montant
+**positif** (`z099`) — effet net nul. Ex. `511410100` ±24 981 550 000, `512200100` ±2 050 000 000,
+`511800100` ±780 228 400. Reprise technique de soldes (renumérotation / migration interne).
+Effet comptable nul mais à documenter.
+
+## 11.7 Ce qui reste hors d'atteinte
+- **3ᵉ jambe** des écritures de migration du `511800100` (écart 1 994 516 XAF) — hors des 41 comptes.
+- **Comptes de gains/pertes de change** — codes inconnus, requête de découverte à exécuter.
+- **Soldes en balance générale** aux dates d'arrêté — toujours non fournis.
+
+---
+
+## État d'avancement (mis à jour)
+
+| Étape | Statut |
+|---|---|
+| Exploration initiale (4 fichiers) | ✔ |
+| 2ᵉ extraction (comptes généraux Calypso) | ✔ |
+| 3ᵉ extraction (compte 511800100) | ✔ |
+| **4ᵉ extraction (41 comptes, tous modules)** | ✔ |
+| Constat créances rattachées | ✔ infirmé (§12) |
+| Réévaluation de change sans impact résultat | ✔ **confirmé** (§13.3) |
+| Comptes de liaison Calypso | ✔ **nouveau constat majeur** (§13.1) |
+| Compte de résultat par exercice | ✔ établi (§13.2) |
+| **Rapport d'exploration v4** | ✔ (`rapport d'exploration.md`, §13) |
+| Découverte des comptes de gains/pertes de change | ⏳ requête à exécuter |
+| Retraitement des volumes bruts | ⏳ |
+| Coût de financement implicite des SBB | ⏳ |
+| Référentiel des deals Calypso | ⏳ bloqué |
+| Balance générale aux dates d'arrêté | ⏳ bloqué |
+
+## Questions ouvertes — trois priorités
+1. **[MAXIMALE]** Les **136,5 Md** des comptes de liaison Calypso figurent-ils au bilan au
+   30/06/2026 ? Existe-t-il un état de rapprochement ? L'écart se concentre sur le repo BEAC.
+2. **[MAXIMALE]** La **réévaluation de change** (4,08 Md cumulés sur l'USD) est-elle portée au
+   résultat par une écriture hors périmètre ? Sinon, incidence sur le résultat, les fonds propres
+   et la position de change déclarée à la COBAC.
+3. **[HAUTE]** Doctrine comptable des **215 Sell-Buy-Back** (896 Md réglés).

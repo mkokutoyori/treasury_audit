@@ -11,8 +11,9 @@ zéros de tête et d'éviter toute conversion numérique parasite.
 **Référentiel comptable applicable** : Plan Comptable des Établissements de Crédit (PCEC) de la
 CEMAC — COBAC.
 
-> **Version 3** — intègre la seconde extraction (comptes généraux Calypso, §11) et la troisième
-> (historique complet du compte `511800100`, §12), fournies en cours de mission. Les constats revus
+> **Version 4** — intègre la seconde extraction (comptes généraux Calypso, §11), la troisième
+> (historique du compte `511800100`, §12) et la quatrième (**41 comptes de trésorerie, tous
+> modules, §13**), fournies en cours de mission. Les constats revus
 > ou retirés sont signalés comme tels et conservés dans le corps du rapport, afin de préserver la
 > piste d'audit.
 >
@@ -39,6 +40,7 @@ CEMAC — COBAC.
 | **Historique des comptes clés** | `transaction_history_of_key_account_…part_1..4.csv` | 190 467 | 27/09/2023 → 18/09/2026 | Tous les mouvements des nostri, du compte BEAC et du compte courtier |
 | **Historique des comptes généraux Calypso** | `calypson_key_account_…part_1..3.csv` | 143 953 | 27/09/2023 → 18/09/2026 | Mouvements des comptes généraux utilisés par Calypso (position de change, comptes de liaison, courus, régularisation) — *seconde extraction, cf. §11* |
 | **Historique du compte d'intérêts courus** | `creance_rattaché.csv` | 32 937 | 16/08/2022 → 31/07/2025 | Historique **complet, tous modules**, du compte `511800100` — *troisième extraction, cf. §12* |
+| **Comptes de trésorerie, tous modules** | `final_key_accounts_…part_1..6.csv` | 329 884 | 08/06/2022 → 18/09/2026 | **41 comptes généraux** de la trésorerie, tous modules — *quatrième extraction, cf. §13* |
 
 Les fichiers `part_N` sont bien des **découpages d'un même export** (mêmes en-têtes, même encodage
 UTF‑8 avec BOM, continuité chronologique) ; ils ont été rechargés par concaténation.
@@ -1183,6 +1185,205 @@ pourrait se trouver, comme ici, dans un module non extrait.
 
 ---
 
+## 13. Quatrième exploration — les 41 comptes de trésorerie, tous modules
+
+L'extraction demandée au §12.7 a été livrée : `final_key_accounts_Export Worksheet_part_1..6.csv`,
+**329 884 lignes**, **08/06/2022 → 18/09/2026**, couvrant les **41 comptes généraux** du périmètre
+trésorerie, **tous modules confondus**. Encodage UTF‑8 conforme.
+
+C'est la première extraction qui permette de raisonner sur des **soldes** et non sur des flux
+partiels : pour les comptes créés après juin 2022, le solde d'ouverture est nul par construction,
+donc le cumul des mouvements **est** le solde.
+
+Modules représentés : `DE` 214 511, `MM` 76 720, `FT` 22 654, `RE` 15 415, `RT` 556, **`GL` 28**.
+
+### 13.1 — CONSTAT MAJEUR — 136,5 Md XAF en comptes de liaison Calypso au 30/06/2026
+
+Deux comptes de liaison (« bridge ») ont été ouverts lors du démarrage de Calypso. Leur **première
+écriture date du 16/06/2025**, leur solde d'ouverture est donc **nul** et le cumul des mouvements
+est le solde exact.
+
+| Fin de trimestre | `467000186` CALYPSO BRIDGE | `467000188` CALYPSO BRIDGE MONEY MARKET |
+|---|---:|---:|
+| 30/06/2025 | +15 491 672 | 0 |
+| 30/09/2025 | −5 233 940 957 | 0 |
+| 31/12/2025 | −15 685 996 937 | −5 000 000 000 |
+| 31/03/2026 | −33 604 411 774 | −93 902 460 379 |
+| **30/06/2026 (fin de période d'audit)** | **−42 058 339 493** | **−94 451 445 974** |
+| 18/09/2026 | −48 325 343 347 | −94 549 929 809 |
+
+> **Au 30/06/2026, les deux comptes de liaison Calypso présentent un solde créditeur cumulé de
+> 136 509 785 467 XAF**, en progression monotone depuis l'origine.
+
+Un compte de liaison est, par construction, un **compte de passage** : il est mouvementé dans un
+sens à l'initiation de l'opération et dans l'autre à son dénouement, et doit donc **revenir à zéro**.
+Un solde de 136,5 Md qui ne fait que croître signale que **le dénouement ne suit pas l'initiation**.
+
+**Décomposition par événement** :
+
+| Compte | Événement | Lignes | Net (XAF) |
+|---|---|---:|---:|
+| `467000186` | `NOMINAL` (entrée des titres) | 625 | −278 964 643 333 |
+| | `CST_S_SETTLED` (règlement espèces) | 752 | +225 434 453 018 |
+| | `PREM_DISC` | 232 | +13 070 027 663 |
+| | `NOM_FULL` (ventes clientèle) | 95 | −16 277 959 855 |
+| | `ACCRUAL_BS` | 525 | −4 766 217 073 |
+| `467000188` | `CST_S_SETTLED` | 802 | −136 845 391 709 |
+| | `PRINCIPAL_DEPOSIT` (repo) | 261 | +20 000 000 000 |
+| | `INTEREST` (repo) | 129 | −2 716 616 674 |
+
+Par portefeuille, l'écart se concentre sur :
+- **`ABCM_MM.Plmt.Tkn.Secured` (pensions livrées BEAC) : −120 253 163 889 XAF** ;
+- **`ABCM_FVOCI.Bond` : −38 010 893 736 XAF** ;
+- `ABCM_FI.Sales` : −16 289 259 855 XAF ; `ABCM_FVOCI.Bills` : −7 200 657 222 XAF.
+
+**Ce qu'il faut instruire, par ordre d'urgence :**
+1. **Le solde de ces deux comptes figure-t-il tel quel au bilan au 30/06/2026 ?** 136,5 Md XAF en
+   compte d'attente non justifié seraient un point d'audit de première importance.
+2. **Existe-t-il un état de rapprochement** de ces comptes, et à quelle fréquence est-il produit ?
+   Une dérive monotone sur 15 mois suggère qu'aucun apurement systématique n'est opéré.
+3. **L'écart se concentre sur le repo BEAC** (−120 Md). Le rapprochement avec le compte
+   `552400100` (encours emprunté : 45 Md) et avec les états de la BEAC est prioritaire.
+4. S'agit-il d'écritures **non dénouées**, d'un **paramétrage d'interface asymétrique** (une jambe
+   déversée dans Flexcube, l'autre non), ou d'un **décalage de dates de valeur** ?
+
+### 13.2 Le résultat de l'activité trésorerie, par exercice
+Le module **`GL`** (28 lignes, produit `ZYND`, étiquette `YEND`) porte les **écritures de clôture
+annuelle** : chaque compte de résultat y est soldé en fin d'exercice. Elles donnent donc directement
+le **compte de résultat de l'activité** :
+
+| | 2022 * | 2023 | 2024 | 2025 |
+|---|---:|---:|---:|---:|
+| **PRODUITS** | | | | |
+| `733400100` Revenus d'obligations et bons assimilés | 237 349 993 | 1 948 298 718 | 4 493 601 922 | 9 391 787 162 |
+| `734400100` Revenus d'obligations et bons (2ᵉ jeu) | 548 387 845 | 3 328 305 701 | 6 048 526 398 | 10 858 598 333 |
+| `733200100` Revenus de bons du Trésor | 400 732 332 | 208 334 751 | 873 177 474 | 1 268 828 550 |
+| `734200100` Revenus de bons du Trésor (2ᵉ jeu) | — | — | 7 519 237 | 42 928 009 |
+| `727000102` Refacturation commissions refinancement BEAC | 156 673 648 | 355 118 791 | 382 454 122 | 640 098 457 |
+| `729000125` Commissions de service hors CEMAC | 136 835 302 | 351 251 193 | 266 879 362 | 652 212 323 |
+| `725000100` Commission gestion portefeuille titres tiers | 411 966 | 3 933 775 | 6 402 500 | 632 600 |
+| **CHARGES** | | | | |
+| `601100100` Intérêts sur opérations de marché monétaire | — | — | — | **−520 308 336** |
+| `625000105` Commissions payées sur achat de devises | — | — | — | −4 691 336 |
+| **RÉSULTAT** | **1 480 391 086** | **6 195 242 929** | **12 078 561 015** | **22 330 085 762** |
+
+\* 2022 ne couvre que juin-décembre (début de l'extraction : 08/06/2022). 2026 n'a pas encore de
+clôture annuelle.
+
+**Le résultat double quasiment chaque année** : ×4,2 de 2022 (partiel) à 2023, ×1,95 en 2024, ×1,85
+en 2025. Cette croissance est à rapprocher de l'essor du portefeuille et du recours au
+refinancement BEAC. Elle mérite en elle-même une revue analytique : quelle part provient de la
+progression des encours, quelle part d'un changement de méthode de valorisation ?
+
+**Deux observations d'audit** :
+- la **charge d'intérêt du refinancement BEAC n'apparaît qu'en 2025** (520 M XAF), cohérent avec le
+  démarrage du repo en novembre 2025 — mais à rapprocher du constat §8.6 sur le rattachement
+  défaillant des charges ;
+- **aucun compte de gains ou pertes de change ne figure dans les écritures de clôture** du
+  périmètre trésorerie. Voir §13.3.
+
+### 13.3 — CONSTAT CONFIRMÉ — La réévaluation de change n'est jamais portée au résultat
+Le §11.4 reposait sur une extraction partielle. Avec les 41 comptes sur **quatre ans et tous
+modules**, le constat est désormais établi :
+
+**Test 1 — les couples position / contre-valeur se compensent exactement.**
+
+| Devise | Position (`475…`) | Contre-valeur (`476…`) | Écart |
+|---|---:|---:|---:|
+| USD | −7 228 911 275 | +7 228 911 275 | **0** |
+| EUR | −30 821 293 932 | +30 821 293 932 | **0** |
+| GBP | +234 602 783 | −234 602 783 | **0** |
+| ZAR | +88 752 605 | −88 752 605 | **0** |
+
+**Test 2 — aucune écriture touchant un compte `475…`/`476…` ne touche un compte de résultat**,
+hormis des **commissions** (`729000125` : −2 357 145 000 ; `727000102` : −1 913 010 000 ;
+`625000105` : +11 990 010). Aucun compte de gain ou perte de change n'apparaît jamais.
+
+**Test 3 — le module `RE` (réévaluation) ne mouvemente que les comptes de position, de
+contre-valeur et de hors bilan.** 15 415 lignes sur quatre ans, aucune jambe de résultat.
+
+**Montant de la réévaluation jamais constatée en résultat** (compte de contre-valeur) :
+
+| Exercice | USD | EUR | GBP | ZAR | Total |
+|---|---:|---:|---:|---:|---:|
+| 2022 | 138 825 565 | 777 910 | — | — | 139 603 474 |
+| 2023 | 763 844 332 | −228 900 130 | — | 1 075 572 | 536 019 775 |
+| 2024 | 337 605 765 | 295 236 | — | — | 337 901 001 |
+| 2025 | 1 603 812 133 | 5 104 | −113 444 | — | 1 603 703 792 |
+| 2026 (au 18/09) | 1 234 454 827 | −24 464 783 | 24 638 501 | 29 385 710 | 1 264 014 255 |
+| **CUMUL** | **4 078 542 622** | **−252 286 663** | **24 525 057** | **30 461 282** | **3 881 242 297** |
+
+**Portée.** En régime de parité fixe, la position en EUR ne peut pas générer de résultat de change,
+ce que confirme la quasi-nullité de la colonne EUR. En revanche, **la position en USD est une
+position ouverte** : sa réévaluation a produit **4 078 542 622 XAF de variation cumulée**, dont
+**1,60 Md sur le seul exercice 2025** et **1,23 Md sur 2026 à fin septembre**. Ces montants restent
+logés dans le compte de contre-valeur et **ne remontent jamais au compte de résultat**.
+
+Si ce traitement est confirmé, il affecte **le résultat, les fonds propres et la position de change
+réglementaire déclarée à la COBAC**. C'est, avec le §13.1, le constat le plus significatif de cette
+exploration.
+
+*Réserve* : un compte de gains et pertes de change pourrait exister hors des 41 comptes extraits et
+être alimenté par une écriture sans lien avec les comptes `475`/`476`. La requête de découverte du
+plan de comptes (`gl_desc LIKE '%CHANGE%'`) reste à exécuter pour lever définitivement ce doute.
+
+### 13.4 Soldes du portefeuille — les comptes anciens sont proprement soldés
+Sur l'historique complet, les comptes du dispositif Flexcube **reviennent exactement à zéro**, ce
+qui confirme une extinction propre lors de la bascule :
+
+| Compte | Lignes | Solde net | Lecture |
+|---|---:|---:|---|
+| `511410100` Obligations du Trésor — placement | 980 | **0** | Portefeuille MM intégralement soldé |
+| `512200100` Bons du Trésor — transaction | 228 | **0** | Idem |
+| `511800100` Créances rattachées — placement | 32 937 | **0** | Confirme le §12.1 |
+| `591400100` Provision pour dépréciation | 68 | **0** | Provision reprise en totalité |
+
+Et le dispositif Calypso porte les encours actuels :
+
+| Compte | Solde au 18/09/2026 (XAF) |
+|---|---:|
+| `512410100` Obligations du Trésor — transactions | **273 879 643 333** |
+| `512800100` Créances rattachées — transaction | 23 095 801 059 |
+| `511210100` Bons du Trésor (BTA) — placement | 11 010 000 000 |
+| `472200106` / `472200108` Comptes de régularisation | 718 339 497 / −628 532 411 |
+
+### 13.5 Refinancement BEAC — chiffres corrigés
+L'historique complet corrige l'estimation du §7 (fondée sur une extraction partielle) :
+
+| | Estimation §7 | **Chiffre corrigé** |
+|---|---:|---:|
+| Encours emprunté (`552400100`) au 14/09/2026 | ~25 Md | **45 000 000 000 XAF** |
+| Collatéral mobilisé (`952100100`) | 77,85 Md | **71 847 170 000 XAF** |
+| **Sur-collatéralisation** | ~53 Md | **26 847 170 000 XAF** |
+
+Le compte `552400100` présente par ailleurs une écriture isolée en **2022** (3,5 Md au débit et au
+crédit, net nul), antérieure de trois ans au démarrage du repo — à qualifier.
+
+La sur-collatéralisation de **26,8 Md XAF** (60 % de l'encours emprunté) reste un point à
+instruire : titres restés affectés en garantie après dénouement, ou exigence de marge de la BEAC ?
+
+### 13.6 Écritures techniques du 10/06/2023 (`i099` / `z099`)
+Une paire d'écritures techniques touche **tous les comptes du périmètre** le 10/06/2023 :
+chaque compte reçoit un montant **négatif** sous le produit `i099` et le **même montant positif**
+sous `z099` — effet net **nul**. Exemples : `511410100` ±24 981 550 000, `512200100` ±2 050 000 000,
+`511800100` ±780 228 400, `475000102`/`476000102` ±2 984 132 000.
+
+Il s'agit selon toute vraisemblance d'une **reprise technique de soldes** (renumérotation ou
+migration interne Flexcube). L'effet comptable est nul, mais l'opération doit être documentée : elle
+touche 14 comptes du périmètre pour des montants significatifs, un même jour, et elle n'a pas
+d'équivalent ailleurs dans l'historique.
+
+### 13.7 Ce qui reste hors d'atteinte
+- La **troisième jambe** des écritures de migration du compte `511800100` (§12.5) n'est pas dans les
+  41 comptes : l'écart de 1 994 516 XAF entre les deux jambes connues reste inexpliqué.
+- Les **comptes de gains et pertes de change** n'ont pas été identifiés (codes inconnus) — requête
+  de découverte du plan de comptes à exécuter.
+- Les **soldes en balance générale** aux dates d'arrêté n'ont pas été fournis. Pour les comptes créés
+  après juin 2022 (comptes de liaison Calypso notamment), le cumul des mouvements tient lieu de
+  solde ; pour les autres, l'ancrage reste nécessaire.
+
+---
+
 ## 10. Synthèse
 
 L'exploration permet d'établir une compréhension **solide et vérifiée** du dispositif :
@@ -1201,13 +1402,16 @@ Trois enseignements structurent la suite des travaux :
    quotidien double les flux de courus. **Tout travail quantitatif doit être mené sur des données
    retraitées.**
 
-2. **Quatre pistes d'audit prioritaires** :
+2. **Cinq pistes d'audit prioritaires** :
+   - **136,5 Md XAF de solde créditeur non apuré** sur les deux comptes de liaison Calypso au
+     30/06/2026, ouverts à zéro le 16/06/2025 et en dérive monotone depuis, dont **120 Md sur le
+     seul portefeuille de pensions livrées BEAC** (§13.1) ;
    - **215 opérations de Sell-Buy-Back** (896 Md XAF réglés) comptabilisées en cession et
      acquisition fermes au lieu d'un financement garanti, un même titre étant recyclé jusqu'à
      **9 fois** avec la même contrepartie (§11.5) ;
-   - la **réévaluation de change ne touche aucun compte de résultat** dans les données extraites :
-     +3,54 Md XAF de variation cumulée sur la position USD (§11.4) — *à confirmer sur une
-     extraction tous modules, cf. §12.7* ;
+   - la **réévaluation de change n'est jamais portée au résultat** — constat désormais établi sur
+     quatre ans et tous modules : **4 078 542 622 XAF** de variation cumulée sur la position USD,
+     dont 1,60 Md sur le seul exercice 2025 (§13.3) ;
    - le **sur-apurement de 1 205 231 891 XAF** du compte d'intérêts courus à la migration, laissant
      un **compte d'actif en solde créditeur et le nostro BEAC surévalué d'autant pendant 45 jours**,
      **arrêté semestriel du 30/06/2025 compris** (§12.5) ;
@@ -1226,7 +1430,12 @@ Trois enseignements structurent la suite des travaux :
    confondus**. Une extraction filtrée par module peut faire apparaître une anomalie inexistante —
    c'est précisément ce qui s'est produit sur le compte `511800100`.
 
-4. **Une source de preuve nouvelle et sous-exploitée** : les **22 847 commentaires libres** saisis
+4. **Le résultat de l'activité double quasiment chaque exercice** — 6,20 Md en 2023, 12,08 Md en
+   2024, 22,33 Md en 2025, d'après les écritures de clôture annuelle (§13.2). Cette progression
+   appelle une revue analytique : quelle part tient à la croissance des encours, quelle part à un
+   changement de méthode de valorisation ?
+
+5. **Une source de preuve nouvelle et sous-exploitée** : les **22 847 commentaires libres** saisis
    par la salle des marchés dans le champ `DESCRIPTION` documentent l'**intention économique** des
    opérations (SBB, marges de change négociées, rétrocessions réglementaires). C'est par eux que la
    nature réelle des Sell-Buy-Back a pu être établie — elle était invisible dans les seuls schémas

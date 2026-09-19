@@ -43,3 +43,10 @@ def cr():
     d['STMT_DT_d']=pd.to_datetime(d.STMT_DT, format='%d-%b-%y', errors='coerce')
     d['__src']='creance_rattaché.csv'
     return d
+
+def fkey():
+    d = rd('final_key_accounts_*.csv')
+    for c in d.columns:
+        if d[c].dtype == object or str(d[c].dtype).startswith('str'):
+            d[c] = d[c].str.replace('\xa0', ' ', regex=False).str.strip()
+    return d
