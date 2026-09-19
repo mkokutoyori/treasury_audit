@@ -15,7 +15,7 @@ lisibles par les chargeurs existants (`scripts/load.py`).
 | 3 | Sell-Buy-Back, écritures complètes | **1** | 3-6 k | §11.5 |
 | 7 | Soldes aux dates d'arrêté | **1** | faible | tous — lève la limite majeure |
 | 4 | 3ᵉ jambe des écritures de migration | 2 | 3-6 lignes | §12.5 |
-| 5 | Les 47 comptes de trésorerie, tous modules | 2 | 350-450 k | §12.7 — règle de méthode |
+| 5 | Les 41 comptes de trésorerie, tous modules | 2 | 350-450 k | §12.7 — règle de méthode |
 | 6 | Variante incluant la période courante | — | — | si les derniers jours manquent |
 
 Les requêtes 0, 1, 4 et 7 sont **petites et rapides** : elles peuvent être lancées

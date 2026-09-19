@@ -143,7 +143,7 @@ ORDER  BY a.stmt_dt, a.ac_no;
 
 
 -- =====================================================================================
---  REQUÊTE 5 — LES 47 COMPTES GÉNÉRAUX DE LA TRÉSORERIE, TOUS MODULES  [PRIORITÉ 2]
+--  REQUÊTE 5 — LES 41 COMPTES GÉNÉRAUX DE LA TRÉSORERIE, TOUS MODULES  [PRIORITÉ 2]
 -- =====================================================================================
 --  Objectif : appliquer la règle de méthode retenue au §12.7 — un constat sur le solde
 --  ou le comportement d'un compte doit reposer sur une extraction tous modules
@@ -201,7 +201,9 @@ WHERE  a.ac_no IN (
     '467000186',  -- CALYPSO BRIDGE ACCOUNT
     '467000188',  -- CALYPSO BRIDGE ACCOUNT MONEY MARKET
     '467000243',  -- CALYPSO MIRROR TRADE BRIDGE ACCOUNT
-    '452600001',  -- COMPTE INTER BRANCHES
+    -- '452600001' COMPTE INTER BRANCHES : ECARTE a la demande de la banque
+    --             (compte de routage inter-agences, sans portee economique ;
+    --              les deux jambes se compensent systematiquement)
     '938000100',  -- VAL GEREES POUR COMPTE DE LA CLIENTELE
     '998000100'   -- VALEURS GEREES POUR COMPTE DE TIERS
 )
