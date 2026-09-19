@@ -558,3 +558,243 @@ Opérateurs humains les plus actifs (tous modules) :
 10. Constatation du **résultat de change** (écart de 2,56 Md sur le couple `475000160`/`476000160`).
 11. Conventions de **pension livrée BEAC** : durée contractuelle, taux, restitution du collatéral.
 12. **Balance générale** aux dates d'arrêté — sans elle, aucun solde n'est vérifiable.
+
+---
+
+# SESSION 9 — Seconde extraction : comptes généraux Calypso
+
+**Contexte** : à la suite du constat sur le compte d'intérêts courus jamais apuré, la banque a
+fourni une extraction complémentaire des comptes généraux utilisés par Calypso, et a par ailleurs
+indiqué avoir vérifié dans le système que **Calypso n'impacte jamais le compte `511800100`**.
+
+`git fetch` + `git merge origin/main` → 3 fichiers, 143 953 lignes :
+`calypson_key_account_Export Worksheet_part_1..3.csv`, période 27/09/2023 → 18/09/2026.
+Même schéma à 17 colonnes. Fonction de chargement ajoutée : `ckey()` dans `scripts/load.py`.
+
+## 9.1 Apport réel : 30 297 lignes inédites sur 143 953
+Recouvrement recalculé sur 5 sources (clé : réf + compte + sens + tag + montant + horodatage) :
+
+| Périmètre | Lignes |
+|---|---:|
+| Comptes clés seul | 180 180 |
+| Calypso seul | 97 453 |
+| **Nouvelle extraction ∩ Calypso** | 94 584 |
+| MM seul | 53 720 |
+| FX seul | 28 821 |
+| **Nouvelle extraction seule** | **24 936** |
+| Nouvelle extraction ∩ FX | 14 402 |
+| Nouvelle extraction ∩ MM | 4 648 |
+
+L'apport principal est l'**historique complet des comptes de position de change 2023-2026**
+(`475…`/`476…`), là où la première extraction ne couvrait que la part du module `FT`.
+
+## 9.2 Deux modules inconnus identifiés
+**`RE` = RÉÉVALUATION** — 12 437 lignes, tag unique `ACREVALAMT`, produits `ACPO`/`ACRV`,
+référence `001ACPO24078`, utilisateurs de fin de journée (`FLEXSWITCH`, `*EOD`).
+Écriture-type : `D 475000100 (USD, FCY = 0,00) / C 476000100 (XAF)` — retranslation de la
+contre-valeur au nouveau cours, sans modification de la position en devise.
+
+**`RT` = CHANGE AU GUICHET** — 490 lignes, tags `OFS_AMT`/`TXN_AMT`, produits `FXSA` (vente
+de devises, 400), `FXPW` (achat, 82), `FXSW` (swap, 2). Utilisateurs = **caissiers nominatifs**,
+population distincte de la salle des marchés.
+
+## 9.3 ⚠ La réévaluation ne touche aucun compte de résultat
+Sur 12 437 écritures de réévaluation, **aucune ne mouvemente un compte de charge ou de produit**.
+Tout se boucle entre `475…` et `476…`. Écritures équilibrées (résidu global 99 407 XAF).
+
+| Devise | Compte de contre-valeur | Lignes | Réévaluation nette cumulée |
+|---|---|---:|---:|
+| USD | `476000100` | 5 428 | **+3 536 553 336 XAF** |
+| EUR | `476000102` | 769 | −253 064 562 XAF |
+
+Volatilité mensuelle marquée sur l'USD : +273,9 M (12/2023), −246,3 M (08/2024), +636,9 M (10/2025),
++251,3 M (07/2026). La quasi-nullité du compte EUR est cohérente avec la parité fixe.
+→ Soit le résultat de change est viré par une écriture hors périmètre, soit il n'est pas constaté.
+
+## 9.4 ⚠ Découverte majeure : 22 847 commentaires libres de la salle des marchés
+Le champ `DESCRIPTION` au format 9 pipes comporte un **dixième champ** jusqu'ici vu comme vide :
+il contient en réalité un **commentaire libre saisi par l'opérateur**.
+
+| Catégorie | Lignes | Deals | Montant (XAF) |
+|---|---:|---:|---:|
+| Alimentation de compte | 4 724 | 509 | 1 051 263 605 798 |
+| FX DEAL avec marge explicite | 4 554 | 208 | 2 402 811 854 548 |
+| Autres | 3 652 | 233 | 3 209 684 175 340 |
+| **SBB (Sell-Buy-Back)** | 1 675 | 215 | 3 767 467 539 902 |
+| Achat | 687 | 85 | 1 173 505 810 996 |
+| Vente | 630 | 85 | 339 821 505 362 |
+
+C'est une **source de preuve sur l'intention économique**, invisible dans les seuls schémas
+comptables.
+
+## 9.5 ⚠ 215 Sell-Buy-Back comptabilisés en cession ferme
+Commentaires explicites : `NEAR LEG SBB WITH CCA`, `FAR LEG SBB WITH SOCGEN`,
+`FIRST LEG OF SBB WITH SOCIETE GENERALE CMR`.
+Jambes : 94 deals `NEAR`, 98 `FAR`, 6 `FIRST`, 2 `SECOND`, 15 non précisées.
+
+Comptabilisés dans `ABCM_FVOCI.Bond` / `ABCM_FVOCI.Bills` avec les événements d'une acquisition et
+d'une cession fermes (`NOMINAL`, `CST_S_SETTLED`, `PREM_DISC`, `REALIZED_CLEAN_PL`) — **et non**
+dans le book de pension `ABCM_MM.Plmt.Tkn.Secured`.
+**896 125 677 223 XAF réglés sur 214 deals**, du 25/11/2025 au 18/09/2026.
+Plus-values de cession constatées : **193 486 200 XAF** (`REALIZED_CLEAN_PL`).
+
+Contreparties : `ECOBANKCM` 68, `CCACM` 64, `SGCM` 53, `BICECCM` 8, `ECOBANKCG` 8, `ECOBANKGQ` 6,
+`UBCM` 4, `CDCG` 2, `UBACM` 1, `ECOBANKGA` 1.
+
+**Preuve du caractère roulé** — titre `CM2J00000196`, contrepartie `SGCM`, 9 allers-retours du
+09/01 au 06/04/2026, à prix croissant :
+9 556 934 932 → 9 560 653 856 → 9 568 321 918 → 9 569 803 918 → 9 594 349 315 → 9 619 754 788 →
+9 667 551 370 → 9 668 634 370 → 9 690 325 342 XAF (cumul 86 496 329 809).
+Autres : `CM2B00000228`/SGCM 7 rotations, `GA2B00000109`/ECOBANKCM 5, `GQ2J00000057`/CCACM 4.
+
+## 9.6 CORRECTION du constat §8.5 — comptes `475000160` / `476000160`
+Test de la devise de tenue contre l'intitulé :
+
+| Compte | Intitulé | Devise | `FCY_AMOUNT` | Verdict |
+|---|---|---|---|---|
+| `475000100` | position USD | USD | 10 594/10 594 | conforme |
+| `476000100` | contre-valeur USD | XAF | 0/10 593 | conforme |
+| `475000102` | position EUR | EUR | 10 172/10 172 | conforme |
+| `476000102` | contre-valeur EUR | XAF | 0/10 171 | conforme |
+| **`475000160`** | **position CALYPSO** | **XAF** | **0/494** | **se comporte en contre-valeur** |
+| **`476000160`** | **contre-valeur CALYPSO** | **EUR/USD** | **855/855** | **se comporte en position** |
+
+De plus les deux comptes **n'apparaissent jamais dans la même écriture** (494 contre 855, aucune
+commune). Ce ne sont donc pas un couple mais **deux comptes de liaison distincts** :
+`476000160` travaille avec les positions EUR/USD et les nostri ; `475000160` avec la BEAC (413),
+STONEX (77), l'inter-branches (154) et `625000105`.
+→ L'écart de 2 559 762 955 XAF n'a pas la signification qui lui était prêtée.
+→ **Ce qui subsiste** : les intitulés des deux comptes sont **inversés** par rapport à leur usage.
+
+## 9.7 Position de change — bouclage confirmé, 2 devises de plus
+Couverture complète 2023-2026, modules `FT`+`DE`+`RE`+`RT` :
+
+| Devise | Position | Contre-valeur | Écart |
+|---|---:|---:|---:|
+| USD | −7 292 487 618 | +7 292 487 618 | **0** |
+| EUR | −35 503 790 493 | +35 503 790 493 | **0** |
+| GBP (`…106`, dès 03/02/2026) | +610 490 400 | −610 490 400 | **0** |
+| ZAR (`…150`, dès 03/11/2023) | +639 456 600 | −639 456 600 | **0** |
+
+## 9.8 Rétrocessions sur rapatriement d'exportation
+285 deals, **56 873 780 557 XAF réglés**, du 16/06/2025 au 18/12/2025.
+Taux : 70 % (193 deals), 100 % (65), 30 % (7), 30 % **« DOSSIER NON EXECUTE »** (13), **79 % (1)**.
+→ Volet **réglementation des changes CEMAC**. Points à instruire : les 13 dossiers non exécutés,
+le taux atypique de 79 %, et l'arrêt des commentaires au 18/12/2025 alors que l'activité continue.
+
+**Correction de lecture** : les pourcentages 70/100/30 extraits des commentaires sont des taux de
+rétrocession réglementaire, **et non des marges de change** — première lecture erronée, rectifiée.
+
+## 9.9 Marges de change négociées — corroboration du §8.4
+Commentaires du type `FX DEAL 05/09/2025 0.15PCT` :
+
+| Marge | Deals | Lignes | Montant (XAF) |
+|---|---:|---:|---:|
+| 0,10 % | 8 | 140 | 209 950 845 080 |
+| 0,12 % | 1 | 16 | 26 238 280 000 |
+| **0,15 %** | **52** | **968** | **992 135 618 450** |
+| 0,20 % | 8 | 132 | 135 153 380 280 |
+| 0,25 % | 1 | 16 | 15 752 807 356 |
+| 0,50 % | 1 | 40 | 65 595 700 000 |
+
+Les taux EUR relevés au §8.4 (656,678553 et 656,744149) correspondent à **+0,110 %** et **+0,120 %**
+par rapport à 655,957 → cohérent avec les marges documentées. La pratique d'intégration de la marge
+au taux de conversion comptable est donc **établie et systématique**.
+
+## 9.10 Découverte technique — les contre-passations sont des montants négatifs
+Flexcube corrige par un **débit de montant négatif**, non par une écriture de sens inverse.
+
+| Source | Lignes | `LCY_AMOUNT` négatif |
+|---|---:|---:|
+| FX | 48 122 | 294 |
+| MM | 59 446 | 378 |
+| CKEY | 143 953 | 138 |
+| KEY | 190 467 | 45 |
+| **CLP (Calypso)** | 194 938 | **0** |
+
+Calypso, lui, contre-passe par écriture inverse (« cancel & rebook »). **Conventions opposées** :
+à prendre en compte dans tout rapprochement.
+→ Le §8.1 a été reformulé : `511800100` compte **24 035 débits positifs (8 612 544 476)** et
+**151 débits négatifs (−197 735 893)**, solde net inchangé à **8 414 808 583**.
+
+## 9.11 ⚠⚠ Le compte `511800100` : réponse définitive
+La banque indique que Calypso n'impacte jamais ce compte. **Les fichiers le confirment
+intégralement** :
+
+| Test | Résultat |
+|---|---|
+| Lignes `CALYPSOUSR` | **0** |
+| Lignes module `DE` | **0** |
+| Lignes produit `MNIP` | **0** |
+| Présence dans la nouvelle extraction | **absent** (seul `511210100` y figure en classe 511) |
+| Dernier mouvement | **16/06/2025** (jour de la migration) |
+| Immobilité au 18/09/2026 | **459 jours** |
+
+Ventilation des 24 186 lignes, toutes au débit : `SYSTEM` 23 877 (8 406 983 999 XAF),
+`BINEID00087` 154, `CHEICHEID059` 143 (−2 955 393), `ELANGUEID060` 4, `NDJOCKOS0067` 8.
+
+**Le compte n'a pas été soldé à la migration : il a été abandonné.**
+
+### Test décisif — double comptabilisation des courus
+Sur les **65 contrats migrés le 16/06/2025** :
+
+| Élément | Montant (XAF) |
+|---|---:|
+| Courus accumulés sur `511800100` pour ces 65 contrats | **4 121 144 342** |
+| Courus **re-comptabilisés par Calypso** en `512800100` le 16/06 (`ACCRUAL_BS`, 55 lignes) | **3 089 462 049** |
+| Écart | 1 031 682 293 |
+
+→ Calypso a **reconnu de nouveau 3,09 Md XAF de courus** sur des positions dont les courus étaient
+déjà portés, et jamais apurés, en `511800100`. Sauf écriture manuelle hors périmètre, **les mêmes
+intérêts courus figurent deux fois à l'actif**.
+→ L'écart de 1,03 Md correspond vraisemblablement aux **coupons qui auraient dû apurer le compte**
+et ne l'ont jamais fait (Calypso ne reprend que le couru depuis le dernier détachement).
+
+### Comparaison avec l'équivalent Calypso
+| Compte | Débits | Crédits | Solde net | Apurement |
+|---|---:|---:|---:|---|
+| `511800100` (Flexcube MM) | 24 186 | **0** | +8 414 808 583 | **aucun** |
+| `512800100` (Calypso) | 21 358 | 20 841 | +23 096 148 281 | normal |
+
+→ **L'anomalie est strictement localisée au module MM de Flexcube**, période 27/09/2023 →
+16/06/2025, et **figée depuis**.
+
+---
+
+## État d'avancement (mis à jour)
+
+| Étape | Statut |
+|---|---|
+| Exploration initiale (4 fichiers) | ✔ terminé |
+| Seconde extraction (comptes généraux Calypso) | ✔ terminé |
+| Identification des modules `RE` et `RT` | ✔ terminé |
+| Exploitation des commentaires libres (22 847 lignes) | ✔ terminé |
+| Caractérisation des Sell-Buy-Back | ✔ terminé |
+| Réponse sur le compte `511800100` | ✔ tranché — double comptabilisation démontrée |
+| Correction des constats §8.1 et §8.5 | ✔ terminé |
+| **Rapport d'exploration v2** | ✔ mis à jour (`rapport d'exploration.md`, §11) |
+| Retraitement des volumes bruts | ⏳ à faire |
+| Quantification du coût de financement implicite des SBB | ⏳ à faire |
+| Reconstitution de l'encours par titre | ⏳ bloqué — référentiel deals Calypso manquant |
+| Solde réel du compte `511800100` | ⏳ bloqué — extraction tous modules manquante |
+| Rapprochement avec la balance générale | ⏳ bloqué — balance non fournie |
+
+## Questions ouvertes (mises à jour)
+1. **[PRIORITÉ MAXIMALE]** Solde réel de `511800100` aux dates d'arrêté et existence éventuelle
+   d'une écriture d'apurement hors module MM. Double comptabilisation de 3,09 Md à confirmer.
+2. **[PRIORITÉ HAUTE]** Doctrine comptable des **Sell-Buy-Back** : conventions-cadres, position du
+   commissaire aux comptes, incidence sur les ratios prudentiels.
+3. **[PRIORITÉ HAUTE]** Constatation du **résultat de change** : mouvements des comptes 63/73 du
+   PCEC, procédure de virement du résultat de réévaluation.
+4. Référentiel des **deals Calypso** (couvre 65 % de la période).
+5. Paramétrage des comptes `475000160` / `476000160` (intitulés inversés).
+6. Habilitations `ADMINUSER1` et justification des 3 076 écritures sans validateur.
+7. Conventions de **pension livrée BEAC** et durées contractuelles réelles.
+8. Politique de taux appliquée au change clientèle (marge intégrée au taux de conversion).
+9. Dossiers de rétrocession **« non exécutés »** et taux atypique de 79 %.
+10. Arrêt des commentaires de rétrocession au 18/12/2025.
+11. Table de correspondance **IFRS 9 ↔ PCEC** paramétrée dans Calypso.
+12. Règle d'affectation entre les comptes `733xxx` et `734xxx`.
+13. Nature des **7 doublons** de `MM_CONTRACT`.
+14. Justification du **reclassement placement → transaction** lors de la migration.
+15. **Balance générale** aux dates d'arrêté.

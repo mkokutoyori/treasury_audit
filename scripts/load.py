@@ -28,3 +28,5 @@ def ctr():
     for c in ['BOOKING_DATE','VALUE_DATE','MATURITY_DATE','TRADE_DATE']:
         d[c+'_d']=pd.to_datetime(d[c], format='%d-%b-%y', errors='coerce')
     return d
+
+def ckey(): return rd('calypson_key_account_*.csv')
