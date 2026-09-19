@@ -25,7 +25,7 @@
 --  Volume attendu : quelques milliers de lignes. Fichier : plan_de_comptes.csv
 
 SELECT gl_code, gl_desc, gl_type, leaf_parent, ccy_restriction, record_stat
-FROM   gltb_glmaster
+FROM   gltm_master
 ORDER  BY gl_code;
 
 -- Si la table porte un autre nom dans votre installation, l'équivalent est le
@@ -44,7 +44,7 @@ ORDER  BY gl_code;
 --  Étape A — identifier les comptes concernés (à exécuter d'abord) :
 
 SELECT gl_code, gl_desc
-FROM   gltb_glmaster
+FROM   gltm_master
 WHERE  UPPER(gl_desc) LIKE '%CHANGE%'
    OR  UPPER(gl_desc) LIKE '%REEVAL%'
    OR  UPPER(gl_desc) LIKE '%RÉÉVAL%'
@@ -252,7 +252,7 @@ WHERE  ...
 
 SELECT gl_code, ac_ccy, fin_cycle, period_code,
        cr_bal, dr_bal, cr_mov, dr_mov, cr_bal_lcy, dr_bal_lcy
-FROM   gltb_gl_bal
+FROM   gltm_gl_bal
 WHERE  gl_code IN ( /* même liste que la requête 5 */ )
 ORDER  BY gl_code, fin_cycle, period_code;
 
