@@ -24,6 +24,8 @@ def run(ctx) -> Section:
     s.ajouter(_c72_rattachement(ctx))
     s.ajouter(_c73_collateral(ctx))
     s.ajouter(_c74_non_denouees(ctx))
+    s.ajouter(_c75_retard_comptabilisation(ctx))
+    s.ajouter(_c76_recalcul_interet(ctx))
     return s
 
 
@@ -54,145 +56,155 @@ def _operations(ctx) -> pd.DataFrame:
 
 
 def _c71_duree(ctx) -> Constat:
-    ops = _operations(ctx)
-    if ops.empty:
+    """La durée CONTRACTUELLE des pensions justifie-t-elle le compte utilisé ?
+
+    La durée ne se lit pas sur les dates de comptabilisation — une opération peut être
+    enregistrée longtemps après son dénouement — mais sur les dates portées par le libellé
+    de l'écriture, qui sont celles du contrat.
+    """
+    repos = ctx.repos_contractuels
+    if repos.empty:
         return Constat(code="7.1", titre="Durée des pensions livrées", gravite=Gravite.FAIBLE,
                        constat="Aucune opération de pension identifiée dans le périmètre.")
     gl = ctx.grand_livre
-    libelle = gl[gl.AC_NO == CPT_REPO_PASSIF].AC_GL_DESC.iloc[0] if len(gl[gl.AC_NO == CPT_REPO_PASSIF]) else ""
-    longues = ops[ops.duree > 4].sort_values("duree", ascending=False)
-    if longues.empty:
+    libelle = (gl[gl.AC_NO == CPT_REPO_PASSIF].AC_GL_DESC.iloc[0]
+               if len(gl[gl.AC_NO == CPT_REPO_PASSIF]) else "")
+    a_terme = repos[repos.jours_contrat > 1].sort_values("jours_contrat", ascending=False)
+    distribution = (repos.groupby("jours_contrat")
+                    .agg(operations=("DEAL", "size"), montant=("montant", "sum")))
+    if a_terme.empty:
         return Constat(
-            code="7.1", titre="Durée des pensions livrées", gravite=Gravite.CONFORME,
-            constat="Toutes les opérations sont dénouées dans la semaine de leur tirage.",
+            code="7.1", titre="Durée contractuelle des pensions livrées", gravite=Gravite.CONFORME,
+            constat=("Toutes les pensions sont contractuellement au jour le jour, ce qui "
+                     f"correspond au compte utilisé, « {libelle} »."),
+            tableaux=[Tableau(["Durée contractuelle (jours)", "Opérations", "Montant tiré XAF"],
+                              [[int(i), int(r.operations), float(r.montant)]
+                               for i, r in distribution.iterrows()])],
         )
+    part = len(a_terme) / len(repos) * 100
     return Constat(
         code="7.1",
-        titre="Pensions de plusieurs semaines comptabilisées dans un compte d'emprunt au jour le jour",
-        gravite=Gravite.ELEVEE,
+        titre="Pensions à terme comptabilisées dans un compte d'emprunt au jour le jour",
+        gravite=Gravite.MOYENNE,
         constat=(
-            f"Les opérations sont comptabilisées au compte « {libelle} ». Or la durée effective "
-            "observée entre le tirage et le remboursement dépasse largement le jour le jour pour "
-            "une partie des opérations, l'une d'elles atteignant plusieurs mois.\n"
-            "Un emprunt de cette durée logé dans un compte d'emprunt au jour le jour fausse "
-            "l'échéancier de liquidité de l'établissement et, par voie de conséquence, les ratios "
-            "prudentiels qui en découlent."
+            f"Les opérations sont toutes comptabilisées au compte « {libelle} », qui est un "
+            "compte d'emprunt AU JOUR LE JOUR.\n"
+            "OÙ LIRE LA DURÉE. Les dates de comptabilisation ne renseignent pas sur la durée "
+            "d'une pension : le contrôle 7.5 montre qu'une opération peut être enregistrée des "
+            "semaines après son dénouement. La durée contractuelle figure en revanche dans le "
+            "LIBELLÉ de chaque écriture, qui porte la date de départ, la date d'échéance et le "
+            "taux. C'est cette source qui est retenue ici.\n"
+            f"CE QU'ELLE MONTRE. {len(a_terme)} pensions sur {len(repos)}, soit {pct(part, 0)}, "
+            f"sont contractuellement À TERME — jusqu'à {int(repos.jours_contrat.max())} jours — "
+            f"pour {xaf(float(a_terme.montant.sum()))} tirés. Le jour le jour reste majoritaire, "
+            "mais il ne décrit pas toute l'activité.\n"
+            "Un emprunt à terme logé dans un compte d'emprunt au jour le jour fausse "
+            "l'échéancier de liquidité de l'établissement et, par voie de conséquence, les "
+            "ratios prudentiels qui en découlent. L'écart reste d'une semaine et non de "
+            "plusieurs mois : la distorsion est réelle mais bornée."
         ),
         chiffres=[
-            ("Opérations identifiées", str(len(ops))),
-            ("Opérations de plus de 4 jours", str(len(longues))),
-            ("Montant tiré sur ces opérations", xaf(float(longues.montant.sum()))),
-            ("Durée maximale observée", f"{int(ops.duree.max())} jours"),
-            ("Durée médiane", f"{int(ops.duree.median())} jours"),
+            ("Pensions identifiées", str(len(repos))),
+            ("Dont contractuellement au jour le jour", str(int((repos.jours_contrat <= 1).sum()))),
+            ("Dont contractuellement À TERME", f"{len(a_terme)} ({pct(part, 0)})"),
+            ("Montant tiré sur les pensions à terme", xaf(float(a_terme.montant.sum()))),
+            ("Durée contractuelle maximale", f"{int(repos.jours_contrat.max())} jours"),
+            ("Durée contractuelle médiane", f"{int(repos.jours_contrat.median())} jour(s)"),
         ],
         tableaux=[
-            Tableau(["Deal", "Tirage", "Remboursement", "Durée (j)", "Montant XAF", "Contrepartie"],
-                    [[i, r.date_tirage, r.date_rembours, int(r.duree), float(r.montant), r.emetteur]
-                     for i, r in longues.head(15).iterrows()]),
-            Tableau(["Durée (jours)", "Opérations", "Montant tiré XAF"],
-                    [[int(d), int(len(g)), float(g.montant.sum())]
-                     for d, g in ops.dropna(subset=["duree"]).groupby("duree")],
-                    max_lignes=20,
-                    note=("Distribution des durées. La durée nulle — tirage et remboursement "
-                          "comptabilisés le même jour — est le cas dominant et correspond bien à "
-                          "un financement au jour le jour ; ce sont les durées supérieures à "
-                          "quatre jours qui ne relèvent pas du compte utilisé.")),
+            Tableau(["Durée contractuelle (jours)", "Opérations", "Montant tiré XAF"],
+                    [[int(i), int(r.operations), float(r.montant)]
+                     for i, r in distribution.iterrows()],
+                    note=("Durées lues sur le libellé contractuel, et non sur les dates de "
+                          "comptabilisation.")),
+            Tableau(["Deal", "Début contractuel", "Échéance contractuelle", "Durée (j)",
+                     "Taux %", "Montant XAF", "Contrepartie"],
+                    [[r.DEAL, str(r.contrat_debut.date()), str(r.contrat_fin.date()),
+                      int(r.jours_contrat), float(r.taux), float(r.montant), r.contrepartie]
+                     for _, r in a_terme.head(15).iterrows()],
+                    note="Les quinze pensions à terme les plus longues."),
         ],
         recommandation=(
-            "Obtenir les conventions de pension livrée et leur durée contractuelle. Faire "
-            "reclasser les opérations à terme dans le compte d'emprunt correspondant et corriger "
-            "l'échéancier de liquidité."
+            "Faire reclasser les pensions à terme dans le compte d'emprunt correspondant à leur "
+            "durée et corriger l'échéancier de liquidité. Demander que la durée contractuelle "
+            "soit portée dans un champ structuré de l'interface, et non dans le seul libellé."
         ),
     )
 
 
 def _c72_rattachement(ctx) -> Constat:
-    """Une charge d'intérêt doit courir chaque jour, pas seulement au dénouement."""
+    """La charge d'intérêt d'une pension à cheval sur un arrêté est-elle rattachée ?
+
+    Le test se fonde sur les dates CONTRACTUELLES : une pension dont le contrat enjambe une
+    date d'arrêté doit avoir produit un couru à cette date, au prorata des jours écoulés.
+    """
+    repos = ctx.repos_contractuels
     calypso = ctx.calypso_enrichi
-    if calypso.empty:
-        return Constat(code="7.2", titre="Rattachement des charges d'intérêt", gravite=Gravite.FAIBLE,
-                       constat="Données insuffisantes.")
-    ops = _operations(ctx)
+    if repos.empty or calypso.empty:
+        return Constat(code="7.2", titre="Rattachement des charges d'intérêt",
+                       gravite=Gravite.FAIBLE, constat="Données insuffisantes.")
     charge = calypso[calypso.AC_NO == CPT_REPO_CHARGE]
-    # Même neutralisation des doublons d'interface que pour les tirages (contrôle 6.7),
-    # sans quoi l'intérêt d'une opération rejouée serait compté deux fois.
     charge = charge.drop_duplicates(subset=["DEAL", "MOUVEMENT", "AC_NO", "DRCR_IND", "LCY_AMOUNT"])
-    courus = charge[charge.EVENEMENT == "ACCRUAL"]
-    regles = charge[charge.EVENEMENT == "INTEREST"]
-    jamais_de_couru = courus.empty
-    # Pour les opérations longues, compare le nombre de jours de couru à la durée réelle
-    longues = ops[ops.duree > 4]
-    lignes = []
-    for deal, r in longues.iterrows():
-        jours_couru = courus[courus.DEAL == deal].TRN_DT.nunique()
-        interet = float(regles[regles.DEAL == deal].LCY_AMOUNT.sum())
-        lignes.append([deal, r.date_tirage, r.date_rembours, int(r.duree), jours_couru,
-                       float(r.montant), interet])
-    defaillants = [l for l in lignes if l[3] > 4 and l[4] <= 2]
-    # Charge qui aurait dû être rattachée à un arrêté traversé : l'intérêt total de
-    # l'opération, au prorata des jours écoulés entre le tirage et la date d'arrêté.
-    manquant = []
-    for l in defaillants:
-        deal, tirage, rembours, duree, _, _, interet = l
-        for arrete in ctx.arretes:
-            if duree and str(tirage) <= arrete < str(rembours):
-                jours = (pd.Timestamp(arrete) - pd.Timestamp(tirage)).days
-                manquant.append([deal, arrete, jours, duree, interet * jours / duree])
-    charge_non_rattachee = sum(m[4] for m in manquant)
-    if not defaillants:
+    jamais_de_couru = charge[charge.EVENEMENT == "ACCRUAL"].empty
+
+    # Pensions dont le CONTRAT enjambe une date d'arrêté de la période
+    a_cheval = []
+    for arrete in ctx.arretes:
+        borne = pd.Timestamp(arrete)
+        vises = repos[(repos.contrat_debut <= borne) & (repos.contrat_fin > borne)]
+        for _, r in vises.iterrows():
+            jours = (borne - r.contrat_debut).days
+            couru = float(r.montant) * float(r.taux) / 100 * jours / 360
+            a_cheval.append([r.DEAL, arrete, str(r.contrat_debut.date()),
+                             str(r.contrat_fin.date()), jours, int(r.jours_contrat),
+                             float(r.montant), float(r.taux), couru])
+    charge_non_rattachee = sum(l[8] for l in a_cheval)
+    if not a_cheval and not jamais_de_couru:
         return Constat(
-            code="7.2", titre="Rattachement des charges d'intérêt des pensions", gravite=Gravite.CONFORME,
-            constat="Les charges d'intérêt courent sur toute la durée des opérations.",
+            code="7.2", titre="Rattachement des charges d'intérêt des pensions",
+            gravite=Gravite.CONFORME,
+            constat=("Aucune pension n'enjambe une date d'arrêté de la période : la question du "
+                     "rattachement de la charge d'intérêt ne se pose pas."),
         )
     return Constat(
         code="7.2",
-        titre="Charges d'intérêt non rattachées à la période pour les pensions de longue durée",
-        # La gravité suit l'incidence mesurée sur les arrêtés, non le seul défaut de principe.
+        titre="Aucun couru n'est constaté sur les pensions, y compris celles à cheval sur un arrêté",
         gravite=(Gravite.ELEVEE if charge_non_rattachee > ctx.config.seuil_significatif
                  else Gravite.MOYENNE),
         constat=(
-            ("Le compte de charge d'intérêt sur pensions ne porte AUCUNE écriture de couru : il "
-             "n'enregistre que des règlements. L'intérêt est donc constaté en une seule fois, au "
-             "dénouement de l'opération, quelle qu'en soit la durée.\n"
+            ("LE CONSTAT DE PRINCIPE. Le compte de charge d'intérêt sur pensions ne porte AUCUNE "
+             "écriture de couru : il n'enregistre que des règlements. L'intérêt est donc "
+             "constaté en une seule fois, au dénouement, quelle que soit la durée de "
+             "l'opération et quelle que soit la date d'arrêté qu'elle traverse.\n"
              if jamais_de_couru else
-             "Pour les opérations dont la durée dépasse quelques jours, le couru n'est constaté "
-             "que sur un ou deux jours, puis plus rien jusqu'au dénouement, où l'intérêt est "
-             "réglé en une fois.\n")
-            + "Il en résulte une SOUS-ÉVALUATION DE LA CHARGE D'INTÉRÊT à toute date d'arrêté "
-            "comprise entre le tirage et le dénouement, en contradiction avec le principe de "
-            "rattachement des charges à l'exercice. L'opération de 98 jours à cheval sur le "
-            "31/12/2025 en est l'illustration la plus nette.\n"
-            "L'INCIDENCE CHIFFRÉE reste limitée sur la période revue, une seule opération étant à "
-            "cheval sur une date d'arrêté. Le constat porte donc sur le dispositif plus que sur "
-            "son effet du moment : aucun mécanisme de couru n'existe pour ces opérations, de "
-            "sorte qu'une pension de plusieurs mois en cours à une clôture future produirait une "
-            "sous-évaluation proportionnelle à son encours."
-            if any(l[3] > 30 for l in lignes) else
-            "Il en résulte une SOUS-ÉVALUATION DE LA CHARGE D'INTÉRÊT à toute date d'arrêté "
-            "comprise entre le tirage et le dénouement, en contradiction avec le principe de "
-            "rattachement des charges à l'exercice."
+             "Les courus constatés ne couvrent pas la durée des opérations.\n")
+            + "L'INCIDENCE CHIFFRÉE. Le test retient les pensions dont le CONTRAT enjambe une "
+            "date d'arrêté — et non celles dont les seules dates de comptabilisation "
+            f"l'enjambent, ce qui serait un artefact de saisie. {len(a_cheval)} opération(s) "
+            "sont dans ce cas sur la période revue, pour une charge non rattachée de "
+            f"{xaf(charge_non_rattachee)}.\n"
+            "LA PORTÉE EST STRUCTURELLE. Le montant reste modeste parce que les pensions sont "
+            "courtes et qu'il est rare qu'une clôture tombe en leur milieu. Mais aucun "
+            "mécanisme de couru n'existe : une pension de plus longue durée en cours à une "
+            "clôture future produirait une sous-évaluation proportionnelle à son encours, sans "
+            "qu'aucun contrôle ne la signale."
         ),
         chiffres=[
-            ("Opérations de plus de 4 jours", str(len(longues))),
-            ("Dont aucun couru constaté" if all(l[4] == 0 for l in defaillants)
-             else "Dont moins de 3 jours de couru constatés", str(len(defaillants))),
-            ("Montant tiré concerné", xaf(sum(l[5] for l in defaillants))),
-            ("Opérations à cheval sur une date d'arrêté", str(len(manquant))),
+            ("Écritures de couru sur le compte de charge",
+             "aucune" if jamais_de_couru else str(len(charge[charge.EVENEMENT == "ACCRUAL"]))),
+            ("Pensions dont le contrat enjambe un arrêté", str(len(a_cheval))),
             ("CHARGE NON RATTACHÉE À L'ARRÊTÉ", xaf(charge_non_rattachee)),
         ],
-        tableaux=[
-            Tableau(["Deal", "Tirage", "Remboursement", "Durée (j)", "Jours de couru", "Montant",
-                     "Intérêt réglé"],
-                    sorted(defaillants, key=lambda l: -l[3])),
-            Tableau(["Deal", "Date d'arrêté", "Jours écoulés", "Durée totale (j)",
-                     "Charge à rattacher XAF"],
-                    sorted(manquant, key=lambda m: -m[4]),
-                    note=("Intérêt qui aurait dû être couru à la date d'arrêté, calculé au "
-                          "prorata des jours écoulés sur l'intérêt total effectivement réglé.")),
-        ],
+        tableaux=[Tableau(
+            ["Deal", "Date d'arrêté", "Début contractuel", "Échéance", "Jours courus",
+             "Durée totale", "Montant XAF", "Taux %", "Charge à rattacher XAF"],
+            a_cheval,
+            note=("Charge qui aurait dû être courue à la date d'arrêté, au prorata des jours "
+                  "écoulés depuis le départ contractuel, base exact/360."))],
         recommandation=(
-            "Recalculer la charge d'intérêt courue à chaque date d'arrêté traversée par une "
-            "opération non dénouée et mesurer l'incidence sur le résultat des exercices concernés."
+            "Faire paramétrer un couru quotidien sur les pensions, à l'image de celui qui existe "
+            "sur le portefeuille de titres. À défaut, instaurer un calcul extra-comptable à "
+            "chaque arrêté, fondé sur les dates contractuelles portées par les libellés."
         ),
     )
 
@@ -290,4 +302,136 @@ def _c74_non_denouees(ctx) -> Constat:
                      for i, r in pd.concat([ouvertes, ecarts]).iterrows()])
         ],
         recommandation="Rapprocher des relevés de la banque centrale à la date d'arrêté.",
+    )
+
+
+def _c75_retard_comptabilisation(ctx) -> Constat:
+    """La comptabilisation suit-elle le dénouement contractuel des pensions ?"""
+    repos = ctx.repos_contractuels
+    if repos.empty:
+        return Constat(code="7.5", titre="Délai de comptabilisation des pensions",
+                       gravite=Gravite.FAIBLE, constat="Aucune pension identifiée.")
+    tardifs = repos[repos.retard_remboursement > 5].sort_values(
+        "retard_remboursement", ascending=False)
+    # Une dette contractuellement éteinte figure-t-elle encore au bilan à un arrêté ?
+    portees = []
+    for arrete in ctx.arretes:
+        vises = repos[(repos.contrat_fin < arrete)
+                      & (repos.booking_debut <= arrete) & (repos.booking_fin > arrete)]
+        for _, r in vises.iterrows():
+            portees.append([r.DEAL, arrete, str(r.contrat_fin.date()), r.booking_fin,
+                            (pd.Timestamp(arrete) - r.contrat_fin).days, float(r.montant)])
+    if tardifs.empty and not portees:
+        return Constat(
+            code="7.5", titre="Délai de comptabilisation des pensions", gravite=Gravite.CONFORME,
+            constat=("Le remboursement de chaque pension est comptabilisé dans les jours qui "
+                     "suivent son échéance contractuelle."))
+    gravite = Gravite.ELEVEE if portees else Gravite.MOYENNE
+    return Constat(
+        code="7.5",
+        titre="Remboursements de pension comptabilisés longtemps après l'échéance contractuelle",
+        gravite=gravite,
+        constat=(
+            "CE QUI EST TESTÉ. Le libellé de chaque pension porte son échéance contractuelle. "
+            "La comparer à la date à laquelle le remboursement est effectivement enregistré "
+            "mesure le délai entre le dénouement de l'opération et sa comptabilisation.\n"
+            f"CE QUI EST CONSTATÉ. {len(tardifs)} pensions sont enregistrées plus de cinq jours "
+            f"après leur échéance, le retard atteignant "
+            f"{int(repos.retard_remboursement.max())} jours. Pendant tout ce délai, les livres "
+            "montrent un emprunt qui n'existe plus et une trésorerie que la banque n'a plus.\n"
+            + (("LA CONSÉQUENCE EST ARRÊTÉE. Le décalage traverse une date d'arrêté : à cette "
+                "date, le bilan porte une dette contractuellement éteinte, et le compte de "
+                "règlement auprès de la banque centrale porte la trésorerie correspondante. "
+                "Les états produits à cette date sont faux des deux côtés.\n")
+               if portees else
+               "Aucun de ces retards ne traverse une date d'arrêté : l'effet reste "
+               "intrajournalier au regard des comptes publiés.\n")
+            + "CE QUE CELA IMPLIQUE POUR LES AUTRES CONTRÔLES. Toute durée de pension calculée "
+            "sur les dates de comptabilisation est fausse. Le contrôle 7.1 retient pour cette "
+            "raison les seules dates contractuelles."
+        ),
+        chiffres=[
+            ("Pensions contrôlées", str(len(repos))),
+            ("Remboursements enregistrés plus de 5 jours après l'échéance", str(len(tardifs))),
+            ("Retard maximal", f"{int(repos.retard_remboursement.max())} jours"),
+            ("Retard médian", f"{int(repos.retard_remboursement.median())} jour(s)"),
+            ("Dettes éteintes encore portées au bilan à un arrêté", str(len(portees))),
+            ("Montant correspondant", xaf(sum(l[5] for l in portees))),
+        ],
+        tableaux=[
+            Tableau(["Deal", "Échéance contractuelle", "Remboursement comptabilisé",
+                     "Retard (j)", "Montant XAF", "Contrepartie"],
+                    [[r.DEAL, str(r.contrat_fin.date()), r.booking_fin,
+                      int(r.retard_remboursement), float(r.montant), r.contrepartie]
+                     for _, r in tardifs.head(15).iterrows()],
+                    note="Les quinze retards les plus importants."),
+            Tableau(["Deal", "Date d'arrêté", "Échéance contractuelle",
+                     "Remboursement comptabilisé", "Jours depuis l'échéance", "Montant XAF"],
+                    portees,
+                    note=("Dettes contractuellement éteintes figurant encore au bilan à une date "
+                          "d'arrêté.")),
+        ],
+        recommandation=(
+            "Obtenir le rapprochement entre les confirmations de pension de la banque centrale "
+            "et les écritures, et expliquer les délais de comptabilisation. Instaurer un suivi "
+            "des pensions échues non dénouées dans les livres."
+        ),
+    )
+
+
+def _c76_recalcul_interet(ctx) -> Constat:
+    """L'intérêt payé correspond-il au montant, au taux et à la durée contractuels ?"""
+    repos = ctx.repos_contractuels
+    if repos.empty:
+        return Constat(code="7.6", titre="Exactitude des intérêts de pension",
+                       gravite=Gravite.FAIBLE, constat="Aucune pension identifiée.")
+    testables = repos[repos.jours_contrat.notna() & repos.taux.notna()]
+    ecarts = testables[testables.ecart_interet.abs() > 1]
+    if ecarts.empty:
+        return Constat(
+            code="7.6", titre="Exactitude des intérêts de pension", gravite=Gravite.CONFORME,
+            constat=(f"Sur les {len(testables)} pensions, l'intérêt comptabilisé se déduit "
+                     "exactement du montant, du taux et de la durée contractuels, en base "
+                     "exact/360. Le moteur de calcul est juste."),
+            chiffres=[("Pensions recalculées", str(len(testables))),
+                      ("Convention retenue", "exact/360")],
+        )
+    return Constat(
+        code="7.6",
+        titre="Intérêts de pension ne se déduisant pas des conditions contractuelles",
+        gravite=Gravite.MOYENNE,
+        constat=(
+            "Le libellé de chaque pension porte son montant, son taux et ses dates "
+            "contractuelles : l'intérêt est donc entièrement recalculable. En base exact/360, "
+            f"il se retrouve au centime près sur {len(testables) - len(ecarts)} des "
+            f"{len(testables)} pensions, ce qui établit à la fois la convention de décompte et "
+            "la justesse du moteur de calcul.\n"
+            "Les exceptions ne sont pas des erreurs de calcul : un intérêt exactement DOUBLE "
+            "signale un mouvement déversé deux fois, un intérêt ABSENT signale une opération "
+            "jamais dénouée. Ce recalcul constitue donc un second filet de détection, "
+            "indépendant, des défauts relevés aux contrôles 6.7 et 7.4."
+        ),
+        chiffres=[
+            ("Pensions recalculées", str(len(testables))),
+            ("Convention de décompte retenue", "exact/360"),
+            ("Pensions au calcul exact", str(len(testables) - len(ecarts))),
+            ("Pensions en écart", str(len(ecarts))),
+            ("Écart cumulé", xaf(float(ecarts.ecart_interet.sum()))),
+        ],
+        tableaux=[Tableau(
+            ["Deal", "Montant XAF", "Taux %", "Jours", "Intérêt attendu", "Intérêt comptabilisé",
+             "Écart", "Lecture"],
+            [[r.DEAL, float(r.montant), float(r.taux), int(r.jours_contrat),
+              float(r.interet_theorique),
+              float(r.interet) if r.interet == r.interet else None,
+              float(r.ecart_interet),
+              "intérêt absent : opération non dénouée" if r.interet != r.interet
+              else ("intérêt doublé : mouvement déversé deux fois"
+                    if abs(r.ecart_interet - r.interet_theorique) < 1 else "à investiguer")]
+             for _, r in ecarts.iterrows()])],
+        recommandation=(
+            "Instaurer le recalcul de l'intérêt à partir des conditions contractuelles comme "
+            "contrôle automatique de premier niveau : il détecte les doublons de déversement et "
+            "les opérations non dénouées sans aucune donnée externe."
+        ),
     )

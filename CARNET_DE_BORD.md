@@ -1527,3 +1527,104 @@ distingue. Le pont miroir porte **3 104 020 778 XAF** non apurés à la clôture
 — la pension de 90 Md non décaissée, les souverains exclus, les dates d'échéance ambiguës, les
 40 Md de titres sans code — sont tous sortis de cette lecture, et aucun n'était visible dans
 les agrégats.
+
+---
+
+# SESSION 16 — Le deal 3349072, et ce qu'il a révélé sur toute la section 7
+
+Demande : plus de détail sur la pension de 90 Md dont le décaissement n'a jamais été
+comptabilisé. L'examen a confirmé le constat — et invalidé au passage deux contrôles de la
+section 7.
+
+## 16.1 ⚠ DÉCOUVERTE : les conditions contractuelles sont dans le libellé
+
+En cherchant la jambe manquante, le libellé complet est apparu :
+
+```
+|3349072|23941152|INTEREST|Repo|BEAC|ABCM_MM.Plmt.Tkn.Secured||
+Repo-(BondGOGQ/GQ2J00000057/XAF/0D/07/03/2028/7%)12/18/2025/12/26/2025/5.05000
+```
+
+Après le titre donné en garantie viennent **la date de départ, la date d'échéance et le taux
+du contrat**. Extraction réussie sur **1 026 lignes sur 1 026**, soit les 129 pensions.
+
+**Ce que cela change :**
+
+| | Avant (dates de comptabilisation) | Après (dates contractuelles) |
+|---|---|---|
+| Durée max d'une pension | **98 jours** | **8 jours** |
+| Pensions « longues » | 11 de plus de 4 jours | 52 de plus d'1 jour, max 8 j |
+| Charge non rattachée à l'arrêté | 8 244 898 XAF | **63 750 000 XAF** |
+
+Le contrôle 7.1 affirmait qu'une pension avait duré « plusieurs mois ». **C'était faux** :
+aucune pension ne dépasse 8 jours contractuellement. Les 98 jours étaient un **retard de
+comptabilisation**. 7.1 et 7.2 sont réécrits sur la base contractuelle.
+
+L'intérêt se recalcule exactement : `montant × taux × jours / 360`, vérifié au centime près
+sur **127 des 129 pensions**. Les 2 exceptions sont instructives :
+- **3854201** : aucun intérêt → opération jamais dénouée (déjà vue en 7.4)
+- **4184547** : intérêt **exactement double** → mouvement déversé deux fois (déjà vu en 6.7)
+
+Ce recalcul est donc un **troisième filet de détection indépendant** des mêmes défauts.
+
+## 16.2 Anatomie du deal 3349072
+
+**Contrat** : 90 000 000 000 XAF empruntés à la BEAC du **18/12/2025 au 26/12/2025**, 8 jours,
+**5,05 %**. Intérêt contractuel = 90e9 × 5,05 % × 8/360 = **101 000 000** — exactement le
+montant comptabilisé.
+
+**Tirage, comptabilisé le 23/12/2025 — correct et complet**
+- 19 titres inscrits au hors bilan : 91 333 110 000 (101,5 % de couverture)
+- `PRINCIPAL_DEPOSIT` : dette 552400100 créditée 90 Md / pont débité
+- `CST_S_SETTLED` : nostro débité 90 Md / pont crédité
+- **Pont = 0** ✓
+
+**Remboursement, comptabilisé le 31/03/2026 — amputé**
+- `NOMINAL_REV` : les 19 titres libérés ✓
+- `PRINCIPAL_DEPOSIT` : dette éteinte ✓
+- `INTEREST` : 101 000 000 en charge ✓
+- **`CST_S_SETTLED` : ABSENT** ✗
+
+**Effet net** : nostro **+90 000 000 000** au lieu de −101 000 000 attendus. Pont
+**−90 101 000 000**. Recherche exhaustive : **aucune écriture de 90 101 000 000 ni de
+90 000 000 000 au débit du nostro** entre le 30/03 et le 02/04/2026, ni ailleurs.
+
+### La preuve par la chaîne de refinancement
+
+La pension appartient à une ligne BEAC roulée chaque semaine. Les voisines sont irréprochables :
+
+| Deal | Contrat | Jours | Taux | Montant | Pont | Effet trésorerie | |
+|---|---|---|---|---|---|---|---|
+| 3339125 | 11→18/12 | 7 | 4,80 | 90 Md | 0 | −84 000 000 | ✓ |
+| **3349072** | **18→26/12** | **8** | **5,05** | **90 Md** | **−90 101 000 000** | **+90 000 000 000** | **✗** |
+| 3368198 | 26/12→02/01 | 7 | 5,10 | 90 Md | 0 | −89 250 000 | ✓ |
+
+Même montant, même contrepartie, même schéma. Seule celle du milieu est cassée. Ce n'est donc
+ni un effet de paramétrage ni une particularité du produit.
+
+### Effets connexes
+
+1. **Au 31/12/2025** : le bilan porte une dette de 90 Md **contractuellement éteinte depuis le
+   26/12**, et le nostro la trésorerie correspondante. Le vrai encours à cette date était celui
+   du deal 3368198, absent des livres jusqu'au 02/01/2026.
+2. **Collatéral immobilisé 95 jours au-delà de l'échéance** : 91 333 110 000 restés au hors
+   bilan du 26/12/2025 au 31/03/2026, minorant d'autant la réserve de liquidité mobilisable
+   affichée (lien avec 7.3).
+3. **Deux des 19 titres gagés sont arrivés à échéance pendant le gage** : `CG2A00000478`
+   (01/03/2026, 2 821 000 000) et `CG2A00000486` (28/03/2026, 1 221 940 000). Un titre échu ne
+   peut plus servir de garantie.
+
+## 16.3 Nouveaux contrôles
+
+| Contrôle | Gravité | Objet |
+|---|---|---|
+| **7.5** | ELEVEE | Remboursements comptabilisés après l'échéance contractuelle — 14 pensions > 5 j, retard max **133 jours**, 1 dette éteinte portée au bilan à un arrêté |
+| **7.6** | MOYENNE | Recalcul de l'intérêt sur les conditions contractuelles — 127/129 exacts, les 2 écarts révélant un doublon et une opération non dénouée |
+| **11.8** | CRITIQUE | Anatomie complète du deal 3349072, avec la comparaison à la chaîne |
+
+**55 anomalies** — 9 critiques, 20 élevées, 23 moyennes, 3 faibles — sur **11 sections et
+69 contrôles**.
+
+**Règle retenue** : *une durée ne se lit jamais sur les dates de comptabilisation.* Les 98 jours
+du rapport précédent étaient un délai de saisie pris pour un terme. Chercher la donnée
+contractuelle — ici, cachée dans le libellé — avant de conclure sur une durée.

@@ -4,7 +4,7 @@
 
   Périmètre        : Département de la trésorerie — gestion des investissements sur les marchés financiers
   Période d'audit  : 2023-09-27 au 2026-06-30
-  Rapport généré le : 20/09/2026 à 12:00
+  Rapport généré le : 20/09/2026 à 12:18
   Référentiel      : Plan Comptable des Établissements de Crédit (PCEC) — CEMAC / COBAC
 
   Ce rapport est produit automatiquement. Chaque constat indique le test exécuté, sa
@@ -35,21 +35,21 @@ SOMMAIRE
   Section 4 — Contrôle interne et séparation des tâches  (4 anomalie(s) / 5 contrôle(s))
   Section 5 — Migration Flexcube MM vers Calypso  (3 anomalie(s) / 6 contrôle(s))
   Section 6 — Manquements du dispositif Calypso  (7 anomalie(s) / 7 contrôle(s))
-  Section 7 — Pensions livrées auprès de la banque centrale  (4 anomalie(s) / 4 contrôle(s))
+  Section 7 — Pensions livrées auprès de la banque centrale  (6 anomalie(s) / 6 contrôle(s))
   Section 8 — Opérations de cession-rétrocession (Sell-Buy-Back)  (5 anomalie(s) / 5 contrôle(s))
   Section 9 — Résultat, classement comptable et rendement  (4 anomalie(s) / 4 contrôle(s))
   Section 10 — Cohérence entre le système amont et le grand livre  (5 anomalie(s) / 5 contrôle(s))
-  Section 11 — Le portefeuille de titres comme un tout  (6 anomalie(s) / 7 contrôle(s))
+  Section 11 — Le portefeuille de titres comme un tout  (7 anomalie(s) / 8 contrôle(s))
 
 ----------------------------------------------------------------------------------------------------
 RÉCAPITULATIF DES ANOMALIES PAR GRAVITÉ
 ----------------------------------------------------------------------------------------------------
 
-  CRITIQUE   : 8
+  CRITIQUE   : 9
   ELEVEE     : 20
-  MOYENNE    : 21
+  MOYENNE    : 23
   FAIBLE     : 3
-  TOTAL      : 52
+  TOTAL      : 55
 
   CRITIQUE  [4.2] Écritures manuelles dépourvues de tout validateur
   CRITIQUE  [5.3] Sur-apurement du compte de courus à la migration, laissant un compte d'actif en solde créditeur
@@ -59,6 +59,7 @@ RÉCAPITULATIF DES ANOMALIES PAR GRAVITÉ
   CRITIQUE  [8.2] Le schéma comptable appliqué est celui d'une cession ferme, non celui d'une pension livrée
   CRITIQUE  [9.4] Comptes présentant un solde contraire à leur nature comptable à une date d'arrêté
   CRITIQUE  [11.6] Le solde des comptes de liaison mesure exactement les déversements incomplets
+  CRITIQUE  [11.8] Anatomie du déversement incomplet le plus lourd — pension 3349072
   ELEVEE    [2.6] Taux contractuels aberrants au regard des opérations comparables
   ELEVEE    [3.4] L'annulation d'un contrat ne contre-passe pas les intérêts courus déjà enregistrés
   ELEVEE    [3.7] Accumulation des intérêts courus au-delà d'une année de coupons
@@ -67,7 +68,7 @@ RÉCAPITULATIF DES ANOMALIES PAR GRAVITÉ
   ELEVEE    [6.2] Le contrôle des quatre yeux de Flexcube est intégralement neutralisé sur le flux Calypso
   ELEVEE    [6.3] Perte de l'information comptable structurée dans les écritures
   ELEVEE    [6.6] L'intention économique des opérations n'est tracée que par un commentaire libre
-  ELEVEE    [7.1] Pensions de plusieurs semaines comptabilisées dans un compte d'emprunt au jour le jour
+  ELEVEE    [7.5] Remboursements de pension comptabilisés longtemps après l'échéance contractuelle
   ELEVEE    [8.1] L'identification des cessions-rétrocessions par le commentaire est incomplète
   ELEVEE    [8.3] Le portefeuille dédié aux cessions-rétrocessions existe mais n'est pas utilisé
   ELEVEE    [8.4] Titres recyclés à répétition avec la même contrepartie : un financement roulé
@@ -92,9 +93,11 @@ RÉCAPITULATIF DES ANOMALIES PAR GRAVITÉ
   MOYENNE   [4.4] Saisies nocturnes sur les comptes de titres
   MOYENNE   [5.2] Écart entre les intérêts courus repris et le solde du compte d'origine
   MOYENNE   [6.5] Contre-passation quotidienne intégrale : les volumes Calypso ne sont pas exploitables bruts
-  MOYENNE   [7.2] Charges d'intérêt non rattachées à la période pour les pensions de longue durée
+  MOYENNE   [7.1] Pensions à terme comptabilisées dans un compte d'emprunt au jour le jour
+  MOYENNE   [7.2] Aucun couru n'est constaté sur les pensions, y compris celles à cheval sur un arrêté
   MOYENNE   [7.3] Titres restés affectés en garantie au-delà de l'encours emprunté
   MOYENNE   [7.4] Opérations de pension non dénouées à la fin de l'extraction
+  MOYENNE   [7.6] Intérêts de pension ne se déduisant pas des conditions contractuelles
   MOYENNE   [9.1] Progression du résultat de l'activité de titres
   MOYENNE   [10.1] Deals conclus sans écriture, sur des portefeuilles pourtant couverts par le périmètre
   MOYENNE   [10.5] Référentiel des opérateurs non normalisé
@@ -1481,100 +1484,150 @@ La banque se refinance auprès de la banque centrale par pensions livrées garan
 portefeuille. Cette section contrôle la durée réelle des opérations au regard du compte utilisé, le
 rattachement des charges d'intérêt, le niveau de collatéralisation et le dénouement des opérations.
 
-  4 contrôle(s) exécuté(s) — 4 anomalie(s), 0 sans anomalie.
+  6 contrôle(s) exécuté(s) — 6 anomalie(s), 0 sans anomalie.
 
 ----------------------------------------------------------------------------------------------------
-[7.1] Pensions de plusieurs semaines comptabilisées dans un compte d'emprunt au jour le jour
+[7.5] Remboursements de pension comptabilisés longtemps après l'échéance contractuelle
   Gravité : ELEVEE
 
-  Les opérations sont comptabilisées au compte « EMPRUNT AU JR LE JR BQ NON ASSOC ». Or la durée
-  effective observée entre le tirage et le remboursement dépasse largement le jour le jour pour une
-  partie des opérations, l'une d'elles atteignant plusieurs mois.
-  Un emprunt de cette durée logé dans un compte d'emprunt au jour le jour fausse l'échéancier de
-  liquidité de l'établissement et, par voie de conséquence, les ratios prudentiels qui en découlent.
+  CE QUI EST TESTÉ. Le libellé de chaque pension porte son échéance contractuelle. La comparer à la
+  date à laquelle le remboursement est effectivement enregistré mesure le délai entre le dénouement
+  de l'opération et sa comptabilisation.
+  CE QUI EST CONSTATÉ. 14 pensions sont enregistrées plus de cinq jours après leur échéance, le
+  retard atteignant 133 jours. Pendant tout ce délai, les livres montrent un emprunt qui n'existe
+  plus et une trésorerie que la banque n'a plus.
+  LA CONSÉQUENCE EST ARRÊTÉE. Le décalage traverse une date d'arrêté : à cette date, le bilan porte
+  une dette contractuellement éteinte, et le compte de règlement auprès de la banque centrale porte
+  la trésorerie correspondante. Les états produits à cette date sont faux des deux côtés.
+  CE QUE CELA IMPLIQUE POUR LES AUTRES CONTRÔLES. Toute durée de pension calculée sur les dates de
+  comptabilisation est fausse. Le contrôle 7.1 retient pour cette raison les seules dates
+  contractuelles.
 
-    Opérations identifiées          : 129
-    Opérations de plus de 4 jours   : 11
-    Montant tiré sur ces opérations : 832 000 000 000 XAF
-    Durée maximale observée         : 98 jours
-    Durée médiane                   : 0 jours
+    Pensions contrôlées                                         : 129
+    Remboursements enregistrés plus de 5 jours après l'échéance : 14
+    Retard maximal                                              : 133 jours
+    Retard médian                                               : 1 jour(s)
+    Dettes éteintes encore portées au bilan à un arrêté         : 1
+    Montant correspondant                                       : 90 000 000 000 XAF
 
-    Deal     Tirage      Remboursement  Durée (j)  Montant XAF     Contrepartie
-    -------  ----------  -------------  ---------  --------------  ------------
-    3349072  2025-12-23  2026-03-31     98         90 000 000 000  BEAC        
-    3831830  2026-04-30  2026-05-07     7          60 000 000 000  BEAC        
-    3270201  2025-11-28  2025-12-04     6          65 000 000 000  BEAC        
-    3410714  2026-01-09  2026-01-15     6          80 000 000 000  BEAC        
-    3440496  2026-01-16  2026-01-22     6          80 000 000 000  BEAC        
-    3490796  2026-01-30  2026-02-05     6          80 000 000 000  BEAC        
-    3461387  2026-01-23  2026-01-29     6          80 000 000 000  BEAC        
-    3524796  2026-02-06  2026-02-12     6          75 000 000 000  BEAC        
-    3573017  2026-02-20  2026-02-26     6          75 000 000 000  BEAC        
-    3602585  2026-02-27  2026-03-05     6          75 000 000 000  BEAC        
-    3658647  2026-03-13  2026-03-19     6          72 000 000 000  BEAC        
+    Deal     Échéance contractuelle  Remboursement comptabilisé  Retard (j)  Montant XAF     Contrepartie
+    -------  ----------------------  --------------------------  ----------  --------------  ------------
+    4048530  2026-03-26              2026-08-06                  133         72 000 000 000  BEAC        
+    3349072  2025-12-26              2026-03-31                  95          90 000 000 000  BEAC        
+    3196152  2025-10-01              2025-11-11                  41          3 000 000 000   AGB CAMEROON
+    3186053  2025-10-03              2025-11-07                  35          5 000 000 000   UBCM        
+    3196195  2025-10-17              2025-11-11                  25          3 500 000 000   AGB CAMEROON
+    3201096  2025-10-21              2025-11-12                  22          20 000 000 000  BEAC        
+    3201265  2025-10-22              2025-11-12                  21          15 000 000 000  BEAC        
+    3196584  2025-10-24              2025-11-11                  18          3 500 000 000   AGB CAMEROON
+    3196642  2025-10-29              2025-11-11                  13          5 000 000 000   BACM        
+    3201484  2025-10-30              2025-11-12                  13          45 000 000 000  BEAC        
+    3201634  2025-11-03              2025-11-12                  9           5 000 000 000   BEAC        
+    3883220  2026-05-21              2026-05-28                  7           50 000 000 000  BEAC        
+    3201546  2025-11-06              2025-11-12                  6           45 000 000 000  BEAC        
+    3547049  2026-02-13              2026-02-19                  6           75 000 000 000  BEAC        
+    Les quinze retards les plus importants.
 
-    Durée (jours)  Opérations  Montant tiré XAF 
-    -------------  ----------  -----------------
-    0              99          3 783 000 000 000
-    1              11          394 000 000 000  
-    2              3           185 000 000 000  
-    3              4           237 000 000 000  
-    6              9           682 000 000 000  
-    7              1           60 000 000 000   
-    98             1           90 000 000 000   
-    Distribution des durées. La durée nulle — tirage et remboursement comptabilisés le même jour —
-    est le cas dominant et correspond bien à un financement au jour le jour ; ce sont les durées
-    supérieures à quatre jours qui ne relèvent pas du compte utilisé.
+    Deal     Date d'arrêté  Échéance contractuelle  Remboursement comptabilisé  Jours depuis l'échéance  Montant XAF   
+    -------  -------------  ----------------------  --------------------------  -----------------------  --------------
+    3349072  2025-12-31     2025-12-26              2026-03-31                  5                        90 000 000 000
+    Dettes contractuellement éteintes figurant encore au bilan à une date d'arrêté.
 
   Recommandation :
-    Obtenir les conventions de pension livrée et leur durée contractuelle. Faire reclasser les
-    opérations à terme dans le compte d'emprunt correspondant et corriger l'échéancier de liquidité.
+    Obtenir le rapprochement entre les confirmations de pension de la banque centrale et les
+    écritures, et expliquer les délais de comptabilisation. Instaurer un suivi des pensions échues
+    non dénouées dans les livres.
 
 ----------------------------------------------------------------------------------------------------
-[7.2] Charges d'intérêt non rattachées à la période pour les pensions de longue durée
+[7.1] Pensions à terme comptabilisées dans un compte d'emprunt au jour le jour
   Gravité : MOYENNE
 
-  Le compte de charge d'intérêt sur pensions ne porte AUCUNE écriture de couru : il n'enregistre que
-  des règlements. L'intérêt est donc constaté en une seule fois, au dénouement de l'opération,
-  quelle qu'en soit la durée.
-  Il en résulte une SOUS-ÉVALUATION DE LA CHARGE D'INTÉRÊT à toute date d'arrêté comprise entre le
-  tirage et le dénouement, en contradiction avec le principe de rattachement des charges à
-  l'exercice. L'opération de 98 jours à cheval sur le 31/12/2025 en est l'illustration la plus
-  nette.
-  L'INCIDENCE CHIFFRÉE reste limitée sur la période revue, une seule opération étant à cheval sur
-  une date d'arrêté. Le constat porte donc sur le dispositif plus que sur son effet du moment :
-  aucun mécanisme de couru n'existe pour ces opérations, de sorte qu'une pension de plusieurs mois
-  en cours à une clôture future produirait une sous-évaluation proportionnelle à son encours.
+  Les opérations sont toutes comptabilisées au compte « EMPRUNT AU JR LE JR BQ NON ASSOC », qui est
+  un compte d'emprunt AU JOUR LE JOUR.
+  OÙ LIRE LA DURÉE. Les dates de comptabilisation ne renseignent pas sur la durée d'une pension : le
+  contrôle 7.5 montre qu'une opération peut être enregistrée des semaines après son dénouement. La
+  durée contractuelle figure en revanche dans le LIBELLÉ de chaque écriture, qui porte la date de
+  départ, la date d'échéance et le taux. C'est cette source qui est retenue ici.
+  CE QU'ELLE MONTRE. 52 pensions sur 129, soit 40 %, sont contractuellement À TERME — jusqu'à 8
+  jours — pour 2 725 000 000 000 XAF tirés. Le jour le jour reste majoritaire, mais il ne décrit pas
+  toute l'activité.
+  Un emprunt à terme logé dans un compte d'emprunt au jour le jour fausse l'échéancier de liquidité
+  de l'établissement et, par voie de conséquence, les ratios prudentiels qui en découlent. L'écart
+  reste d'une semaine et non de plusieurs mois : la distorsion est réelle mais bornée.
 
-    Opérations de plus de 4 jours             : 11
-    Dont aucun couru constaté                 : 11
-    Montant tiré concerné                     : 832 000 000 000 XAF
-    Opérations à cheval sur une date d'arrêté : 1
-    CHARGE NON RATTACHÉE À L'ARRÊTÉ           : 8 244 898 XAF
+    Pensions identifiées                   : 129
+    Dont contractuellement au jour le jour : 77
+    Dont contractuellement À TERME         : 52 (40 %)
+    Montant tiré sur les pensions à terme  : 2 725 000 000 000 XAF
+    Durée contractuelle maximale           : 8 jours
+    Durée contractuelle médiane            : 1 jour(s)
 
-    Deal     Tirage      Remboursement  Durée (j)  Jours de couru  Montant         Intérêt réglé
-    -------  ----------  -------------  ---------  --------------  --------------  -------------
-    3349072  2025-12-23  2026-03-31     98         0               90 000 000 000  101 000 000  
-    3831830  2026-04-30  2026-05-07     7          0               60 000 000 000  57 866 667   
-    3270201  2025-11-28  2025-12-04     6          0               65 000 000 000  60 666 667   
-    3410714  2026-01-09  2026-01-15     6          0               80 000 000 000  77 000 000   
-    3440496  2026-01-16  2026-01-22     6          0               80 000 000 000  77 000 000   
-    3461387  2026-01-23  2026-01-29     6          0               80 000 000 000  77 000 000   
-    3490796  2026-01-30  2026-02-05     6          0               80 000 000 000  77 000 000   
-    3524796  2026-02-06  2026-02-12     6          0               75 000 000 000  72 187 500   
-    3573017  2026-02-20  2026-02-26     6          0               75 000 000 000  72 187 500   
-    3602585  2026-02-27  2026-03-05     6          0               75 000 000 000  70 729 167   
-    3658647  2026-03-13  2026-03-19     6          0               72 000 000 000  67 200 000   
+    Durée contractuelle (jours)  Opérations  Montant tiré XAF 
+    ---------------------------  ----------  -----------------
+    1                            77          2 756 000 000 000
+    3                            19          710 000 000 000  
+    4                            1           5 000 000 000    
+    6                            1           90 000 000 000   
+    7                            30          1 830 000 000 000
+    8                            1           90 000 000 000   
+    Durées lues sur le libellé contractuel, et non sur les dates de comptabilisation.
 
-    Deal     Date d'arrêté  Jours écoulés  Durée totale (j)  Charge à rattacher XAF
-    -------  -------------  -------------  ----------------  ----------------------
-    3349072  2025-12-31     8              98                8 244 897,96          
-    Intérêt qui aurait dû être couru à la date d'arrêté, calculé au prorata des jours écoulés sur
-    l'intérêt total effectivement réglé.
+    Deal     Début contractuel  Échéance contractuelle  Durée (j)  Taux %  Montant XAF     Contrepartie
+    -------  -----------------  ----------------------  ---------  ------  --------------  ------------
+    3349072  2025-12-18         2025-12-26              8          5,05    90 000 000 000  BEAC        
+    3196195  2025-10-10         2025-10-17              7          6,15    3 500 000 000   AGB CAMEROON
+    3196642  2025-10-22         2025-10-29              7          6,00    5 000 000 000   BACM        
+    3196584  2025-10-17         2025-10-24              7          6,15    3 500 000 000   AGB CAMEROON
+    3440496  2026-01-15         2026-01-22              7          4,95    80 000 000 000  BEAC        
+    3201484  2025-10-23         2025-10-30              7          5,05    45 000 000 000  BEAC        
+    3247035  2025-11-20         2025-11-27              7          4,95    55 000 000 000  BEAC        
+    3201546  2025-10-30         2025-11-06              7          4,95    45 000 000 000  BEAC        
+    3270201  2025-11-27         2025-12-04              7          4,80    65 000 000 000  BEAC        
+    3302324  2025-12-04         2025-12-11              7          4,80    70 000 000 000  BEAC        
+    3339125  2025-12-11         2025-12-18              7          4,80    90 000 000 000  BEAC        
+    3213238  2025-11-13         2025-11-20              7          4,95    55 000 000 000  BEAC        
+    3368198  2025-12-26         2026-01-02              7          5,10    90 000 000 000  BEAC        
+    3440248  2026-01-08         2026-01-15              7          4,95    80 000 000 000  BEAC        
+    3410714  2026-01-08         2026-01-15              7          4,95    80 000 000 000  BEAC        
+    Les quinze pensions à terme les plus longues.
 
   Recommandation :
-    Recalculer la charge d'intérêt courue à chaque date d'arrêté traversée par une opération non
-    dénouée et mesurer l'incidence sur le résultat des exercices concernés.
+    Faire reclasser les pensions à terme dans le compte d'emprunt correspondant à leur durée et
+    corriger l'échéancier de liquidité. Demander que la durée contractuelle soit portée dans un
+    champ structuré de l'interface, et non dans le seul libellé.
+
+----------------------------------------------------------------------------------------------------
+[7.2] Aucun couru n'est constaté sur les pensions, y compris celles à cheval sur un arrêté
+  Gravité : MOYENNE
+
+  LE CONSTAT DE PRINCIPE. Le compte de charge d'intérêt sur pensions ne porte AUCUNE écriture de
+  couru : il n'enregistre que des règlements. L'intérêt est donc constaté en une seule fois, au
+  dénouement, quelle que soit la durée de l'opération et quelle que soit la date d'arrêté qu'elle
+  traverse.
+  L'INCIDENCE CHIFFRÉE. Le test retient les pensions dont le CONTRAT enjambe une date d'arrêté — et
+  non celles dont les seules dates de comptabilisation l'enjambent, ce qui serait un artefact de
+  saisie. 2 opération(s) sont dans ce cas sur la période revue, pour une charge non rattachée de 63
+  750 000 XAF.
+  LA PORTÉE EST STRUCTURELLE. Le montant reste modeste parce que les pensions sont courtes et qu'il
+  est rare qu'une clôture tombe en leur milieu. Mais aucun mécanisme de couru n'existe : une pension
+  de plus longue durée en cours à une clôture future produirait une sous-évaluation proportionnelle
+  à son encours, sans qu'aucun contrôle ne la signale.
+
+    Écritures de couru sur le compte de charge : aucune
+    Pensions dont le contrat enjambe un arrêté : 2
+    CHARGE NON RATTACHÉE À L'ARRÊTÉ            : 63 750 000 XAF
+
+    Deal     Date d'arrêté  Début contractuel  Échéance    Jours courus  Durée totale  Montant XAF     Taux %  Charge à rattacher XAF
+    -------  -------------  -----------------  ----------  ------------  ------------  --------------  ------  ----------------------
+    3368198  2025-12-31     2025-12-26         2026-01-02  5             7             90 000 000 000  5,10    63 750 000,00         
+    4044835  2026-06-30     2026-06-30         2026-07-01  0             1             45 000 000 000  5,75    0,00                  
+    Charge qui aurait dû être courue à la date d'arrêté, au prorata des jours écoulés depuis le
+    départ contractuel, base exact/360.
+
+  Recommandation :
+    Faire paramétrer un couru quotidien sur les pensions, à l'image de celui qui existe sur le
+    portefeuille de titres. À défaut, instaurer un calcul extra-comptable à chaque arrêté, fondé sur
+    les dates contractuelles portées par les libellés.
 
 ----------------------------------------------------------------------------------------------------
 [7.3] Titres restés affectés en garantie au-delà de l'encours emprunté
@@ -1622,6 +1675,35 @@ rattachement des charges d'intérêt, le niveau de collatéralisation et le dén
 
   Recommandation :
     Rapprocher des relevés de la banque centrale à la date d'arrêté.
+
+----------------------------------------------------------------------------------------------------
+[7.6] Intérêts de pension ne se déduisant pas des conditions contractuelles
+  Gravité : MOYENNE
+
+  Le libellé de chaque pension porte son montant, son taux et ses dates contractuelles : l'intérêt
+  est donc entièrement recalculable. En base exact/360, il se retrouve au centime près sur 127 des
+  129 pensions, ce qui établit à la fois la convention de décompte et la justesse du moteur de
+  calcul.
+  Les exceptions ne sont pas des erreurs de calcul : un intérêt exactement DOUBLE signale un
+  mouvement déversé deux fois, un intérêt ABSENT signale une opération jamais dénouée. Ce recalcul
+  constitue donc un second filet de détection, indépendant, des défauts relevés aux contrôles 6.7 et
+  7.4.
+
+    Pensions recalculées           : 129
+    Convention de décompte retenue : exact/360
+    Pensions au calcul exact       : 127
+    Pensions en écart              : 2
+    Écart cumulé                   : -35 951 388 XAF
+
+    Deal     Montant XAF     Taux %  Jours  Intérêt attendu  Intérêt comptabilisé  Écart           Lecture                                     
+    -------  --------------  ------  -----  ---------------  --------------------  --------------  --------------------------------------------
+    3854201  50 000 000 000  4,93    7      47 930 555,56                          -47 930 555,56  intérêt absent : opération non dénouée      
+    4184547  25 000 000 000  5,75    3      11 979 166,67    23 958 334            11 979 167,33   intérêt doublé : mouvement déversé deux fois
+
+  Recommandation :
+    Instaurer le recalcul de l'intérêt à partir des conditions contractuelles comme contrôle
+    automatique de premier niveau : il détecte les doublons de déversement et les opérations non
+    dénouées sans aucune donnée externe.
 
 ====================================================================================================
 SECTION 8 — OPÉRATIONS DE CESSION-RÉTROCESSION (SELL-BUY-BACK)
@@ -2438,7 +2520,7 @@ de titres. Cette section le reconstitue de bout en bout, à travers les deux dis
 les titres détenus en propre de ceux acquis pour être placés auprès de la clientèle, contrôle la
 codification des titres du nouveau dispositif et mesure l'exposition souveraine réelle.
 
-  7 contrôle(s) exécuté(s) — 6 anomalie(s), 1 sans anomalie.
+  8 contrôle(s) exécuté(s) — 7 anomalie(s), 1 sans anomalie.
 
 ----------------------------------------------------------------------------------------------------
 [11.6] Le solde des comptes de liaison mesure exactement les déversements incomplets
@@ -2511,6 +2593,104 @@ codification des titres du nouveau dispositif et mesure l'exposition souveraine 
     le compte de liaison ne revient pas à zéro en fin de journée signale un déversement incomplet et
     doit être repris. Rapprocher le compte de règlement auprès de la banque centrale de son relevé
     pour chacun des deals recensés, et passer les écritures manquantes.
+
+----------------------------------------------------------------------------------------------------
+[11.8] Anatomie du déversement incomplet le plus lourd — pension 3349072
+  Gravité : CRITIQUE
+  Référence : Deal 3349072 — BEAC — contrat du 2025-12-18 au 2025-12-26 à 5.05 %
+
+  POURQUOI CETTE OPÉRATION. C'est le résidu le plus lourd de la période. Elle est documentée ici
+  ligne à ligne, parce qu'un constat de cette ampleur doit pouvoir être vérifié sur pièce et non
+  seulement lu dans un agrégat.
+
+  CE QUE DIT LE CONTRAT. Le libellé porte les conditions : 90 000 000 000 XAF empruntés à BEAC du
+  2025-12-18 au 2025-12-26, soit 8 jours, au taux de 5.05 %. L'intérêt correspondant, 101 000 000
+  XAF, se retrouve exactement en comptabilité. Il s'agit donc d'une pension COURTE, parfaitement
+  ordinaire.
+
+  CE QUI A ÉTÉ COMPTABILISÉ. Le tirage est complet et correct : les titres sont inscrits au hors
+  bilan, la dette est constatée au passif, la trésorerie est encaissée. Le compte de liaison revient
+  à zéro ce jour-là.
+  Le remboursement, lui, est enregistré trois mois après l'échéance contractuelle (contrôle 7.5) et
+  surtout, IL EST AMPUTÉ DE SA JAMBE DE TRÉSORERIE. La dette est éteinte, l'intérêt est constaté en
+  charge, les titres sont libérés — mais AUCUNE écriture ne sort l'argent du compte de règlement
+  auprès de la banque centrale.
+
+  CE QUE CELA PRODUIT. L'effet net de l'opération sur le compte de règlement devrait être une sortie
+  limitée à l'intérêt, soit 101 000 000 XAF. Il est en réalité une ENTRÉE NETTE de 90 000 000 000
+  XAF : la banque a encaissé 90 milliards qu'elle n'a jamais rendus dans ses livres. Le compte de
+  liaison porte la contrepartie exacte de cette anomalie, -90 101 000 000 XAF.
+
+  LA PREUVE PAR LA COMPARAISON. Cette pension appartient à une chaîne de refinancement roulée d'une
+  semaine sur l'autre avec la même contrepartie. Les opérations qui la précèdent et qui la suivent
+  portent le MÊME montant, la même mécanique et le même schéma comptable — et elles sont, elles,
+  intégralement déversées : leur compte de liaison revient à zéro et leur effet net sur la
+  trésorerie se limite à l'intérêt. L'anomalie n'est donc ni un effet de paramétrage ni une
+  particularité du produit : c'est un déversement manqué.
+
+  UN EFFET CONNEXE. Les titres donnés en garantie sont restés inscrits au hors bilan jusqu'à la
+  comptabilisation du remboursement, soit 95 jours après l'échéance contractuelle. Pendant toute
+  cette durée, ils apparaissaient indisponibles alors qu'ils ne l'étaient plus, ce qui minore
+  d'autant la réserve de liquidité mobilisable affichée (contrôle 7.3).
+
+    Contrepartie                                      : BEAC
+    Montant emprunté                                  : 90 000 000 000 XAF
+    Durée CONTRACTUELLE                               : 8 jours (2025-12-18 → 2025-12-26)
+    Comptabilisation                                  : tirage le 2025-12-23, remboursement le 2026-03-31
+    Titres donnés en garantie                         : 19 lignes — 91 333 110 000 XAF
+    Jours de gage au-delà de l'échéance contractuelle : 95 jours
+    Effet ATTENDU sur le compte de règlement          : sortie de 101 000 000 XAF (l'intérêt)
+    Effet CONSTATÉ sur le compte de règlement         : entrée de 90 000 000 000 XAF
+    ERREUR SUR LA TRÉSORERIE                          : 90 101 000 000 XAF
+    Résidu porté par le compte de liaison             : -90 101 000 000 XAF
+
+    Date        Événement          Compte       Libellé                             Sens  Mouvements  Montant XAF   
+    ----------  -----------------  -----------  ----------------------------------  ----  ----------  --------------
+    2025-12-23  CST_S_SETTLED      099ACO00001  BANQUE DES ETATS DE LAFRIQUE CENTR  D     1           90 000 000 000
+    2025-12-23  CST_S_SETTLED      467000188    CALYPSO BRIDGE ACCOUNT MONEY MARKE  C     1           90 000 000 000
+    2025-12-23  NOMINAL            952100100    TITRES D INVESTISSEMENT PUBLICS AF  C     19          91 333 110 000
+    2025-12-23  NOMINAL            995000100    CPTE GL OPS SUR TITRES ET VALS AFF  D     19          91 333 110 000
+    2025-12-23  PRINCIPAL_DEPOSIT  467000188    CALYPSO BRIDGE ACCOUNT MONEY MARKE  D     1           90 000 000 000
+    2025-12-23  PRINCIPAL_DEPOSIT  552400100    EMPRUNT AU JR LE JR BQ NON ASSOC    C     1           90 000 000 000
+    2026-03-31  INTEREST           467000188    CALYPSO BRIDGE ACCOUNT MONEY MARKE  C     1           101 000 000   
+    2026-03-31  INTEREST           601100100    INT. SUR OPS MARCHE MONETAIRE - OP  D     1           101 000 000   
+    2026-03-31  NOMINAL_REV        952100100    TITRES D INVESTISSEMENT PUBLICS AF  D     19          91 333 110 000
+    2026-03-31  NOMINAL_REV        995000100    CPTE GL OPS SUR TITRES ET VALS AFF  C     19          91 333 110 000
+    2026-03-31  PRINCIPAL_DEPOSIT  467000188    CALYPSO BRIDGE ACCOUNT MONEY MARKE  C     1           90 000 000 000
+    2026-03-31  PRINCIPAL_DEPOSIT  552400100    EMPRUNT AU JR LE JR BQ NON ASSOC    D     1           90 000 000 000
+    Décomposition intégrale de l'opération. La jambe CST_S_SETTLED attendue à la date de
+    remboursement est absente.
+
+    Compte       Libellé                                 Effet net XAF  
+    -----------  --------------------------------------  ---------------
+    099ACO00001  BANQUE DES ETATS DE LAFRIQUE CENTRA     90 000 000 000 
+    467000188    CALYPSO BRIDGE ACCOUNT MONEY MARKET     -90 101 000 000
+    552400100    EMPRUNT AU JR LE JR BQ NON ASSOC        0,00           
+    601100100    INT. SUR OPS MARCHE MONETAIRE - OPS IN  101 000 000    
+    952100100    TITRES D INVESTISSEMENT PUBLICS AFFECT  0,00           
+    995000100    CPTE GL OPS SUR TITRES ET VALS AFFECT   0,00           
+    Effet net par compte. Un montant positif est un solde débiteur. Le compte de règlement et le
+    compte de liaison portent, au signe près, la même anomalie.
+
+    Deal     Début contractuel  Échéance    Jours  Taux %  Montant XAF     Solde du pont    Effet net trésorerie  Déversement
+    -------  -----------------  ----------  -----  ------  --------------  ---------------  --------------------  -----------
+    3302324  2025-12-04         2025-12-11  7      4,80    70 000 000 000  0,00             -65 333 333           COMPLET    
+    3310505  2025-12-05         2025-12-08  3      6,00    25 000 000 000  0,00             -12 500 000           COMPLET    
+    3310725  2025-12-08         2025-12-09  1      6,00    25 000 000 000  0,00             -4 166 667            COMPLET    
+    3311312  2025-12-09         2025-12-10  1      6,00    25 000 000 000  0,00             -4 166 667            COMPLET    
+    3311383  2025-12-10         2025-12-11  1      6,00    15 000 000 000  0,00             -2 500 000            COMPLET    
+    3339125  2025-12-11         2025-12-18  7      4,80    90 000 000 000  0,00             -84 000 000           COMPLET    
+    3349072  2025-12-18         2025-12-26  8      5,05    90 000 000 000  -90 101 000 000  90 000 000 000        INCOMPLET  
+    3368198  2025-12-26         2026-01-02  7      5,10    90 000 000 000  0,00             -89 250 000           COMPLET    
+    La même chaîne de refinancement, avant et après. Les opérations voisines sont complètes : seul
+    le deal examiné ne l'est pas.
+
+  Recommandation :
+    Rapprocher cette opération du relevé de la banque centrale pour établir la date réelle du
+    décaissement, puis passer l'écriture manquante et corriger le solde du compte de règlement à la
+    date d'arrêté. Étendre le rapprochement à l'ensemble des deals recensés au contrôle 11.6.
+    Instaurer le contrôle quotidien du solde des comptes de liaison par deal, qui aurait détecté
+    cette anomalie le jour même.
 
 ----------------------------------------------------------------------------------------------------
 [11.3] Codification des titres : codes fictifs, pays contradictoires et libellés divergents

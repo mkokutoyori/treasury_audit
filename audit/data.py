@@ -285,6 +285,50 @@ class Contexte:
         return base.reset_index()
 
     @cached_property
+    def repos_contractuels(self) -> pd.DataFrame:
+        """Caractéristiques CONTRACTUELLES des pensions, extraites de leur libellé.
+
+        Le libellé d'une écriture de pension porte, après le titre donné en garantie, les
+        dates de début et de fin du contrat et le taux :
+            Repo-(BondGOGQ/GQ2J00000057/XAF/0D/07/03/2028/7%)12/18/2025/12/26/2025/5.05000
+        Les dates y sont au format mois/jour/année, comme partout dans le flux déversé.
+        C'est la seule source de la DURÉE CONTRACTUELLE : les dates de comptabilisation ne
+        la donnent pas, une opération pouvant être enregistrée bien après son dénouement.
+        """
+        t = self.toutes_ecritures
+        if t.empty or "DESCRIPTION" not in t.columns:
+            return pd.DataFrame()
+        repo = t[t.DESCRIPTION.fillna("").str.contains(r"Repo-\(", regex=True)].copy()
+        if repo.empty:
+            return pd.DataFrame()
+        extrait = repo.DESCRIPTION.str.extract(
+            r"\)(\d{2}/\d{2}/\d{4})/(\d{2}/\d{2}/\d{4})/([\d.]+)")
+        repo["contrat_debut"] = pd.to_datetime(extrait[0], format="%m/%d/%Y", errors="coerce")
+        repo["contrat_fin"] = pd.to_datetime(extrait[1], format="%m/%d/%Y", errors="coerce")
+        repo["taux"] = pd.to_numeric(extrait[2], errors="coerce")
+        repo["DEAL"] = repo.DESCRIPTION.str.extract(r"^\|(\d+)\|")[0]
+        repo["EVENEMENT"] = repo.DESCRIPTION.str.split("|").str[3]
+        # Le principal est porté par l'événement de dépôt sur le compte d'emprunt.
+        principal = repo[(repo.EVENEMENT == "PRINCIPAL_DEPOSIT") & (repo.AC_NO == CPT_REPO_PASSIF)]
+        interet = (repo[(repo.EVENEMENT == "INTEREST") & (repo.AC_NO == CPT_REPO_CHARGE)]
+                   .groupby("DEAL").LCY_AMOUNT.sum())
+        collateral = (repo[repo.AC_NO == CPT_COLLATERAL[0]]
+                      .groupby(["DEAL", "DRCR_IND"]).LCY_AMOUNT.sum().unstack(fill_value=0))
+        d = principal.groupby("DEAL").agg(
+            contrat_debut=("contrat_debut", "min"), contrat_fin=("contrat_fin", "max"),
+            taux=("taux", "max"), montant=("LCY_AMOUNT", "max"),
+            booking_debut=("TRN_DT", "min"), booking_fin=("TRN_DT", "max"),
+            contrepartie=("DESCRIPTION", lambda s: str(s.iloc[0]).split("|")[5]))
+        d["jours_contrat"] = (d.contrat_fin - d.contrat_debut).dt.days
+        d["retard_remboursement"] = (pd.to_datetime(d.booking_fin) - d.contrat_fin).dt.days
+        d["interet"] = interet
+        d["interet_theorique"] = d.montant * d.taux / 100 * d.jours_contrat / 360
+        d["ecart_interet"] = d.interet.fillna(0) - d.interet_theorique
+        if not collateral.empty:
+            d["collateral"] = collateral.get("C", 0)
+        return d.reset_index()
+
+    @cached_property
     def apurement_pont(self) -> pd.DataFrame:
         """Solde résiduel de chaque deal sur les comptes de liaison Calypso.
 

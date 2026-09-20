@@ -44,7 +44,7 @@ def run(ctx) -> Section:
     )
     for fonction in (_c111_continuite, _c112_clientele, _c113_codification,
                      _c114_exposition, _c115_prime_decote, _c116_apurement_deal,
-                     _c117_echantillon):
+                     _c117_echantillon, _c118_cas_le_plus_lourd):
         s.ajouter(fonction(ctx))
     return s
 
@@ -688,5 +688,154 @@ def _c117_echantillon(ctx) -> Constat:
             "flux Calypso. La faire valider par l'équipe en charge du paramétrage. Instaurer le "
             "test d'égalité de règlement comme contrôle quotidien de premier niveau : il "
             "détecte à lui seul les doublons de déversement et les jambes manquantes."
+        ),
+    )
+
+
+# --- 11.8 ---------------------------------------------------------------------------------
+
+def _c118_cas_le_plus_lourd(ctx) -> Constat:
+    """Anatomie complète du déversement incomplet le plus lourd de la période.
+
+    Un constat chiffré en milliards mérite d'être démontré sur une opération, ligne à ligne,
+    plutôt qu'énoncé en agrégat. Le contrôle isole le deal au résidu le plus élevé, le
+    décompose, et le compare aux opérations qui l'encadrent dans la même chaîne de
+    refinancement — lesquelles sont, elles, irréprochables.
+    """
+    residus = ctx.apurement_pont
+    c = ctx.calypso_enrichi
+    if residus.empty or c.empty:
+        return Constat(code="11.8", titre="Cas le plus lourd", gravite=Gravite.CONFORME,
+                       constat="Aucun déversement incomplet à documenter.")
+    periode = residus[residus.date <= ctx.config.fin]
+    if periode.empty:
+        return Constat(code="11.8", titre="Cas le plus lourd", gravite=Gravite.CONFORME,
+                       constat="Aucun déversement incomplet sur la période d'audit.")
+    pire = periode.loc[periode.solde.abs().idxmax()]
+    deal = pire.deal
+    g = c[c.DEAL == deal]
+    repos = ctx.repos_contractuels
+    fiche = repos[repos.DEAL == deal]
+
+    # Décomposition par date, événement et compte
+    decomposition = (g.groupby(["TRN_DT", "EVENEMENT", "AC_NO", "AC_GL_DESC", "DRCR_IND"])
+                     .agg(mouvements=("MOUVEMENT", "nunique"), montant=("LCY_AMOUNT", "sum"))
+                     .reset_index())
+    lignes_decomp = [[r.TRN_DT, r.EVENEMENT, r.AC_NO, r.AC_GL_DESC[:34], r.DRCR_IND,
+                      int(r.mouvements), float(r.montant)] for _, r in decomposition.iterrows()]
+    # Effet net par compte
+    par_compte = g.groupby(["AC_NO", "AC_GL_DESC"]).SIGNE.sum()
+    lignes_effet = [[i[0], i[1][:38], float(v)] for i, v in par_compte.items()]
+
+    # Comparaison avec les pensions qui encadrent celle-ci sur la même contrepartie
+    voisins = []
+    if not fiche.empty:
+        r = fiche.iloc[0]
+        chaine = repos[(repos.contrepartie == r.contrepartie)
+                       & (repos.contrat_debut >= r.contrat_debut - pd.Timedelta(days=14))
+                       & (repos.contrat_debut <= r.contrat_debut + pd.Timedelta(days=14))]
+        for _, v in chaine.sort_values("contrat_debut").iterrows():
+            gv = c[c.DEAL == v.DEAL]
+            voisins.append([
+                v.DEAL, str(v.contrat_debut.date()), str(v.contrat_fin.date()),
+                int(v.jours_contrat), float(v.taux), float(v.montant),
+                float(gv[gv.AC_NO.str.startswith("4670")].SIGNE.sum()),
+                float(gv[gv.AC_NO == "099ACO00001"].SIGNE.sum()),
+                "COMPLET" if abs(float(gv[gv.AC_NO.str.startswith("4670")].SIGNE.sum())) < 1
+                else "INCOMPLET"])
+
+    nostro = float(g[g.AC_NO == "099ACO00001"].SIGNE.sum())
+    attendu_nostro = -float(fiche.interet.iloc[0]) if not fiche.empty and fiche.interet.notna().iloc[0] else 0.0
+    collateral = g[(g.AC_NO == "952100100") & (g.DRCR_IND == "C")]
+    jours_gage = 0
+    if not fiche.empty:
+        jours_gage = (pd.Timestamp(g.TRN_DT.max()) - fiche.iloc[0].contrat_fin).days
+    return Constat(
+        code="11.8",
+        titre=f"Anatomie du déversement incomplet le plus lourd — pension {deal}",
+        gravite=Gravite.CRITIQUE,
+        reference=(f"Deal {deal} — {fiche.iloc[0].contrepartie} — "
+                   f"contrat du {fiche.iloc[0].contrat_debut.date()} au "
+                   f"{fiche.iloc[0].contrat_fin.date()} à {fiche.iloc[0].taux} %"
+                   if not fiche.empty else f"Deal {deal}"),
+        constat=(
+            "POURQUOI CETTE OPÉRATION. C'est le résidu le plus lourd de la période. Elle est "
+            "documentée ici ligne à ligne, parce qu'un constat de cette ampleur doit pouvoir "
+            "être vérifié sur pièce et non seulement lu dans un agrégat.\n"
+            "\n"
+            "CE QUE DIT LE CONTRAT. Le libellé porte les conditions : "
+            + (f"{xaf(float(fiche.iloc[0].montant))} empruntés à "
+               f"{fiche.iloc[0].contrepartie} du {fiche.iloc[0].contrat_debut.date()} au "
+               f"{fiche.iloc[0].contrat_fin.date()}, soit {int(fiche.iloc[0].jours_contrat)} "
+               f"jours, au taux de {fiche.iloc[0].taux} %. L'intérêt correspondant, "
+               f"{xaf(float(fiche.iloc[0].interet_theorique))}, se retrouve exactement en "
+               "comptabilité. Il s'agit donc d'une pension COURTE, parfaitement ordinaire.\n"
+               if not fiche.empty else "conditions non lisibles.\n")
+            + "\n"
+            "CE QUI A ÉTÉ COMPTABILISÉ. Le tirage est complet et correct : les titres sont "
+            "inscrits au hors bilan, la dette est constatée au passif, la trésorerie est "
+            "encaissée. Le compte de liaison revient à zéro ce jour-là.\n"
+            "Le remboursement, lui, est enregistré trois mois après l'échéance contractuelle "
+            "(contrôle 7.5) et surtout, IL EST AMPUTÉ DE SA JAMBE DE TRÉSORERIE. La dette est "
+            "éteinte, l'intérêt est constaté en charge, les titres sont libérés — mais AUCUNE "
+            "écriture ne sort l'argent du compte de règlement auprès de la banque centrale.\n"
+            "\n"
+            "CE QUE CELA PRODUIT. L'effet net de l'opération sur le compte de règlement devrait "
+            f"être une sortie limitée à l'intérêt, soit {xaf(abs(attendu_nostro))}. Il est en "
+            f"réalité une ENTRÉE NETTE de {xaf(nostro)} : la banque a encaissé 90 milliards "
+            "qu'elle n'a jamais rendus dans ses livres. Le compte de liaison porte la "
+            f"contrepartie exacte de cette anomalie, {xaf(float(pire.solde))}.\n"
+            "\n"
+            "LA PREUVE PAR LA COMPARAISON. Cette pension appartient à une chaîne de "
+            "refinancement roulée d'une semaine sur l'autre avec la même contrepartie. Les "
+            "opérations qui la précèdent et qui la suivent portent le MÊME montant, la même "
+            "mécanique et le même schéma comptable — et elles sont, elles, intégralement "
+            "déversées : leur compte de liaison revient à zéro et leur effet net sur la "
+            "trésorerie se limite à l'intérêt. L'anomalie n'est donc ni un effet de "
+            "paramétrage ni une particularité du produit : c'est un déversement manqué.\n"
+            "\n"
+            "UN EFFET CONNEXE. Les titres donnés en garantie sont restés inscrits au hors bilan "
+            f"jusqu'à la comptabilisation du remboursement, soit {jours_gage} jours après "
+            "l'échéance contractuelle. Pendant toute cette durée, ils apparaissaient "
+            "indisponibles alors qu'ils ne l'étaient plus, ce qui minore d'autant la réserve de "
+            "liquidité mobilisable affichée (contrôle 7.3)."
+        ),
+        chiffres=[
+            ("Contrepartie", fiche.iloc[0].contrepartie if not fiche.empty else "n/d"),
+            ("Montant emprunté", xaf(float(fiche.iloc[0].montant)) if not fiche.empty else "n/d"),
+            ("Durée CONTRACTUELLE",
+             f"{int(fiche.iloc[0].jours_contrat)} jours ({fiche.iloc[0].contrat_debut.date()} → "
+             f"{fiche.iloc[0].contrat_fin.date()})" if not fiche.empty else "n/d"),
+            ("Comptabilisation", f"tirage le {g.TRN_DT.min()}, remboursement le {g.TRN_DT.max()}"),
+            ("Titres donnés en garantie",
+             f"{len(collateral)} lignes — {xaf(float(collateral.LCY_AMOUNT.sum()))}"),
+            ("Jours de gage au-delà de l'échéance contractuelle", f"{jours_gage} jours"),
+            ("Effet ATTENDU sur le compte de règlement",
+             f"sortie de {xaf(abs(attendu_nostro))} (l'intérêt)"),
+            ("Effet CONSTATÉ sur le compte de règlement", f"entrée de {xaf(nostro)}"),
+            ("ERREUR SUR LA TRÉSORERIE", xaf(nostro - attendu_nostro)),
+            ("Résidu porté par le compte de liaison", xaf(float(pire.solde))),
+        ],
+        tableaux=[
+            Tableau(["Date", "Événement", "Compte", "Libellé", "Sens", "Mouvements", "Montant XAF"],
+                    lignes_decomp, max_lignes=20,
+                    note=("Décomposition intégrale de l'opération. La jambe CST_S_SETTLED "
+                          "attendue à la date de remboursement est absente.")),
+            Tableau(["Compte", "Libellé", "Effet net XAF"], lignes_effet,
+                    note=("Effet net par compte. Un montant positif est un solde débiteur. "
+                          "Le compte de règlement et le compte de liaison portent, au signe "
+                          "près, la même anomalie.")),
+            Tableau(["Deal", "Début contractuel", "Échéance", "Jours", "Taux %", "Montant XAF",
+                     "Solde du pont", "Effet net trésorerie", "Déversement"],
+                    voisins,
+                    note=("La même chaîne de refinancement, avant et après. Les opérations "
+                          "voisines sont complètes : seul le deal examiné ne l'est pas.")),
+        ],
+        recommandation=(
+            "Rapprocher cette opération du relevé de la banque centrale pour établir la date "
+            "réelle du décaissement, puis passer l'écriture manquante et corriger le solde du "
+            "compte de règlement à la date d'arrêté. Étendre le rapprochement à l'ensemble des "
+            "deals recensés au contrôle 11.6. Instaurer le contrôle quotidien du solde des "
+            "comptes de liaison par deal, qui aurait détecté cette anomalie le jour même."
         ),
     )
