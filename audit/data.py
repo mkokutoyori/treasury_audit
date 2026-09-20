@@ -53,6 +53,39 @@ MNEMONIQUES_EMETTEUR = {
 PAYS_EXCLUS = ["TD", "CF"]
 CPT_BEAC = "099ACO00001"
 
+# --- Deuxième vague d'extractions : comptes absents de la liste initiale des 41 -----------
+# Comptes d'attente de la direction financière, où transitent les régularisations.
+CPT_ATTENTE = ["466000107", "467000103"]
+# Charge d'exploitation sur titres. Le PCEC la réserve aux commissions et frais de garde.
+CPT_COMM_TITRES = "622000100"
+# Titres remis en garantie des refinancements BEAC (classe 2 du PCEC) et comptes de
+# conversion utilisés lors des reprises manuelles de portefeuille.
+CPT_NANTISSEMENT = ["265110100", "265210100"]
+CPT_CONVERSION = ["454000101", "454000106"]
+# Comptes de résultat de change, extraits pour la phase ultérieure consacrée au change.
+CPT_CHANGE_RESULTAT = ["623300100", "723300100"]
+
+# Comptes que le PCEC destine à l'enregistrement d'une PENSION LIVRÉE : la dette au passif,
+# les dettes rattachées, la charge d'intérêt et la commission. Aucun ne doit rester vide si
+# la banque cède des titres avec engagement de rachat.
+CPT_PENSION_PCEC = [
+    "521300100", "521600100", "531000100", "532000100", "538000100", "539000100",
+    "522100100", "522200100", "522300100", "522400100",
+    "602000100", "702000100", "606200100", "706200100",
+]
+# Comptes de provision pour dépréciation du portefeuille de placement.
+CPT_PROVISIONS_TITRES = ["591410100", "591420100", "591500100"]
+# Hors bilan : titres à recevoir ou à livrer, et garanties du marché monétaire.
+CPT_HORS_BILAN_TITRES = ["951100100", "953000100", "954000100", "955000100"]
+
+# Liste exhaustive des comptes demandés lors de la deuxième extraction. Ceux qui n'y
+# figurent pas en retour n'ont porté AUCUN mouvement : c'est en soi un résultat.
+CPT_VAGUE2_DEMANDES = (
+    CPT_PENSION_PCEC + CPT_PROVISIONS_TITRES + CPT_HORS_BILAN_TITRES
+    + CPT_NANTISSEMENT + CPT_CONVERSION + CPT_ATTENTE + CPT_CHANGE_RESULTAT
+    + ["511200100", "511420100", "511700100", "512420100", "467000187"]
+)
+
 # Nature attendue du solde de chaque compte du périmètre, au sens du PCEC.
 # « debiteur » = compte d'actif, « crediteur » = compte de passif ou de produit,
 # « neutre » = compte de passage ou de hors bilan, dont le sens n'est pas contraint.
@@ -395,6 +428,56 @@ class Contexte:
     def grand_livre(self) -> pd.DataFrame:
         """Les 41 comptes de trésorerie, tous modules — extraction de référence."""
         return self._lire("final_key_accounts_*.csv")
+
+    @cached_property
+    def comptes_complementaires(self) -> pd.DataFrame:
+        """Deuxième vague d'extractions — comptes absents de la liste initiale des 41.
+
+        Trois fichiers, encodés en CP1252, dates au format JJ-MMM-AA. Deux d'entre eux se
+        recouvrent partiellement : le compte d'attente 466000107 y figure deux fois, et le
+        nostro BEAC ainsi que les deux comptes de pont Calypso y sont déjà couverts par les
+        extractions précédentes. On dédoublonne, puis on écarte ces trois comptes pour que
+        les contrôles antérieurs restent établis sur une seule et même source.
+        """
+        morceaux = [
+            self._lire("099ACO00001.csv", encodage="cp1252", date_fmt="%d-%b-%y"),
+            self._lire("32_accounts.csv", encodage="cp1252", date_fmt="%d-%b-%y"),
+            self._lire("additional key account.csv", encodage="cp1252", date_fmt="%d-%b-%y"),
+        ]
+        morceaux = [df for df in morceaux if not df.empty]
+        if not morceaux:
+            return pd.DataFrame()
+        df = pd.concat(morceaux, ignore_index=True)
+        df["STMT_DT_d"] = pd.to_datetime(df.STMT_DT, format="%d-%b-%y", errors="coerce")
+        df["STMT_DT"] = df.STMT_DT_d.dt.strftime("%Y-%m-%d")
+        # Le recouvrement entre les deux fichiers porte sur des comptes ENTIERS, non sur des
+        # lignes isolées. On ne peut donc pas dédoublonner ligne à ligne : une écriture peut
+        # légitimement porter deux jambes identiques sur le même compte (quatre titres nantis
+        # le même jour, dont deux de même nominal). Pour chaque compte, on retient la source
+        # qui en porte le plus de lignes, et l'on écarte les autres.
+        garde = []
+        for compte, bloc in df.groupby("AC_NO"):
+            meilleur = bloc["__fichier"].value_counts().idxmax()
+            garde.append(bloc[bloc["__fichier"] == meilleur])
+        df = pd.concat(garde, ignore_index=True)
+        return df[~df.AC_NO.isin([CPT_BEAC] + CPT_LIAISON)].reset_index(drop=True)
+
+    def historique_compte(self, code: str, dans_periode: bool = True) -> pd.DataFrame:
+        """Mouvements d'un compte de la deuxième vague, triés dans le temps."""
+        df = self.comptes_complementaires
+        if df.empty:
+            return df
+        df = df[df.AC_NO == code]
+        if dans_periode:
+            df = df[(df.TRN_DT >= self.config.debut) & (df.TRN_DT <= self.config.fin)]
+        return df.sort_values("TRN_DT")
+
+    def solde_a(self, code: str, date: str) -> float:
+        """Solde d'un compte de la deuxième vague à une date, signe débiteur positif."""
+        df = self.comptes_complementaires
+        if df.empty:
+            return 0.0
+        return float(df[(df.AC_NO == code) & (df.TRN_DT <= date)].SIGNE.sum())
 
     # --- jeux de données dérivés ----------------------------------------------------------
     @cached_property

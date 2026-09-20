@@ -2030,3 +2030,130 @@ retenus. Le rapport énonce désormais la limite au lieu de la contourner.
 **Règle retenue** : *avant de chiffrer un écart, vérifier que les deux termes portent sur la
 même population.* Et : *un appariement qui n'est pas déterministe ne produit pas un constat —
 il produit du bruit qu'il faut jeter.*
+
+---
+
+# Session 22 — Deuxième vague d'extractions : les comptes hors des 41
+
+## 22.1 Ce qui a été reçu
+
+Trois fichiers, en CP1252, dates `JJ-MMM-AA` :
+
+| Fichier | Lignes | Période |
+|---|---|---|
+| `099ACO00001.csv` | 13 165 | 27/09/2023 → 29/06/2026 |
+| `32_accounts.csv` | 17 895 | 13/06/2022 → 18/09/2026 |
+| `additional key account.csv` | 6 244 | 05/08/2022 → 18/09/2026 |
+
+**Premier réflexe : mesurer ce qui est réellement nouveau.** Dédoublonnage sur
+`TRN_REF_NO|AC_NO|DRCR_IND|LCY_AMOUNT|AMOUNT_TAG|STMT_DT` contre les 511 326 clés déjà connues :
+
+- `099ACO00001.csv` — **0 ligne nouvelle**. L'extraction du nostro BEAC était déjà complète
+  (18 914 lignes uniques). Le contrôle 11.8 n'est donc pas à reprendre.
+- `32_accounts.csv` — 17 895 nouvelles, sur **8 comptes seulement**.
+- `additional key account.csv` — 2 770 nouvelles ; le reste recouvrait 466000107, 467000186 et
+  467000188.
+
+## 22.2 Le piège du dédoublonnage ligne à ligne
+
+Premier chargement : 265210100 tombait de 5 à 4 lignes. Le recouvrement entre les deux fichiers
+porte sur des **comptes entiers**, pas sur des lignes isolées — et une écriture peut légitimement
+porter deux jambes identiques sur le même compte (quatre titres nantis le même jour, dont deux de
+même nominal).
+
+**Règle retenue** : *quand deux sources se recouvrent par compte, on retient pour chaque compte
+la source qui en porte le plus de lignes. On ne dédoublonne jamais ligne à ligne un fichier
+comptable : la multiplicité y est porteuse de sens.*
+
+## 22.3 Ce que les comptes vides disent
+
+24 des 34 comptes demandés sont revenus **sans un seul mouvement**. C'est un résultat, pas une
+absence de résultat :
+
+- toute la série PCEC de la **pension livrée** (5213, 5216, 5310, 5320, 5380, 5390, 5221-5224,
+  7020, 6062, 7062) ;
+- les **provisions** du portefeuille de placement (5914x, 5915) ;
+- le **hors-bilan du marché gris** (953, 954, 955) ;
+- `467000187 ATTENTE OPERATION TRESO CALYPSO` — ouvert, jamais servi.
+
+## 22.4 Correction que je me suis faite à moi-même
+
+J'ai d'abord écrit, en 12.2, que « la banque n'a enregistré ni une dette de pension ni un franc
+de charge d'intérêt ». **C'était faux.** Vérification sur le grand livre des 41 :
+
+| Compte | Lignes | Mouvements bruts |
+|---|---|---|
+| 552400100 EMPRUNT AU JR LE JR | 164 | 8 253 000 000 000 |
+| 601100100 INT. OPS MARCHÉ MONÉTAIRE | 195 | 8 950 081 952 |
+| 952100100 / 995000100 hors-bilan garantie | 1 849 | 10 039 318 740 000 |
+
+La banque **enregistre** ses refinancements BEAC et **suit** son collatéral — mais sur les
+comptes de l'**emprunt interbancaire au jour le jour**, pas sur ceux de la pension. Le constat
+est un **classement**, non une omission ; gravité ramenée de CRITIQUE à ELEVEE. Seules les
+cessions-rétrocessions du 8.2 restent sans aucun enregistrement.
+
+Même correction en 12.4 : j'avais écrit que le nantissement n'était pas suivi. Il l'est, en
+continu, au hors-bilan. Les 6,2 Md du 31/12/2025 sur 265210100 font **double emploi**.
+
+**Règle retenue** : *avant d'écrire qu'un traitement est absent, chercher où il est fait
+autrement. Un compte vide ne prouve l'absence d'une opération que si aucun autre compte ne la
+porte.*
+
+## 22.5 Ce que la deuxième vague a permis de clore
+
+**Le contrôle 5.3 est fermé.** La troisième jambe manquante de l'écriture de correction
+`099000b252120001` est un **DÉBIT de 1 994 516 XAF sur 622000100 COMM ET FRAIS SUR TITRES**,
+même référence, même jour, même opérateur, libellé *DIFF/ACCRUALS LIQUIDATION RELATED TO
+CALYPSO GO LIVE*. 1 205 231 891 + 1 994 516 = 1 207 226 407 : l'écriture s'équilibre.
+
+Le constat ne s'affaiblit pas — il se déplace : le reliquat n'a pas été analysé, il a été
+**éteint en charges**.
+
+## 22.6 Les six constats nouveaux
+
+| Code | Gravité | Ce qui est établi |
+|---|---|---|
+| 12.1 | ELEVEE | `622000100` sert de fourre-tout : 261 écritures, dont 146 étrangères à son objet ; 1 470 811 156 XAF de **crédits sur un compte de charge** (compensation interdite) ; 626 M de décotes mal imputées ; 29 écritures de ≤ 100 XAF |
+| 12.2 | ELEVEE | Les pensions BEAC sont comptabilisées en emprunts au jour le jour ; 13 des 14 comptes PCEC de pension sont vides |
+| 12.3 | ELEVEE | `466000107` : 32,1 Md de mouvements bruts, dont 27,2 Md d'annulation-réenregistrement d'intérêts titres en mars-avril 2024 ; solde de 1 075 474 620 XAF au 30/06/2026, dont une seule écriture *« Rclss COMPTE INTER BRANCHES »* du 31/12/2025 |
+| 12.4 | MOYENNE | 6,2 Md nantis le jour de l'arrêté sur un compte de classe 2 autrement inutilisé, repris 167 jours plus tard dans l'écriture d'apurement SCB |
+| 12.5 | **CRITIQUE** | Portefeuille SCB de 27,2 Md : reçu en **titres**, porté au **nostro BEAC** pendant 189 jours, **traversant l'arrêté du 31/12/2025** |
+| 12.6 | MOYENNE | 26 comptes dormants ; **aucune dépréciation** sur le portefeuille en trois exercices ; comptes restant à extraire |
+
+## 22.7 Le 12.5, trouvé en tirant un fil
+
+Le compte `454000101 COMPTE DE CONVERSION BONS DE TRESOR` ne porte que **deux lignes**. C'est ce
+qui a attiré l'attention : un compte de conversion servi cinq mois et demi après la bascule.
+
+En remontant les références :
+
+| Date | Écriture | Débit | Crédit |
+|---|---|---|---|
+| 05/12/2025 | `0999001100074302` — user `MIGRATION`, sans libellé | 454000101 : 27,2 Md | — |
+| 09/12/2025 | `0990004253430001` — *Securities received from SCB to be booked manually* | **099ACO00001 : 27,2 Md** | 454000101 : 27,2 Md |
+| 16/06/2026 | `0990023261670001` — entrée en portefeuille, 7 titres | 511210100 : 33,4 Md | 099ACO00001 : 27,2 Md |
+
+La jambe du 09/12/2025 **débite le nostro BEAC** alors que la banque a reçu des titres, non de la
+trésorerie. Au 31/12/2025, le nostro publié comprend 27,2 Md qui n'existent pas, et le
+portefeuille ne comprend pas les titres correspondants. **Le bilan est faux des deux côtés.**
+
+C'est la troisième fois que le nostro BEAC porte une surévaluation non détectée par le
+rapprochement bancaire — après 5.3 (1,2 Md, 45 jours) et 11.8 (90,1 Md).
+
+## 22.8 Ce qui reste à extraire
+
+Le plan de comptes révèle trois comptes que les libellés désignent mais qu'aucune extraction ne
+couvre :
+
+- **`511800101 CREANCES RATTACHEES - MANUELLES`** — cité en toutes lettres dans 466000107
+  (*« Reversal of 511800101 in 466000107 »*). Un **second compte de courus, réservé aux écritures
+  manuelles**, vit en parallèle de 511800100. Les contrôles 5.3 et 11.7 reposent donc sur une vue
+  partielle.
+- `511801100 SCB CREANCES RATTACHEES - PLACEMENT` — courus du portefeuille repris de SCB.
+- `601200100` / `601200101 INT. SUR OPS MARCHE MONETAIRE - BEAC` — la charge d'intérêt face à la
+  banque centrale.
+
+## 22.9 État
+
+**61 anomalies — 10 critiques, 23 élevées, 25 moyennes, 3 faibles — sur 12 sections et
+75 contrôles.**

@@ -305,6 +305,19 @@ def _c53_sur_apurement(ctx) -> Constat:
     jambe_corr_courus = float(correction.LCY_AMOUNT.sum())
     jambe_corr_tresorerie = float(corr_autres.LCY_AMOUNT.sum())
     troisieme_jambe = jambe_corr_tresorerie - jambe_corr_courus
+    # La troisième jambe a été retrouvée dans la deuxième vague d'extractions : elle repose
+    # sur un compte qui ne figurait pas dans la liste initiale des 41.
+    vague2 = ctx.comptes_complementaires
+    j3 = vague2[vague2.TRN_REF_NO == corr_ref] if not vague2.empty else pd.DataFrame()
+    if not j3.empty:
+        j3_cpt = str(j3.AC_NO.iloc[0])
+        j3_lib = ctx.libelle_compte(j3_cpt) or str(j3.AC_GL_DESC.iloc[0])
+        j3_sens = "DÉBIT" if str(j3.DRCR_IND.iloc[0]) == "D" else "CRÉDIT"
+        j3_montant = float(j3.LCY_AMOUNT.sum())
+        j3_libelle = str(j3.DESCRIPTION.iloc[0] or "")
+    else:
+        j3_cpt = j3_lib = j3_sens = j3_libelle = ""
+        j3_montant = 0.0
 
     # --- 5. Nommer les comptes en jeu : un constat comptable doit les désigner sans ambiguïté
     cpt_courus = CPT_COURUS_MM
@@ -340,10 +353,15 @@ def _c53_sur_apurement(ctx) -> Constat:
             # L'écriture doit s'équilibrer : si le crédit excède le débit, la jambe
             # manquante est un DÉBIT, et réciproquement.
             sens_manquant = "DÉBIT" if troisieme_jambe > 0 else "CRÉDIT"
-            schema.append(["Correction du " + str(date_correction), "non identifié",
-                           "compte absent des extractions", sens_manquant + " MANQUANT",
-                           abs(troisieme_jambe),
-                           "ce qu'il faut pour que l'écriture s'équilibre"])
+            if j3_cpt:
+                schema.append(["Correction du " + str(date_correction), j3_cpt, j3_lib,
+                               j3_sens, j3_montant,
+                               "la jambe qui équilibre — une charge d'exploitation"])
+            else:
+                schema.append(["Correction du " + str(date_correction), "non identifié",
+                               "compte absent des extractions", sens_manquant + " MANQUANT",
+                               abs(troisieme_jambe),
+                               "ce qu'il faut pour que l'écriture s'équilibre"])
 
     return Constat(
         code="5.3",
@@ -357,8 +375,10 @@ def _c53_sur_apurement(ctx) -> Constat:
             "portefeuille et non encore encaissés ;\n"
             f"- {nom_regl} — le compte de règlement de la banque auprès de la banque centrale, "
             "son NOSTRO, qui porte sa trésorerie.\n"
-            "Un troisième compte intervient à la correction, mais il ne figure dans aucune des "
-            "extractions fournies : il reste à identifier.\n"
+            + (f"- {j3_cpt} {j3_lib} — compte de CHARGE, qui a absorbé le solde de la "
+               "correction ; il ne figurait pas dans la première extraction.\n" if j3_cpt else
+               "Un troisième compte intervient à la correction, mais il ne figure dans aucune "
+               "des extractions fournies : il reste à identifier.\n") +
             "\n"
             f"CE QUI DEVAIT SE PASSER. Au jour de la bascule, le compte {cpt_courus} portait le "
             "solde des intérêts courus non encore encaissés. Pour le solder, il fallait le "
@@ -397,11 +417,34 @@ def _c53_sur_apurement(ctx) -> Constat:
             "comme se rapportant à la mise en service du nouveau système : un DÉBIT de "
             f"{cpt_courus} pour {xaf(jambe_corr_courus)}, qui remet le compte de courus à zéro, "
             f"contre un CRÉDIT de {cpt_regl} pour {xaf(jambe_corr_tresorerie)}. Ces deux jambes "
-            "ne s'équilibrent pas : le crédit excède le débit de "
-            f"{xaf(abs(troisieme_jambe))}. Il manque donc un DÉBIT de ce montant, sur une "
-            "TROISIÈME JAMBE portée par un compte qui ne figure dans aucune des extractions "
-            "fournies. Ce compte reste à identifier : c'est lui qui a supporté le solde de la "
-            "correction."
+            "ne s'équilibrent pas entre elles : le crédit excède le débit de "
+            f"{xaf(abs(troisieme_jambe))}.\n"
+            + (
+                "\n"
+                "OÙ EST PASSÉE LA DIFFÉRENCE. La deuxième vague d'extractions a permis de "
+                f"retrouver la jambe manquante : un {j3_sens} de {xaf(j3_montant)} sur "
+                f"{j3_cpt} {j3_lib}, sous la même référence, le même jour et par le même "
+                f"opérateur, libellé « {j3_libelle} ». L'écriture est donc complète et "
+                "équilibrée.\n"
+                "\n"
+                "MAIS CELA NE RÈGLE RIEN AU FOND. Le compte qui a absorbé la différence est un "
+                "compte de CHARGE D'EXPLOITATION, que le PCEC réserve aux commissions et aux "
+                "frais de garde sur titres. Y loger un résidu d'apurement revient à faire "
+                "disparaître en charges un écart que personne n'a expliqué : le reliquat n'a "
+                "pas été analysé, il a été absorbé. Le traitement correct consistait à "
+                "rapprocher l'écart contrat par contrat, puis à l'imputer au compte d'intérêts "
+                "correspondant — et, s'il subsistait, à le laisser en suspens jusqu'à "
+                "justification, et non à l'éteindre.\n"
+                "\n"
+                "SURTOUT, LA CORRECTION NE REMONTE PAS LE TEMPS. Elle est intervenue le "
+                f"{date_correction}, soit {jours} jours après la bascule. Entre les deux, le "
+                "compte d'actif est resté créditeur et le nostro surévalué — y compris à la "
+                "date d'arrêté du 30 juin 2025."
+                if j3_cpt else
+                " Il manque donc un DÉBIT de ce montant, sur une TROISIÈME JAMBE portée par un "
+                "compte qui ne figure dans aucune des extractions fournies. Ce compte reste à "
+                "identifier : c'est lui qui a supporté le solde de la correction."
+            )
         ),
         chiffres=[
             (f"1. Solde de {cpt_courus} la veille de la bascule", xaf(solde_avant)),
@@ -419,7 +462,9 @@ def _c53_sur_apurement(ctx) -> Constat:
             ("12. Dates d'arrêté traversées", ", ".join(arretes_traverses) if arretes_traverses else "aucune"),
             (f"13. Correction — jambe DÉBIT sur {cpt_courus}", xaf(jambe_corr_courus)),
             (f"14. Correction — jambe CRÉDIT sur {cpt_regl}", xaf(jambe_corr_tresorerie)),
-            ("15. TROISIÈME JAMBE, sur un compte NON IDENTIFIÉ (14 − 13)", xaf(troisieme_jambe)),
+            (f"15. TROISIÈME JAMBE — {j3_sens} sur {j3_cpt} {j3_lib}" if j3_cpt
+             else "15. TROISIÈME JAMBE, sur un compte NON IDENTIFIÉ (14 − 13)",
+             xaf(j3_montant if j3_cpt else troisieme_jambe)),
         ],
         tableaux=[
             Tableau(["Étape", "Compte", "Libellé", "Sens", "Montant XAF", "Lecture"],
@@ -460,9 +505,12 @@ def _c53_sur_apurement(ctx) -> Constat:
             "pourquoi un écart de cette ampleur n'a pas été détecté plus tôt.\n"
             "3. Faire expliquer le mode opératoire retenu pour calculer les courus à reprendre, "
             "fondé sur le cumul théorique par contrat et non sur le solde comptable.\n"
-            f"4. Identifier le compte qui porte la troisième jambe de l'écriture de correction "
-            f"{corr_ref}, soit un débit de {xaf(abs(troisieme_jambe))} sur un compte absent des "
-            "extractions.\n"
+            + (f"4. Faire justifier l'imputation du reliquat de {xaf(j3_montant)} au compte de "
+               f"charge {j3_cpt} {j3_lib} : obtenir l'analyse contrat par contrat qui aurait dû "
+               "précéder son extinction, et, à défaut, le reclasser.\n" if j3_cpt else
+               f"4. Identifier le compte qui porte la troisième jambe de l'écriture de correction "
+               f"{corr_ref}, soit un débit de {xaf(abs(troisieme_jambe))} sur un compte absent "
+               "des extractions.\n") +
             "5. Vérifier qu'aucune autre écriture de migration n'a été construite sur le même "
             "mode opératoire."
         ),

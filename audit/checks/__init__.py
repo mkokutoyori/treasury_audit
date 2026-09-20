@@ -11,6 +11,7 @@ from . import (
     s09_resultat,
     s10_coherence,
     s11_portefeuille,
+    s12_comptes_annexes,
 )
 
 MODULES = [
@@ -25,4 +26,5 @@ MODULES = [
     s09_resultat,
     s10_coherence,
     s11_portefeuille,
+    s12_comptes_annexes,
 ]

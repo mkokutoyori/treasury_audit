@@ -82,6 +82,8 @@ def _fmt(valeur: object) -> str:
     if isinstance(valeur, int):
         return f"{valeur:,}".replace(",", " ")
     if isinstance(valeur, float):
+        if valeur == 0:
+            return "0"
         if abs(valeur - round(valeur)) < 1e-9 and abs(valeur) >= 1000:
             return f"{int(round(valeur)):,}".replace(",", " ")
         entier, _, decimales = f"{valeur:,.2f}".partition(".")

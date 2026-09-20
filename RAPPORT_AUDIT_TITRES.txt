@@ -4,7 +4,7 @@
 
   Périmètre        : Département de la trésorerie — gestion des investissements sur les marchés financiers
   Période d'audit  : 2023-09-27 au 2026-06-30
-  Rapport généré le : 20/09/2026 à 16:29
+  Rapport généré le : 20/09/2026 à 17:34
   Référentiel      : Plan Comptable des Établissements de Crédit (PCEC) — CEMAC / COBAC
 
   Ce rapport est produit automatiquement. Chaque constat indique le test exécuté, sa
@@ -24,6 +24,12 @@
     - Une extraction filtrée par module peut faire apparaître une anomalie inexistante. Tous les
       contrôles portant sur le solde d'un compte sont établis sur une extraction tous modules
       confondus.
+    - Une deuxième vague d'extractions a couvert les comptes qui bordent le circuit des titres sans
+      figurer dans la liste initiale des 41 comptes clés : elle fonde la section 12 et permet de
+      clore le contrôle 5.3. Trois comptes que les libellés désignent restent toutefois à extraire —
+      511800101 « créances rattachées — manuelles », 511801100 et 601200100 : tant qu'ils ne le sont
+      pas, l'analyse des courus et de la charge de refinancement repose sur une vue partielle
+      (contrôle 12.6).
 
 ----------------------------------------------------------------------------------------------------
 SOMMAIRE
@@ -40,16 +46,17 @@ SOMMAIRE
   Section 9 — Résultat, classement comptable et rendement  (4 anomalie(s) / 4 contrôle(s))
   Section 10 — Cohérence entre le système amont et le grand livre  (5 anomalie(s) / 5 contrôle(s))
   Section 11 — Le portefeuille de titres comme un tout  (7 anomalie(s) / 8 contrôle(s))
+  Section 12 — Comptes de régularisation, comptes d'attente et comptes dormants  (6 anomalie(s) / 6 contrôle(s))
 
 ----------------------------------------------------------------------------------------------------
 RÉCAPITULATIF DES ANOMALIES PAR GRAVITÉ
 ----------------------------------------------------------------------------------------------------
 
-  CRITIQUE   : 9
-  ELEVEE     : 20
-  MOYENNE    : 23
+  CRITIQUE   : 10
+  ELEVEE     : 23
+  MOYENNE    : 25
   FAIBLE     : 3
-  TOTAL      : 55
+  TOTAL      : 61
 
   CRITIQUE  [4.2] Écritures manuelles dépourvues de tout validateur
   CRITIQUE  [5.3] Sur-apurement du compte de courus à la migration, laissant un compte d'actif en solde créditeur
@@ -60,6 +67,7 @@ RÉCAPITULATIF DES ANOMALIES PAR GRAVITÉ
   CRITIQUE  [9.4] Comptes présentant un solde contraire à leur nature comptable à une date d'arrêté
   CRITIQUE  [11.6] Le solde des comptes de liaison mesure exactement les déversements incomplets
   CRITIQUE  [11.8] Anatomie du déversement incomplet le plus lourd — pension 3349072
+  CRITIQUE  [12.5] Un portefeuille de 27 milliards reçu en titres mais porté six mois au nostro BEAC, traversant l'arrêté annuel
   ELEVEE    [2.6] Taux contractuels aberrants au regard des opérations comparables
   ELEVEE    [3.7] Accumulation des intérêts courus au-delà d'une année de coupons
   ELEVEE    [3.8] Transfert massif d'intérêts courus vers un compte d'attente
@@ -80,6 +88,9 @@ RÉCAPITULATIF DES ANOMALIES PAR GRAVITÉ
   ELEVEE    [11.3] Codification des titres : codes fictifs, pays contradictoires et libellés divergents
   ELEVEE    [11.4] Titres de souverains exclus par la politique de risque dans le nouveau dispositif
   ELEVEE    [11.5] Le portefeuille est comptabilisé au pair : la prime et la décote sont portées à part
+  ELEVEE    [12.1] Le compte de charge 622000100 sert de compte de régularisation universel du circuit titres
+  ELEVEE    [12.2] Les pensions livrées sont comptabilisées en emprunts au jour le jour : aucun des comptes que le PCEC leur réserve n'est servi
+  ELEVEE    [12.3] Un compte d'attente porte 32 milliards de mouvements titres et reste chargé d'un milliard à la clôture
   MOYENNE   [1.2] Lignes dupliquées dans les extractions
   MOYENNE   [1.4] Opération technique passée un week-end, touchant l'ensemble des comptes du périmètre
   MOYENNE   [1.5] Deux conventions de contre-passation opposées entre les deux systèmes
@@ -103,6 +114,8 @@ RÉCAPITULATIF DES ANOMALIES PAR GRAVITÉ
   MOYENNE   [10.5] Référentiel des opérateurs non normalisé
   MOYENNE   [11.2] Les titres acquis pour la clientèle transitent par le portefeuille propre
   MOYENNE   [11.7] Schéma comptable du nouveau dispositif, reconstitué sur un échantillon de titres
+  MOYENNE   [12.4] Un nantissement de 6,2 milliards inscrit en doublon sur un compte de classe 2, le jour de l'arrêté annuel
+  MOYENNE   [12.6] Comptes dormants du dispositif titres, et comptes qu'il reste à extraire
   FAIBLE    [1.3] Jours ouvrés sans écriture restant à rapprocher du calendrier des fériés
   FAIBLE    [2.4] Contrats comptabilisés tardivement après leur négociation
   FAIBLE    [10.3] Écritures postérieures à la dernière négociation du référentiel extrait
@@ -193,7 +206,7 @@ conditionnent la fiabilité de toutes les sections suivantes.
     Source                  Lignes   Montants négatifs  Cumul XAF         
     ----------------------  -------  -----------------  ------------------
     Module MM               59 446   378                -17 867 999 564   
-    Flux Calypso            194 938  0                  0,00              
+    Flux Calypso            194 938  0                  0                 
     Comptes clés            190 467  45                 -31 489 903 573   
     Grand livre trésorerie  329 884  754                -94 600 621 460,46
     Créances rattachées     32 937   244                -1 036 405 121,59 
@@ -236,8 +249,8 @@ CONTRÔLES SANS ANOMALIE
 
         Source        Lignes   Écritures  Déséquilibrées  Montant  Somme D-C
         ------------  -------  ---------  --------------  -------  ---------
-        Module MM     59 446   23 707     0               0,00     0,00     
-        Flux Calypso  194 938  95 868     0               0,00     0,00     
+        Module MM     59 446   23 707     0               0        0        
+        Flux Calypso  194 938  95 868     0               0        0        
 
   [1.6] Couverture temporelle de l'extraction
       L'extraction couvre 2022-06-08 à 2026-09-18 et déborde donc la période d'audit dans les deux
@@ -265,10 +278,10 @@ CONTRÔLES SANS ANOMALIE
 
         Compte     Libellé                                 Période                  Écritures  Solde final
         ---------  --------------------------------------  -----------------------  ---------  -----------
-        511410100  OBLIGATIONS DU TRESOR ASSIMILABLES PLA  2022-08-16 → 2025-06-16  980        0,00       
+        511410100  OBLIGATIONS DU TRESOR ASSIMILABLES PLA  2022-08-16 → 2025-06-16  980        0          
         511800100  CREANCES RATTACHEES - PLACEMENT         2022-08-16 → 2025-07-31  32 937     0,00       
-        512200100  BONS DE TRESOR - TRANSACTION            2022-08-05 → 2025-06-16  228        0,00       
-        591400100  PROV DEPRECIATION DES OBLIGATIONS ET B  2025-06-16 → 2025-06-17  68         0,00       
+        512200100  BONS DE TRESOR - TRANSACTION            2022-08-05 → 2025-06-16  228        0          
+        591400100  PROV DEPRECIATION DES OBLIGATIONS ET B  2025-06-16 → 2025-06-17  68         0          
         Comptes dont le retour exact à zéro atteste la complétude de l'historique.
 
 
@@ -617,14 +630,14 @@ des actifs, cédés au nominal.
     099OTAP233630003  2023-12-28   2023-12-29        1              1 500 000 000  246 575    cession après détention  BINEID00087   MBOGID000083
     099OTAP241710001  2024-06-18   2024-06-19        1              1 000 000 000  191 257    cession après détention  BINEID00087   MBATOHID0012
     099OTAP241710003  2024-06-18   2024-06-19        1              1 000 000 000  170 765    cession après détention  BINEID00087   MBATOHID0012
-    099OTAP240460003  2024-02-15   2024-02-15        0              9 000 000 000  0,00       annulation de saisie     BINEID00087   MBATOHID0012
-    099OTAP251610002  2025-06-10   2025-06-10        0              5 004 100 000  0,00       annulation de saisie     NDJOCKOS0067  MBATOHID0012
-    099OTAP240230001  2024-01-23   2024-01-23        0              5 000 000 000  0,00       annulation de saisie     BINEID00087   YAMKAMID0043
-    099OTAP250800001  2025-03-21   2025-03-21        0              5 000 000 000  0,00       annulation de saisie     CHEICHEID059  MBATOHID0012
-    099OTAP251610004  2025-06-10   2025-06-10        0              4 950 000 000  0,00       annulation de saisie     NDJOCKOS0067  MBATOHID0012
-    099OTAP241060002  2024-04-15   2024-04-15        0              3 000 000 000  0,00       annulation de saisie     BINEID00087   MBATOHID0012
-    099OTAP241080001  2024-04-17   2024-04-17        0              3 000 000 000  0,00       annulation de saisie     BINEID00087   MBATOHID0012
-    099OTAP240460005  2024-02-15   2024-02-15        0              1 000 000 000  0,00       annulation de saisie     BINEID00087   MBATOHID0012
+    099OTAP240460003  2024-02-15   2024-02-15        0              9 000 000 000  0          annulation de saisie     BINEID00087   MBATOHID0012
+    099OTAP251610002  2025-06-10   2025-06-10        0              5 004 100 000  0          annulation de saisie     NDJOCKOS0067  MBATOHID0012
+    099OTAP240230001  2024-01-23   2024-01-23        0              5 000 000 000  0          annulation de saisie     BINEID00087   YAMKAMID0043
+    099OTAP250800001  2025-03-21   2025-03-21        0              5 000 000 000  0          annulation de saisie     CHEICHEID059  MBATOHID0012
+    099OTAP251610004  2025-06-10   2025-06-10        0              4 950 000 000  0          annulation de saisie     NDJOCKOS0067  MBATOHID0012
+    099OTAP241060002  2024-04-15   2024-04-15        0              3 000 000 000  0          annulation de saisie     BINEID00087   MBATOHID0012
+    099OTAP241080001  2024-04-17   2024-04-17        0              3 000 000 000  0          annulation de saisie     BINEID00087   MBATOHID0012
+    099OTAP240460005  2024-02-15   2024-02-15        0              1 000 000 000  0          annulation de saisie     BINEID00087   MBATOHID0012
     La colonne « détention » est comptée de la date de valeur à la liquidation : elle distingue une
     cession d'une annulation.
 
@@ -721,27 +734,27 @@ des actifs, cédés au nominal.
 
     Référence         Contrepartie                Détention (j)  Couru brut  Contre-passé  Couru net  Jours conservés
     ----------------  --------------------------  -------------  ----------  ------------  ---------  ---------------
-    099OTAP232820001  ETAT DE GUINEE EQUATORIALE  13             7 479 452   0,00          7 479 452  13             
+    099OTAP232820001  ETAT DE GUINEE EQUATORIALE  13             7 479 452   0             7 479 452  13             
     099OTAP233040001  ETAT DU CONGO               5              462 932     -370 346      92 586     1              
-    099OTAP240650003  ETAT DU CONGO               5              2 213 115   0,00          2 213 115  5              
+    099OTAP240650003  ETAT DU CONGO               5              2 213 115   0             2 213 115  5              
     099OTAP240640005  ETAT DU CAMEROUN            5              4 098 361   -3 278 689    819 672    1              
     099OTAP233030004  ETAT DU CONGO               4              1 260 274   -945 206      315 068    1              
     099OTAP233030010  ETAT DU GABON               4              1 506 849   -1 130 137    376 712    1              
-    099OTAP232890001  ETAT DU GABON               3              47 260      0,00          47 260     3              
+    099OTAP232890001  ETAT DU GABON               3              47 260      0             47 260     3              
     099OTAP233620005  ETAT DU CONGO               2              472 603     -236 302      236 301    1              
     099OTAP241920003  ETAT DU GABON               2              314 208     -157 104      157 104    1              
     099OTAP242070004  ETAT DU GABON               2              300 546     -150 273      150 273    1              
     099OTAP242070003  ETAT DU GABON               2              901 639     -450 819      450 820    1              
     099OTAP241920006  ETAT DU GABON               2              300 546     -150 273      150 273    1              
-    099OTAP233630003  ETAT DU CONGO               1              246 575     0,00          246 575    1              
-    099OTAP241710003  ETAT DU CAMEROUN            1              170 765     0,00          170 765    1              
-    099OTAP241710002  ETAT DU CAMEROUN            1              491 803     0,00          491 803    1              
-    099OTAP241710001  ETAT DU CAMEROUN            1              191 257     0,00          191 257    1              
-    099OTAP240950002  ETAT DU GABON               1              512 295     0,00          512 295    1              
-    099OTAP241710004  ETAT DU CAMEROUN            1              897 586     0,00          897 586    1              
-    099OTAP242490001  ETAT DU GABON               1              450 820     0,00          450 820    1              
-    099OTAP242490002  ETAT DU GABON               1              430 328     0,00          430 328    1              
-    099OTAP242550002  ETAT DU GABON               1              525 956     0,00          525 956    1              
+    099OTAP233630003  ETAT DU CONGO               1              246 575     0             246 575    1              
+    099OTAP241710003  ETAT DU CAMEROUN            1              170 765     0             170 765    1              
+    099OTAP241710002  ETAT DU CAMEROUN            1              491 803     0             491 803    1              
+    099OTAP241710001  ETAT DU CAMEROUN            1              191 257     0             191 257    1              
+    099OTAP240950002  ETAT DU GABON               1              512 295     0             512 295    1              
+    099OTAP241710004  ETAT DU CAMEROUN            1              897 586     0             897 586    1              
+    099OTAP242490001  ETAT DU GABON               1              450 820     0             450 820    1              
+    099OTAP242490002  ETAT DU GABON               1              430 328     0             430 328    1              
+    099OTAP242550002  ETAT DU GABON               1              525 956     0             525 956    1              
     Cessions après détention réelle. La dernière colonne convertit le couru conservé en jours
     d'intérêt : elle se compare à la détention.
 
@@ -749,7 +762,7 @@ des actifs, cédés au nominal.
     -------------  ----------------  ----------------  -------------  ------  ----------  ------------  ---------  ---------------
     5              099OTAP233040001  ETAT DU CONGO     554 000 000    6,10    462 932     -370 346      92 586     1              
     5              099OTAP240640005  ETAT DU CAMEROUN  5 000 000 000  6,00    4 098 361   -3 278 689    819 672    1              
-    5              099OTAP240650003  ETAT DU CONGO     3 000 000 000  5,40    2 213 115   0,00          2 213 115  5              
+    5              099OTAP240650003  ETAT DU CONGO     3 000 000 000  5,40    2 213 115   0             2 213 115  5              
     Contrats de MÊME durée de détention recevant des traitements opposés : la preuve que la règle
     n'est pas appliquée uniformément.
 
@@ -821,7 +834,7 @@ des actifs, cédés au nominal.
     ----------------  ----------------------------------------  --------------  ------  -----  -----------  -------------  ------------  --------------
     099OTAP250500001  écart inexpliqué                          4 533 333 333   6,00    118    exact/360    89 155 555,55  109 545 205   20 389 649,45 
     099OTAP233030007  contre-passations partielles              10 000 000 000  5,50    26     exact/365    39 178 082,19  25 616 438    -13 561 644,19
-    099OTAP241240006  aucun couru enregistré                    2 700 000 000   6,00    27     exact/365    11 983 561,64  0,00          -11 983 561,64
+    099OTAP241240006  aucun couru enregistré                    2 700 000 000   6,00    27     exact/365    11 983 561,64  0             -11 983 561,64
     099OTAP242260001  contre-passations partielles              5 000 000 000   5,50    29     exact/exact  21 789 617,49  10 519 126    -11 270 491,49
     099OTAP240320006  contre-passations partielles              9 000 000 000   5,90    34     exact/exact  49 327 868,85  39 172 131    -10 155 737,85
     099OTAP232760001  contre-passations partielles              2 500 000 000   5,60    143    exact/exact  54 793 771,99  46 762 033    -8 031 738,99 
@@ -1074,8 +1087,8 @@ classement comptable retenu.
     titres du portefeuille et non encore encaissés ;
   - 099ACO00001 BANQUE DES ETATS DE LAFRIQUE CENTRA — le compte de règlement de la banque auprès de
     la banque centrale, son NOSTRO, qui porte sa trésorerie.
-  Un troisième compte intervient à la correction, mais il ne figure dans aucune des extractions
-  fournies : il reste à identifier.
+  - 622000100 COMM ET FRAIS SUR TITRES — compte de CHARGE, qui a absorbé le solde de la correction ;
+    il ne figurait pas dans la première extraction.
 
   CE QUI DEVAIT SE PASSER. Au jour de la bascule, le compte 511800100 portait le solde des intérêts
   courus non encore encaissés. Pour le solder, il fallait le CRÉDITER de CE SOLDE, ni plus ni moins,
@@ -1109,38 +1122,51 @@ classement comptable retenu.
   LA CORRECTION. Elle est intervenue par une écriture manuelle explicitement libellée comme se
   rapportant à la mise en service du nouveau système : un DÉBIT de 511800100 pour 1 205 231 891 XAF,
   qui remet le compte de courus à zéro, contre un CRÉDIT de 099ACO00001 pour 1 207 226 407 XAF. Ces
-  deux jambes ne s'équilibrent pas : le crédit excède le débit de 1 994 516 XAF. Il manque donc un
-  DÉBIT de ce montant, sur une TROISIÈME JAMBE portée par un compte qui ne figure dans aucune des
-  extractions fournies. Ce compte reste à identifier : c'est lui qui a supporté le solde de la
-  correction.
+  deux jambes ne s'équilibrent pas entre elles : le crédit excède le débit de 1 994 516 XAF.
 
-    1. Solde de 511800100 la veille de la bascule              : 2 927 747 645 XAF
-    2. Courus du jour de la bascule, débités de 511800100      : 36 144 257 XAF
-    3. SOLDE RÉEL À APURER (1 + 2)                             : 2 963 891 902 XAF
-    4. Montant effectivement CRÉDITÉ à 511800100               : 4 169 123 793 XAF
-    5. SUR-APUREMENT (4 − 3)                                   : 1 205 231 891 XAF
-    6. Contrats crédités                                       : 55
-    7. Dont crédités en trop                                   : 24
-    8. Écart cumulé au niveau contrat                          : 1 444 094 752 XAF
-    9. Solde de 511800100 après la bascule — CRÉDITEUR         : -1 205 231 891 XAF
-    10. Date de correction                                     : 2025-07-31
-    11. Durée de l'anomalie                                    : 45 jours
-    12. Dates d'arrêté traversées                              : 2025-06-30
-    13. Correction — jambe DÉBIT sur 511800100                 : 1 205 231 891 XAF
-    14. Correction — jambe CRÉDIT sur 099ACO00001              : 1 207 226 407 XAF
-    15. TROISIÈME JAMBE, sur un compte NON IDENTIFIÉ (14 − 13) : 1 994 516 XAF
+  OÙ EST PASSÉE LA DIFFÉRENCE. La deuxième vague d'extractions a permis de retrouver la jambe
+  manquante : un DÉBIT de 1 994 516 XAF sur 622000100 COMM ET FRAIS SUR TITRES, sous la même
+  référence, le même jour et par le même opérateur, libellé « DIFF/ACCRUALS LIQUIDATION RELATED TO
+  CALYPSO GO LIVE ». L'écriture est donc complète et équilibrée.
 
-    Étape                     Compte         Libellé                              Sens            Montant XAF    Lecture                                       
-    ------------------------  -------------  -----------------------------------  --------------  -------------  ----------------------------------------------
-    Ce qu'il fallait passer   511800100      CREANCES RATTACHEES - PLACEMENT      CRÉDIT          2 963 891 902  solder le compte pour son solde réel          
-    Ce qu'il fallait passer   099ACO00001    BANQUE DES ETATS DE LAFRIQUE CENTRA  DÉBIT           2 963 891 902  encaissement correspondant                    
-    Ce qui a été passé        511800100      CREANCES RATTACHEES - PLACEMENT      CRÉDIT          4 169 123 793  cumul des courus depuis l'origine des contrats
-    Ce qui a été passé        099ACO00001    BANQUE DES ETATS DE LAFRIQUE CENTRA  DÉBIT           4 169 123 793  encaissement surévalué du même montant        
-    ÉCART                     511800100      CREANCES RATTACHEES - PLACEMENT      CRÉDIT EN TROP  1 205 231 891  le compte d'actif devient créditeur           
-    ÉCART                     099ACO00001    BANQUE DES ETATS DE LAFRIQUE CENTRA  DÉBIT EN TROP   1 205 231 891  le nostro est surévalué                       
-    Correction du 2025-07-31  511800100      CREANCES RATTACHEES - PLACEMENT      DÉBIT           1 205 231 891  remet le compte de courus à zéro              
-    Correction du 2025-07-31  099ACO00001    BANQUE DES ETATS DE LAFRIQUE CENTRA  CRÉDIT          1 207 226 407  sort la trésorerie surévaluée                 
-    Correction du 2025-07-31  non identifié  compte absent des extractions        DÉBIT MANQUANT  1 994 516      ce qu'il faut pour que l'écriture s'équilibre 
+  MAIS CELA NE RÈGLE RIEN AU FOND. Le compte qui a absorbé la différence est un compte de CHARGE
+  D'EXPLOITATION, que le PCEC réserve aux commissions et aux frais de garde sur titres. Y loger un
+  résidu d'apurement revient à faire disparaître en charges un écart que personne n'a expliqué : le
+  reliquat n'a pas été analysé, il a été absorbé. Le traitement correct consistait à rapprocher
+  l'écart contrat par contrat, puis à l'imputer au compte d'intérêts correspondant — et, s'il
+  subsistait, à le laisser en suspens jusqu'à justification, et non à l'éteindre.
+
+  SURTOUT, LA CORRECTION NE REMONTE PAS LE TEMPS. Elle est intervenue le 2025-07-31, soit 45 jours
+  après la bascule. Entre les deux, le compte d'actif est resté créditeur et le nostro surévalué — y
+  compris à la date d'arrêté du 30 juin 2025.
+
+    1. Solde de 511800100 la veille de la bascule                      : 2 927 747 645 XAF
+    2. Courus du jour de la bascule, débités de 511800100              : 36 144 257 XAF
+    3. SOLDE RÉEL À APURER (1 + 2)                                     : 2 963 891 902 XAF
+    4. Montant effectivement CRÉDITÉ à 511800100                       : 4 169 123 793 XAF
+    5. SUR-APUREMENT (4 − 3)                                           : 1 205 231 891 XAF
+    6. Contrats crédités                                               : 55
+    7. Dont crédités en trop                                           : 24
+    8. Écart cumulé au niveau contrat                                  : 1 444 094 752 XAF
+    9. Solde de 511800100 après la bascule — CRÉDITEUR                 : -1 205 231 891 XAF
+    10. Date de correction                                             : 2025-07-31
+    11. Durée de l'anomalie                                            : 45 jours
+    12. Dates d'arrêté traversées                                      : 2025-06-30
+    13. Correction — jambe DÉBIT sur 511800100                         : 1 205 231 891 XAF
+    14. Correction — jambe CRÉDIT sur 099ACO00001                      : 1 207 226 407 XAF
+    15. TROISIÈME JAMBE — DÉBIT sur 622000100 COMM ET FRAIS SUR TITRES : 1 994 516 XAF
+
+    Étape                     Compte       Libellé                              Sens            Montant XAF    Lecture                                           
+    ------------------------  -----------  -----------------------------------  --------------  -------------  --------------------------------------------------
+    Ce qu'il fallait passer   511800100    CREANCES RATTACHEES - PLACEMENT      CRÉDIT          2 963 891 902  solder le compte pour son solde réel              
+    Ce qu'il fallait passer   099ACO00001  BANQUE DES ETATS DE LAFRIQUE CENTRA  DÉBIT           2 963 891 902  encaissement correspondant                        
+    Ce qui a été passé        511800100    CREANCES RATTACHEES - PLACEMENT      CRÉDIT          4 169 123 793  cumul des courus depuis l'origine des contrats    
+    Ce qui a été passé        099ACO00001  BANQUE DES ETATS DE LAFRIQUE CENTRA  DÉBIT           4 169 123 793  encaissement surévalué du même montant            
+    ÉCART                     511800100    CREANCES RATTACHEES - PLACEMENT      CRÉDIT EN TROP  1 205 231 891  le compte d'actif devient créditeur               
+    ÉCART                     099ACO00001  BANQUE DES ETATS DE LAFRIQUE CENTRA  DÉBIT EN TROP   1 205 231 891  le nostro est surévalué                           
+    Correction du 2025-07-31  511800100    CREANCES RATTACHEES - PLACEMENT      DÉBIT           1 205 231 891  remet le compte de courus à zéro                  
+    Correction du 2025-07-31  099ACO00001  BANQUE DES ETATS DE LAFRIQUE CENTRA  CRÉDIT          1 207 226 407  sort la trésorerie surévaluée                     
+    Correction du 2025-07-31  622000100    COMM ET FRAIS SUR TITRES             DÉBIT           1 994 516      la jambe qui équilibre — une charge d'exploitation
     Le schéma comptable de bout en bout : l'écriture attendue, celle qui a réellement été passée,
     l'écart qui en résulte compte par compte, puis la correction.
 
@@ -1185,8 +1211,8 @@ classement comptable retenu.
     2024-06-30     1 975 466 036            
     2024-12-31     2 455 219 083            
     2025-06-30     -1 205 231 891           
-    2025-12-31     0,00                     
-    2026-06-30     0,00                     
+    2025-12-31     0                        
+    2026-06-30     0                        
     Solde de 511800100 CREANCES RATTACHEES - PLACEMENT à chaque arrêté. Un montant négatif est un
     solde CRÉDITEUR, impossible sur un compte d'actif.
 
@@ -1203,8 +1229,9 @@ classement comptable retenu.
     écart de cette ampleur n'a pas été détecté plus tôt.
     3. Faire expliquer le mode opératoire retenu pour calculer les courus à reprendre, fondé sur le
     cumul théorique par contrat et non sur le solde comptable.
-    4. Identifier le compte qui porte la troisième jambe de l'écriture de correction
-    099000b252120001, soit un débit de 1 994 516 XAF sur un compte absent des extractions.
+    4. Faire justifier l'imputation du reliquat de 1 994 516 XAF au compte de charge 622000100 COMM
+    ET FRAIS SUR TITRES : obtenir l'analyse contrat par contrat qui aurait dû précéder son
+    extinction, et, à défaut, le reclasser.
     5. Vérifier qu'aucune autre écriture de migration n'a été construite sur le même mode
     opératoire.
 
@@ -1329,10 +1356,10 @@ CONTRÔLES SANS ANOMALIE
 
         Compte     Libellé                                   Lignes  Solde XAF  Dernier mouvement
         ---------  ----------------------------------------  ------  ---------  -----------------
-        511410100  OBLIGATIONS DU TRESOR ASSIMILABLES PLACE  980     0,00       2025-06-16       
-        512200100  BONS DE TRESOR - TRANSACTION              228     0,00       2025-06-16       
-        511800100  CREANCES RATTACHEES - PLACEMENT           32 937  0,00       2025-07-31       
-        591400100  PROV DEPRECIATION DES OBLIGATIONS ET BON  68      0,00       2025-06-17       
+        511410100  OBLIGATIONS DU TRESOR ASSIMILABLES PLACE  980     0          2025-06-16       
+        512200100  BONS DE TRESOR - TRANSACTION              228     0          2025-06-16       
+        511800100  CREANCES RATTACHEES - PLACEMENT           32 937  0          2025-07-31       
+        591400100  PROV DEPRECIATION DES OBLIGATIONS ET BON  68      0          2025-06-17       
 
   [5.6] Continuité chronologique de la bascule
       Le module d'origine s'arrête le 2025-06-16 et le nouveau dispositif démarre le 2025-06-16 : la
@@ -1448,8 +1475,8 @@ suspens.
 
     Fin de trimestre  Solde cumulé 467000188
     ----------------  ----------------------
-    30/06/2025        0,00                  
-    30/09/2025        0,00                  
+    30/06/2025        0                     
+    30/09/2025        0                     
     31/12/2025        -5 000 000 000        
     31/03/2026        -93 902 460 379       
     30/06/2026        -94 451 445 974       
@@ -1559,22 +1586,22 @@ suspens.
     25229148   4024895  2026-06-25  NOMINAL            ABCM_MM.Plmt.Tkn.Secured  10 000 000 000  4       non corrigé  10 000 000 000
     25497875   4148007  2026-07-27  NOMINAL            ABCM_MM.Plmt.Tkn.Secured  6 000 000 000   4       non corrigé  6 000 000 000 
     23630318   3186053  2025-11-07  PRINCIPAL_DEPOSIT  ABCM_MM.Plmt.Tkn.Secured  5 000 000 000   4       non corrigé  5 000 000 000 
-    25816929   4300455  2026-09-02  NOMINAL            ABCM_FVOCI.Bond           4 305 000 000   6       2026-09-15   0,00          
+    25816929   4300455  2026-09-02  NOMINAL            ABCM_FVOCI.Bond           4 305 000 000   6       2026-09-15   0             
     23766410   3253670  2025-11-26  CST_S_SETTLED      ABCM_FVOCI.Bond           3 083 424 658   4       non corrigé  3 083 424 658 
     23392477   3039302  2025-10-02  NOMINAL            ABCM_FI.Sales             3 000 000 000   4       non corrigé  3 000 000 000 
     23766412   3254028  2025-11-26  NOMINAL            ABCM_FVOCI.Bond           3 000 000 000   4       non corrigé  3 000 000 000 
-    25597236   4184899  2026-08-06  NOMINAL            ABCM_FVOCI.Bond           2 000 000 000   6       2026-08-27   0,00          
+    25597236   4184899  2026-08-06  NOMINAL            ABCM_FVOCI.Bond           2 000 000 000   6       2026-08-27   0             
     Les douze mouvements dupliqués les plus importants, toutes périodes.
 
     Mouvement  Deal     Date du doublon  Montant XAF    Date de correction  Délai (j)  Résidu XAF
     ---------  -------  ---------------  -------------  ------------------  ---------  ----------
     24421131   3595014  2026-02-26       12 791 289     2026-05-22          85         12 791 289
-    25597236   4184899  2026-08-06       2 000 000 000  2026-08-27          21         0,00      
-    25829513   4263904  2026-09-03       160 000        2026-09-15          12         0,00      
-    25801186   4295428  2026-08-31       5 671 832      2026-09-15          15         0,00      
-    25801318   4296327  2026-08-31       945 127 671    2026-09-15          15         0,00      
-    25805258   4296484  2026-09-01       1 851 111      2026-09-15          14         0,00      
-    25816929   4300455  2026-09-02       4 305 000 000  2026-09-15          13         0,00      
+    25597236   4184899  2026-08-06       2 000 000 000  2026-08-27          21         0         
+    25829513   4263904  2026-09-03       160 000        2026-09-15          12         0         
+    25801186   4295428  2026-08-31       5 671 832      2026-09-15          15         0         
+    25801318   4296327  2026-08-31       945 127 671    2026-09-15          15         0         
+    25805258   4296484  2026-09-01       1 851 111      2026-09-15          14         0         
+    25816929   4300455  2026-09-02       4 305 000 000  2026-09-15          13         0         
     Doublons repris par la banque. Le délai mesure le temps écoulé avant la correction ; un résidu
     non nul signale une correction partielle.
 
@@ -1685,10 +1712,10 @@ suspens.
     Effet net réel sur le résultat  : 16 082 009 834 XAF
     Facteur de surévaluation        : × 119
 
-    Événement        Nb débits  Nb crédits  Total débits       Total crédits      Net 
-    ---------------  ---------  ----------  -----------------  -----------------  ----
-    ACCRUAL          40 108     40 108      1 908 276 309 368  1 908 276 309 368  0,00
-    PREM_DISC_YIELD  39 945     39 945      26 128 430 378     26 128 430 378     0,00
+    Événement        Nb débits  Nb crédits  Total débits       Total crédits      Net
+    ---------------  ---------  ----------  -----------------  -----------------  ---
+    ACCRUAL          40 108     40 108      1 908 276 309 368  1 908 276 309 368  0  
+    PREM_DISC_YIELD  39 945     39 945      26 128 430 378     26 128 430 378     0  
     Totaux calculés sur TOUTES les jambes de ces événements, tous comptes confondus : ils s'annulent
     par construction, ce qui est précisément la raison pour laquelle la mesure de l'écart se fait
     sur le compte témoin et non sur ces totaux.
@@ -1841,7 +1868,7 @@ rattachement des charges d'intérêt, le niveau de collatéralisation et le dén
     Deal     Date d'arrêté  Début contractuel  Échéance    Jours courus  Durée totale  Montant XAF     Taux %  Charge à rattacher XAF
     -------  -------------  -----------------  ----------  ------------  ------------  --------------  ------  ----------------------
     3368198  2025-12-31     2025-12-26         2026-01-02  5             7             90 000 000 000  5,10    63 750 000,00         
-    4044835  2026-06-30     2026-06-30         2026-07-01  0             1             45 000 000 000  5,75    0,00                  
+    4044835  2026-06-30     2026-06-30         2026-07-01  0             1             45 000 000 000  5,75    0                     
     Charge qui aurait dû être courue à la date d'arrêté, au prorata des jours écoulés depuis le
     départ contractuel, base exact/360.
 
@@ -2419,14 +2446,14 @@ implicite du portefeuille.
 
     Nature   Compte     Libellé                               2022              2023           2024            2025          
     -------  ---------  ------------------------------------  ----------------  -------------  --------------  --------------
-    CHARGE   601100100  INT. SUR OPS MARCHE MONETAIRE - OPS   0,00              0,00           0,00            -520 308 336  
-    CHARGE   625000105  COMMISSIONS PAYES SUR ACHAT DE DEVIS  0,00              0,00           0,00            -4 691 336    
+    CHARGE   601100100  INT. SUR OPS MARCHE MONETAIRE - OPS   0                 0              0               -520 308 336  
+    CHARGE   625000105  COMMISSIONS PAYES SUR ACHAT DE DEVIS  0                 0              0               -4 691 336    
     PRODUIT  725000100  COMM GEST PORTF TITRE CPTE DE TIERS   411 966           3 933 775      6 402 500       632 600       
     PRODUIT  727000102  REFACT COMMISSIONS REFINANCEMENT BEA  156 673 648,33    355 118 791    382 454 122     640 098 457   
     PRODUIT  729000125  COMMISSIONS DE SERVICE HORS CEMAC     136 835 301,84    351 251 193    266 879 362     652 212 323   
     PRODUIT  733200100  REVENUS DE BONS DU TRESOR             400 732 331,86    208 334 751    873 177 474     1 268 828 550 
     PRODUIT  733400100  REVENUS D OBLIGATIONS ET BONS ASSIM   237 349 993,16    1 948 298 718  4 493 601 922   9 391 787 162 
-    PRODUIT  734200100  REVENUS DE BONS DU TRESOR             0,00              0,00           7 519 237       42 928 009    
+    PRODUIT  734200100  REVENUS DE BONS DU TRESOR             0                 0              7 519 237       42 928 009    
     PRODUIT  734400100  REV D OBLIGATIONS ET BONS ASSIMILES   548 387 845       3 328 305 701  6 048 526 398   10 858 598 333
                         RÉSULTAT NET                          1 480 391 086,19  6 195 242 929  12 078 561 015  22 330 085 762
 
@@ -2473,30 +2500,30 @@ séparation des tâches dans le système amont et qualité du référentiel des 
 
     Deal     Statut             Portefeuille          Contrepartie     Écritures  Volume XAF      Solde bilan résiduel  Impact résultat
     -------  -----------------  --------------------  ---------------  ---------  --------------  --------------------  ---------------
-    2947262  CANCELED           ABCM_FX.Trading.Spot  BEAC             32         31 485 936 000  0,00                  -0,00          
-    4325815  PENDING_AUTHORIZE  ABCM_FVOCI.Bond       SGCM             8          14 609 863 012  0,00                  -0,00          
-    3035341  CANCELED           ABCM_FI.Sales         RETLCUSTCM       4          12 000 000 000  0,00                  -0,00          
-    2713310  CANCELED           ABCM_BSB.Bond         UBCM             4          4 522 191 780   0,00                  -0,00          
-    4326398  PENDING            ABCM_MM.FundTransfer  ACCESS CAMEROON  4          1 907 153 628   0,00                  -0,00          
-    4338783  TRADE_ENTERED      ABCM_MM.FundTransfer  ACCESS CAMEROON  6          1 692 687 000   0,00                  -0,00          
-    3473877  CANCELED           ABCM_FI.Sales         RETLCUSTCM       16         748 146 272     0,00                  -0,00          
-    3884347  CANCELED           ABCM_FI.Sales         RETLCUSTCM       12         487 684 152     0,00                  -0,00          
-    4309072  CANCELED           ABCM_FI.Sales         RETLCUSTCM       12         183 040 000     0,00                  -0,00          
-    3387350  CANCELED           ABCM_FVOCI.Bond       ACCESS CAMEROON  12         167 449 972     0,00                  -0,00          
-    3387349  CANCELED           ABCM_FI.Sales         ACCESS CAMEROON  4          158 089 972     0,00                  -0,00          
+    2947262  CANCELED           ABCM_FX.Trading.Spot  BEAC             32         31 485 936 000  0                     0              
+    4325815  PENDING_AUTHORIZE  ABCM_FVOCI.Bond       SGCM             8          14 609 863 012  0                     0              
+    3035341  CANCELED           ABCM_FI.Sales         RETLCUSTCM       4          12 000 000 000  0                     0              
+    2713310  CANCELED           ABCM_BSB.Bond         UBCM             4          4 522 191 780   0                     0              
+    4326398  PENDING            ABCM_MM.FundTransfer  ACCESS CAMEROON  4          1 907 153 628   0                     0              
+    4338783  TRADE_ENTERED      ABCM_MM.FundTransfer  ACCESS CAMEROON  6          1 692 687 000   0                     0              
+    3473877  CANCELED           ABCM_FI.Sales         RETLCUSTCM       16         748 146 272     0                     0              
+    3884347  CANCELED           ABCM_FI.Sales         RETLCUSTCM       12         487 684 152     0                     0              
+    4309072  CANCELED           ABCM_FI.Sales         RETLCUSTCM       12         183 040 000     0                     0              
+    3387350  CANCELED           ABCM_FVOCI.Bond       ACCESS CAMEROON  12         167 449 972     0                     0              
+    3387349  CANCELED           ABCM_FI.Sales         ACCESS CAMEROON  4          158 089 972     0                     0              
     3574284  HYPO_TRADE         ABCM_FI.Sales         RETLCUSTCM       4          120 143 100     71 550                71 550         
     3098462  CANCELED           ABCM_FVOCI.Bond       ACCESS CAMEROON  20         111 404 068     11 300                11 300         
-    3373183  CANCELED           ABCM_FI.Sales         RETLCUSTCM       14         89 947 624      0,00                  -0,00          
-    3412280  CANCELED           ABCM_FI.Sales         RETLCUSTCM       14         85 033 640      0,00                  -0,00          
-    3474140  CANCELED           ABCM_FI.Sales         RETLCUSTCM       12         82 397 208      0,00                  -0,00          
+    3373183  CANCELED           ABCM_FI.Sales         RETLCUSTCM       14         89 947 624      0                     0              
+    3412280  CANCELED           ABCM_FI.Sales         RETLCUSTCM       14         85 033 640      0                     0              
+    3474140  CANCELED           ABCM_FI.Sales         RETLCUSTCM       12         82 397 208      0                     0              
     ... et 10 autre(s) ligne(s)
 
     Date d'arrêté  Deals à solde résiduel  Impact bilan XAF
     -------------  ----------------------  ----------------
-    2023-12-31     0                       0,00            
-    2024-06-30     0                       0,00            
-    2024-12-31     0                       0,00            
-    2025-06-30     0                       0,00            
+    2023-12-31     0                       0               
+    2024-06-30     0                       0               
+    2024-12-31     0                       0               
+    2025-06-30     0                       0               
     2025-12-31     1                       22 600          
     2026-06-30     2                       82 850          
     Résidu porté par ces deals à chaque date d'arrêté.
@@ -2596,7 +2623,7 @@ séparation des tâches dans le système amont et qualité du référentiel des 
     ABCM_FVOCI.Bond           652            591            90,60       
     ABCM_MM.FundTransfer      521            221            42,40       
     ABCM_FI.Sales             495            185            37,40       
-    ABCM_FX.Sales             310            0              0,00        
+    ABCM_FX.Sales             310            0              0           
     ABCM_MM.Plmt.Tkn.Secured  170            124            72,90       
     ABCM_FX.Trading.Fwd       116            115            99,10       
     ABCM_FVOCI.Bills          67             63             94,00       
@@ -2607,7 +2634,7 @@ séparation des tâches dans le système amont et qualité du référentiel des 
     -----------------  -----------------  -----------------  -----  --------------------
     CANCELED           56                 22                 78     28,20               
     HYPO_TRADE         160                1                  161    0,60                
-    LIMIT_CHECK        2                  0                  2      0,00                
+    LIMIT_CHECK        2                  0                  2      0                   
     MATURED            830                1 026              1 856  55,30               
     PENDING            3                  1                  4      25,00               
     PENDING_AUTHORIZE  2                  1                  3      33,30               
@@ -2886,23 +2913,23 @@ codification des titres du nouveau dispositif et mesure l'exposition souveraine 
     -----------  --------------------------------------  ---------------
     099ACO00001  BANQUE DES ETATS DE LAFRIQUE CENTRA     90 000 000 000 
     467000188    CALYPSO BRIDGE ACCOUNT MONEY MARKET     -90 101 000 000
-    552400100    EMPRUNT AU JR LE JR BQ NON ASSOC        0,00           
+    552400100    EMPRUNT AU JR LE JR BQ NON ASSOC        0              
     601100100    INT. SUR OPS MARCHE MONETAIRE - OPS IN  101 000 000    
-    952100100    TITRES D INVESTISSEMENT PUBLICS AFFECT  0,00           
-    995000100    CPTE GL OPS SUR TITRES ET VALS AFFECT   0,00           
+    952100100    TITRES D INVESTISSEMENT PUBLICS AFFECT  0              
+    995000100    CPTE GL OPS SUR TITRES ET VALS AFFECT   0              
     Effet net par compte. Un montant positif est un solde débiteur. Le compte de règlement et le
     compte de liaison portent, au signe près, la même anomalie.
 
     Deal     Début contractuel  Échéance    Jours  Taux %  Montant XAF     Solde du pont    Effet net trésorerie  Déversement
     -------  -----------------  ----------  -----  ------  --------------  ---------------  --------------------  -----------
-    3302324  2025-12-04         2025-12-11  7      4,80    70 000 000 000  0,00             -65 333 333           COMPLET    
-    3310505  2025-12-05         2025-12-08  3      6,00    25 000 000 000  0,00             -12 500 000           COMPLET    
-    3310725  2025-12-08         2025-12-09  1      6,00    25 000 000 000  0,00             -4 166 667            COMPLET    
-    3311312  2025-12-09         2025-12-10  1      6,00    25 000 000 000  0,00             -4 166 667            COMPLET    
-    3311383  2025-12-10         2025-12-11  1      6,00    15 000 000 000  0,00             -2 500 000            COMPLET    
-    3339125  2025-12-11         2025-12-18  7      4,80    90 000 000 000  0,00             -84 000 000           COMPLET    
+    3302324  2025-12-04         2025-12-11  7      4,80    70 000 000 000  0                -65 333 333           COMPLET    
+    3310505  2025-12-05         2025-12-08  3      6,00    25 000 000 000  0                -12 500 000           COMPLET    
+    3310725  2025-12-08         2025-12-09  1      6,00    25 000 000 000  0                -4 166 667            COMPLET    
+    3311312  2025-12-09         2025-12-10  1      6,00    25 000 000 000  0                -4 166 667            COMPLET    
+    3311383  2025-12-10         2025-12-11  1      6,00    15 000 000 000  0                -2 500 000            COMPLET    
+    3339125  2025-12-11         2025-12-18  7      4,80    90 000 000 000  0                -84 000 000           COMPLET    
     3349072  2025-12-18         2025-12-26  8      5,05    90 000 000 000  -90 101 000 000  90 000 000 000        INCOMPLET  
-    3368198  2025-12-26         2026-01-02  7      5,10    90 000 000 000  0,00             -89 250 000           COMPLET    
+    3368198  2025-12-26         2026-01-02  7      5,10    90 000 000 000  0                -89 250 000           COMPLET    
     La même chaîne de refinancement, avant et après. Les opérations voisines sont complètes : seul
     le deal examiné ne l'est pas.
 
@@ -3023,8 +3050,8 @@ codification des titres du nouveau dispositif et mesure l'exposition souveraine 
     GABON                      GA    41      269    351 521 610 000   104 551 983 333                                       
     CONGO                      CG    37      210    183 114 030 000   31 101 760 000                                        
     GUINEE EQUATORIALE         GQ    8       79     101 274 080 000   31 506 310 000                                        
-    TCHAD                      TD    1       9      9 000 000 000     0,00                            EXCLU PAR LA POLITIQUE
-    REPUBLIQUE CENTRAFRICAINE  CF    2       10     56 800 000        0,00                            EXCLU PAR LA POLITIQUE
+    TCHAD                      TD    1       9      9 000 000 000     0                               EXCLU PAR LA POLITIQUE
+    REPUBLIQUE CENTRAFRICAINE  CF    2       10     56 800 000        0                               EXCLU PAR LA POLITIQUE
     Exposition souveraine du nouveau dispositif, reconstituée depuis le code pays des titres.
 
     Titre         Libellé                                        Portefeuilles                   Du          Au          Deals
@@ -3036,12 +3063,12 @@ codification des titres du nouveau dispositif et mesure l'exposition souveraine 
 
     Date d'arrêté  Encours des souverains exclus XAF
     -------------  ---------------------------------
-    2023-12-31     0,00                             
-    2024-06-30     0,00                             
-    2024-12-31     0,00                             
-    2025-06-30     0,00                             
+    2023-12-31     0                                
+    2024-06-30     0                                
+    2024-12-31     0                                
+    2025-06-30     0                                
     2025-12-31     11 300 000                       
-    2026-06-30     0,00                             
+    2026-06-30     0                                
 
   Recommandation :
     Faire confirmer si la politique d'exclusion couvre les titres acquis pour être placés auprès de
@@ -3124,10 +3151,10 @@ codification des titres du nouveau dispositif et mesure l'exposition souveraine 
 
     Date d'arrêté  Titres de la clientèle (hors bilan)  Pont miroir  
     -------------  -----------------------------------  -------------
-    2023-12-31     0,00                                 0,00         
-    2024-06-30     0,00                                 0,00         
-    2024-12-31     0,00                                 0,00         
-    2025-06-30     30 159 010 000                       0,00         
+    2023-12-31     0                                    0            
+    2024-06-30     0                                    0            
+    2024-12-31     0                                    0            
+    2025-06-30     30 159 010 000                       0            
     2025-12-31     28 635 360 000                       3 187 086 395
     2026-06-30     23 893 110 000                       3 104 020 778
     Le hors bilan mesure ce que la clientèle détient ; le pont miroir mesure ce qui a quitté le
@@ -3203,20 +3230,20 @@ codification des titres du nouveau dispositif et mesure l'exposition souveraine 
 
     Titre         Deal     Date        Nominal         Couru         Prime/décote  Règlement attendu  Règlement constaté  Écart     
     ------------  -------  ----------  --------------  ------------  ------------  -----------------  ------------------  ----------
-    CF2A00000074  3098446  2025-10-22  22 900 000      105 403       -1 832 000    21 173 403         21 173 403          0,00      
-    CG2A00000874  4131298  2026-07-24  4 926 000 000   11 943 863    0,00          4 937 943 863      4 937 943 863       0,00      
-    CG2A00000874  4184911  2026-08-06  -4 926 000 000  -25 480 241   0,00          -4 951 480 241     -4 951 480 241      0,00      
-    CM1200002127  3728215  2026-04-29  3 000 000 000   0,00          -76 916 667   2 923 083 333      2 923 083 333       0,00      
-    CM1200002127  3817331  2026-04-30  -3 000 000 000  0,00          2 416 667     -2 997 583 333     -2 997 583 333      0,00      
-    CM2J00000196  3288919  2025-12-04  9 500 000 000   0,00          -285 000 000  9 215 000 000      9 215 000 000       0,00      
-    CM2J00000196  3387200  2025-12-31  -9 500 000 000  -45 547 945   0,00          -9 545 547 945     -9 545 547 945      0,00      
-    CM2J00000196  3405066  2026-01-09  9 500 000 000   56 934 932    0,00          9 556 934 932      9 556 934 932       0,00      
-    CM2J00000196  3413037  2026-01-12  -9 500 000 000  -60 188 356   -465 500      -9 560 653 856     -9 560 653 856      0,00      
-    CM2J00000196  3433872  2026-01-15  9 500 000 000   68 321 918    0,00          9 568 321 918      9 568 321 918       0,00      
+    CF2A00000074  3098446  2025-10-22  22 900 000      105 403       -1 832 000    21 173 403         21 173 403          0         
+    CG2A00000874  4131298  2026-07-24  4 926 000 000   11 943 863    0             4 937 943 863      4 937 943 863       0         
+    CG2A00000874  4184911  2026-08-06  -4 926 000 000  -25 480 241   0             -4 951 480 241     -4 951 480 241      0         
+    CM1200002127  3728215  2026-04-29  3 000 000 000   0             -76 916 667   2 923 083 333      2 923 083 333       0         
+    CM1200002127  3817331  2026-04-30  -3 000 000 000  0             2 416 667     -2 997 583 333     -2 997 583 333      0         
+    CM2J00000196  3288919  2025-12-04  9 500 000 000   0             -285 000 000  9 215 000 000      9 215 000 000       0         
+    CM2J00000196  3387200  2025-12-31  -9 500 000 000  -45 547 945   0             -9 545 547 945     -9 545 547 945      0         
+    CM2J00000196  3405066  2026-01-09  9 500 000 000   56 934 932    0             9 556 934 932      9 556 934 932       0         
+    CM2J00000196  3413037  2026-01-12  -9 500 000 000  -60 188 356   -465 500      -9 560 653 856     -9 560 653 856      0         
+    CM2J00000196  3433872  2026-01-15  9 500 000 000   68 321 918    0             9 568 321 918      9 568 321 918       0         
     CM2J00000196  3433901  2026-01-15  -9 500 000 000  -68 321 918   -2 964 000    -9 571 285 918     -9 569 803 918      -1 482 000
-    CM2J00000196  3495989  2026-02-03  9 500 000 000   94 349 315    0,00          9 594 349 315      9 594 349 315       0,00      
-    CM2J00000196  3556516  2026-02-17  -9 500 000 000  -117 123 288  -2 631 500    -9 619 754 788     -9 619 754 788      0,00      
-    CM2J00000196  3670238  2026-03-17  9 500 000 000   167 551 370   0,00          9 667 551 370      9 667 551 370       0,00      
+    CM2J00000196  3495989  2026-02-03  9 500 000 000   94 349 315    0             9 594 349 315      9 594 349 315       0         
+    CM2J00000196  3556516  2026-02-17  -9 500 000 000  -117 123 288  -2 631 500    -9 619 754 788     -9 619 754 788      0         
+    CM2J00000196  3670238  2026-03-17  9 500 000 000   167 551 370   0             9 667 551 370      9 667 551 370       0         
     Vérification de l'égalité fondatrice du schéma : nominal + couru − décote = règlement. Un
     montant négatif en prime/décote est une décote, qui vient en diminution du règlement.
 
@@ -3252,15 +3279,551 @@ CONTRÔLES SANS ANOMALIE
 
         Date d'arrêté  Comptes Flexcube  Comptes Calypso  PORTEFEUILLE PROPRE  Titres de la clientèle (hors bilan)  Dispositif
         -------------  ----------------  ---------------  -------------------  -----------------------------------  ----------
-        2023-12-31     71 749 600 000    0,00             71 749 600 000       0,00                                 Flexcube  
-        2024-06-30     79 310 970 000    0,00             79 310 970 000       0,00                                 Flexcube  
-        2024-12-31     115 432 180 000   0,00             115 432 180 000      0,00                                 Flexcube  
-        2025-06-30     0,00              135 921 813 333  135 921 813 333      30 159 010 000                       Calypso   
-        2025-12-31     0,00              212 912 553 333  212 912 553 333      28 635 360 000                       Calypso   
-        2026-06-30     0,00              244 098 816 666  244 098 816 666      23 893 110 000                       Calypso   
+        2023-12-31     71 749 600 000    0                71 749 600 000       0                                    Flexcube  
+        2024-06-30     79 310 970 000    0                79 310 970 000       0                                    Flexcube  
+        2024-12-31     115 432 180 000   0                115 432 180 000      0                                    Flexcube  
+        2025-06-30     0                 135 921 813 333  135 921 813 333      30 159 010 000                       Calypso   
+        2025-12-31     0                 212 912 553 333  212 912 553 333      28 635 360 000                       Calypso   
+        2026-06-30     0                 244 098 816 666  244 098 816 666      23 893 110 000                       Calypso   
         Le portefeuille propre est au bilan, les titres placés auprès de la clientèle au hors bilan. Les
         deux colonnes ne s'additionnent pas : la seconde ne appartient pas à la banque.
 
+
+====================================================================================================
+SECTION 12 — COMPTES DE RÉGULARISATION, COMPTES D'ATTENTE ET COMPTES DORMANTS
+====================================================================================================
+
+Revue des comptes qui bordent le circuit des titres sans en faire partie : la charge de commissions,
+les comptes d'attente de la direction financière, les comptes de nantissement et de conversion, et
+l'ensemble des comptes que le PCEC destine aux pensions livrées et aux dépréciations. Le fait qu'un
+compte soit resté vide est ici un résultat de contrôle à part entière.
+
+  6 contrôle(s) exécuté(s) — 6 anomalie(s), 0 sans anomalie.
+
+----------------------------------------------------------------------------------------------------
+[12.5] Un portefeuille de 27 milliards reçu en titres mais porté six mois au nostro BEAC, traversant l'arrêté annuel
+  Gravité : CRITIQUE
+  Référence : Compte 454000101 — écritures des 2025-12-05, 2025-12-09 et 2026-06-16
+
+  CE QU'EST UN COMPTE DE CONVERSION. Ces comptes ne servent qu'à une chose : accueillir, le temps
+  d'une reprise de données, les soldes qu'un système déverse dans un autre. Ils n'ont pas vocation à
+  vivre au-delà de l'opération technique qui les justifie, et l'utilisateur qui les mouvemente est
+  un utilisateur technique, non un opérateur de la salle des marchés.
+
+  CE QUI S'EST PASSÉ. Le 2025-12-05, le compte 454000101 COMPTE DE CONVERSION BONS DE TRESOR est
+  débité de 27 200 000 000 XAF par l'utilisateur technique MIGRATION, sans aucun libellé. 4 jours
+  plus tard, le 2025-12-09, l'opérateur CHEICHEID059 le crédite du même montant, sous le libellé «
+  Securities received from SCB to be booked manually » — titres reçus de SCB, à comptabiliser
+  manuellement.
+
+  TROIS ANOMALIES SE SUPERPOSENT.
+  - LA DATE. Cette reprise intervient 5,7 mois APRÈS la bascule vers Calypso du 2025-06-16. Une
+    reprise de portefeuille postérieure de près de six mois à la migration n'est pas une migration :
+    c'est une entrée de portefeuille traitée avec les outils de la migration.
+  - L'UTILISATEUR. L'écriture d'origine est passée sous l'utilisateur technique de reprise
+    MIGRATION, et sans libellé. Une entrée de titres de cette taille n'a pas à être initiée par un
+    utilisateur non nominatif : la responsabilité de l'écriture n'est rattachable à personne.
+  - LE MODE OPÉRATOIRE. Le libellé annonce lui-même que les titres seront « comptabilisés
+    manuellement ». Un portefeuille entier entre donc dans les comptes sans passer par le circuit de
+    traitement des titres, donc sans les contrôles qui y sont attachés : pas de contrat, pas de
+    schéma comptable automatique, pas de calcul de courus.
+
+  MAIS L'ANOMALIE LA PLUS LOURDE EST AILLEURS — DANS LA CONTREPARTIE. Le crédit du 2025-12-09 sort
+  bien le montant du compte de conversion, mais il le sort contre un DÉBIT de 099ACO00001 BANQUE DES
+  ETATS DE LAFRIQUE CENTRA : le compte de règlement de la banque auprès de la banque centrale. Or la
+  banque n'a rien encaissé — elle a reçu des TITRES. Elle a donc enregistré, à son compte à la BEAC,
+  27 200 000 000 XAF de trésorerie qui n'existait pas.
+
+  CETTE SURÉVALUATION A DURÉ 189 JOURS, du 2025-12-09 au 2026-06-16, date à laquelle l'écriture
+  d'entrée en portefeuille la reprend. ELLE TRAVERSE L'ARRÊTÉ ANNUEL DU 31 DÉCEMBRE 2025 : à cette
+  date, le nostro BEAC publié comprend 27 200 000 000 XAF de trésorerie fictive, et le portefeuille
+  titres ne comprend pas les titres correspondants. Le bilan est faux des deux côtés à la fois — en
+  nature comme en montant. Un écart de cette ampleur sur le compte de règlement de la banque
+  centrale aurait dû être arrêté par le rapprochement bancaire mensuel. C'est la même défaillance
+  que celle des contrôles 5.3 et 11.8, sur le même compte.
+
+  CE QUI S'EST PASSÉ ENSUITE. Les titres eux-mêmes n'entrent au portefeuille que le 2026-06-16, soit
+  193 jours plus tard, par une écriture manuelle unique passée par l'opérateur NDIRID000254 : 7 bons
+  et obligations du Trésor camerounais y sont enregistrés d'un seul mouvement, avec leur décote et
+  leurs intérêts, contre le nostro BEAC et le compte de nantissement du contrôle 12.4.
+
+  LE DOSSIER TIENT DONC EN TROIS ÉCRITURES MANUELLES ÉTALÉES SUR SIX MOIS, et pas une de plus : une
+  reprise technique sans libellé, un apurement qui déverse le montant sur le nostro, puis une entrée
+  en portefeuille. Un portefeuille de 27 200 000 000 XAF est resté six mois hors des comptes de
+  titres, logé dans la trésorerie de la banque centrale.
+
+    Montant repris                                        : 27 200 000 000 XAF
+    Date de la reprise technique                          : 2025-12-05
+    Date de l'apurement manuel                            : 2025-12-09
+    Délai entre la reprise et son apurement               : 4 jours
+    Date d'entrée effective des titres au portefeuille    : 2026-06-16
+    Délai total, de la reprise à l'entrée en portefeuille : 193 jours
+    Titres enregistrés par cette écriture unique          : 7
+    Écart avec la date de bascule vers Calypso            : 5,7 mois
+    Contrepartie de l'apurement                           : 099ACO00001 BANQUE DES ETATS DE LAFRIQUE CENTRA
+    Durée de la surévaluation du nostro                   : 189 jours
+    Dates d'arrêté traversées                             : 2025-12-31
+    Utilisateur de la reprise                             : MIGRATION
+    Opérateur de l'apurement                              : CHEICHEID059
+
+    Date        Compte       Sens  Montant XAF     Opérateur     Libellé                                           
+    ----------  -----------  ----  --------------  ------------  --------------------------------------------------
+    2025-12-05  454000101    D     27 200 000 000  MIGRATION                                                       
+    2025-12-09  454000101    C     27 200 000 000  CHEICHEID059  Securities received from SCB to be booked manually
+    2025-12-09  099ACO00001  D     27 200 000 000  CHEICHEID059  Securities received from SCB to be booked manually
+    Les deux écritures du compte de conversion, et la jambe de contrepartie qui porte le montant au
+    compte de la banque centrale.
+
+  Recommandation :
+    1. Chiffrer l'effet sur les états arrêtés au 31 décembre 2025 : 27 200 000 000 XAF de trésorerie
+    inexistante au nostro BEAC, et autant de titres absents du portefeuille. Vérifier si les états
+    publiés à cette date en ont été corrigés.
+    2. Obtenir le dossier de reprise du portefeuille SCB : contrat de cession, état des titres
+    transférés, valorisation retenue, et rapprochement avec le dépositaire.
+    3. Vérifier que chacun des titres repris a bien été enregistré individuellement, avec son
+    nominal, son taux, sa date d'échéance et son calcul de courus.
+    4. Faire justifier l'emploi d'un compte de conversion et d'un utilisateur technique pour une
+    opération postérieure de six mois à la migration.
+    5. Vérifier qu'aucune autre écriture de la période n'a été passée sous cet utilisateur
+    technique.
+
+----------------------------------------------------------------------------------------------------
+[12.1] Le compte de charge 622000100 sert de compte de régularisation universel du circuit titres
+  Gravité : ELEVEE
+  Référence : Compte 622000100 COMM ET FRAIS SUR TITRES — 261 écritures sur la période
+
+  CE QU'EST CE COMPTE. 622000100 COMM ET FRAIS SUR TITRES est un compte de CHARGE d'exploitation. Le
+  PCEC lui assigne deux emplois, et deux seulement : les commissions versées aux intermédiaires lors
+  de l'achat et de la vente de titres, et les droits de garde payés au dépositaire.
+
+  CE QU'IL CONTIENT RÉELLEMENT. Sur la période, il porte 261 écritures. Seules 115 relèvent des deux
+  emplois prévus. Les 146 autres — soit 55,9 % du total — y logent des opérations qui appartiennent
+  ailleurs : des décotes et primes d'acquisition et de cession, des régularisations d'intérêts
+  courus, des écarts d'arrondi et des différences que personne n'a rattachées à leur origine.
+
+  TROIS CONSÉQUENCES COMPTABLES, DISTINCTES.
+  - PREMIÈRE — une compensation entre charges et produits. 52 écritures sont des CRÉDITS, pour 1 470
+    811 156 XAF, sur un compte de charge dont les débits s'élèvent à 1 476 723 300 XAF. Autrement
+    dit, des PRODUITS sont enregistrés en diminution d'une CHARGE. Le PCEC prohibe cette
+    compensation : charges et produits doivent figurer pour leur montant brut. Le solde net du
+    compte, 5 912 144 XAF, ne dit donc rien du volume réel qui y a transité.
+  - DEUXIÈME — une imputation erronée des décotes. 626 048 767 XAF de décotes et primes y sont
+    passées. Une décote à l'acquisition est un élément du prix de revient du titre ou un produit à
+    étaler, selon le cas ; elle relève des comptes de produits comptabilisés d'avance ou du résultat
+    sur titres. Elle n'est en aucun cas une commission.
+  - TROISIÈME — la disparition des écarts. 51 365 791 XAF de régularisations d'intérêts y sont
+    logées, et 29 écritures portent sur des montants inférieurs ou égaux à 100 XAF, pour 217 XAF au
+    total. Ces écritures d'un ou deux francs sont le signe d'un rapprochement forcé : plutôt que
+    d'expliquer un écart, on l'éteint. Le contrôle 5.3 en donne l'illustration la plus nette — le
+    reliquat de la correction d'apurement de la migration y a été passé en charge.
+
+  POURQUOI CELA COMPTE POUR L'AUDIT. Un compte fourre-tout empêche toute revue analytique : il
+  devient impossible de dire ce que la banque a réellement payé en commissions, ni de mesurer le
+  résultat des décotes, ni de suivre les écarts de courus. Il neutralise par construction le
+  contrôle que la piste d'audit est censée permettre.
+
+    Écritures sur la période                     : 261
+    Dont relevant des emplois prévus par le PCEC : 115
+    Dont étrangères à l'objet du compte          : 146
+    Total des DÉBITS                             : 1 476 723 300 XAF
+    Total des CRÉDITS — produits logés en charge : 1 470 811 156 XAF
+    Solde net, qui masque les deux précédents    : 5 912 144 XAF
+    Décotes et primes imputées à tort            : 626 048 767 XAF
+    Régularisations d'intérêts imputées à tort   : 51 365 791 XAF
+    Écritures de 100 XAF ou moins                : 29
+    Opérateurs distincts                         : 11
+
+    Nature de l'opération                      Lignes  Débits XAF     Crédits XAF  Net XAF     
+    -----------------------------------------  ------  -------------  -----------  ------------
+    commission (usage prévu)                   103     156 397 334    5 137 367    151 259 967 
+    intérêt couru ou régularisation d'intérêt  83      24 096 395     75 462 186   -51 365 791 
+    autre                                      24      49 673 591     59 056       49 614 535  
+    décote ou prime sur titre                  24      1 112 000 417  485 951 650  626 048 767 
+    différence, reclassement, mise à zéro      12      7 235 246      25 575       7 209 671   
+    droit de garde (usage prévu)               12      127 320 317    14 416 000   112 904 317 
+    sans libellé — écriture de clôture         3       0              889 759 322  -889 759 322
+    Décomposition du compte par la nature de l'opération, lue dans le libellé de chaque écriture.
+    Les deux lignes « usage prévu » sont les seules que le PCEC autorise sur ce compte.
+
+    Date        Référence         Sens  Montant XAF  Opérateur     Libellé                                                       
+    ----------  ----------------  ----  -----------  ------------  --------------------------------------------------------------
+    2025-02-28  0990037250590001  D     475 250 320  CHEICHEID059  DISCOUNT AT SALE TBIL CM120000018 2 500 000 000 AT 52.4588% TO
+    2025-03-07  099000n250660001  C     475 250 320  CHEICHEID059  RECLASS DISCOUNT AT SALE TBIL CM12000001897  2 500 000 000 AT 
+    2024-12-31  099ZYND243660007  C     430 997 027  ASONG0014EOD                                                                
+    2025-12-31  099ZYND253650081  C     293 414 662  SYSTEM                                                                      
+    2024-03-18  099000r240780001  D     250 000 000  BINEID00087   LIQUIDATION OF SECURITIES TRANSACTIONS BOOKED  ON SEPTEMBER 20
+    2023-12-29  099ZYND23363002U  C     165 347 633  ASONG0014EOD                                                                
+    2024-03-04  099000c240640001  D     75 000 000   BINEID00087   DISCOUNT RECIEVED SALES security CM2A00000112 5 000 000 000 6 
+    2024-03-08  099000d240680001  C     75 000 000   BINEID00087   interest of security CM2A00000112 at 6% 5.000.000.000xaf 099ot
+    2025-02-28  099003b250590001  D     75 000 000   CHEICHEID059  REGUL DISCOUNT of the security GA2B00000125 2 500 000 000 6.5%
+    2025-06-04  099001j251550001  D     45 000 000   BINEID00087   DISCOUNT RECIEVED SALES security GA2K00000025  2 000 000 000 5
+    2025-06-20  0990002251710001  D     35 000 000   CHEICHEID059  DISCOUNT AT PURCHASE SECURITY CG2A00000601 AT 5.75 % 1 000 000
+    2024-09-03  0990012242470001  D     34 345 313   BINEID00087   Droit de garde EMRALD SECURITIES SERVICES BOURSE(GA0000020396 
+    Les douze plus gros mouvements du compte sur la période.
+
+  Recommandation :
+    1. Faire analyser le contenu de 622000100 sur la période et reclasser chaque écriture à son
+    compte d'origine : décotes aux comptes de régularisation 472200106 et 472200108, régularisations
+    d'intérêts aux comptes de produits sur titres, différences non justifiées en suspens documenté.
+    2. Interdire les écritures au crédit de ce compte : un produit ne s'enregistre pas en diminution
+    d'une charge.
+    3. Instaurer une règle de seuil et de justification : toute écriture de régularisation sur un
+    compte de charge titres doit porter la référence du contrat et la nature de l'écart qu'elle
+    corrige.
+    4. Rapprocher le montant des commissions réellement dues des relevés du dépositaire et des
+    intermédiaires, la comptabilité ne permettant pas aujourd'hui de les isoler.
+
+----------------------------------------------------------------------------------------------------
+[12.2] Les pensions livrées sont comptabilisées en emprunts au jour le jour : aucun des comptes que le PCEC leur réserve n'est servi
+  Gravité : ELEVEE
+  Référence : 13 comptes vides sur les 14 extraits
+
+  CE QUE LE PCEC PRÉVOIT. Lorsqu'une banque cède un titre en s'engageant à le racheter — pension
+  livrée, mise en pension auprès de la banque centrale, sell-buy-back — l'opération est un EMPRUNT
+  GARANTI, distinct d'un emprunt en blanc. Le PCEC lui ouvre une série de comptes propres :
+  521300100 et 521600100 pour les valeurs reçues et données en pension, 531000100 et 532000100 pour
+  les autres valeurs, 538000100 et 539000100 pour les créances et dettes rattachées, 522100100 à
+  522400100 pour le refinancement au guichet A de la BEAC, 602000100 et 702000100 pour les intérêts,
+  606200100 et 706200100 pour les commissions.
+
+  CE QUE MONTRE L'EXTRACTION. Sur les 14 comptes demandés, 13 n'ont porté AUCUN mouvement sur toute
+  la période. Le seul qui en porte, 602000100, en compte sept, dont six antérieurs à la période : la
+  seule écriture de la période est l'écriture de clôture annuelle qui solde une charge née en mai
+  2023. AUCUN COMPTE DE PENSION N'EST DONC SERVI SUR TROIS EXERCICES.
+
+  CE QUI EST SERVI À LA PLACE. La banque enregistre bel et bien ses refinancements auprès de la BEAC
+  — mais sur les comptes de l'EMPRUNT INTERBANCAIRE AU JOUR LE JOUR. Le compte 552400100 EMPRUNT AU
+  JR LE JR BQ NON ASSOC porte 8 253 000 000 000 XAF de mouvements bruts sur la période, la charge
+  d'intérêt est prise sur 601100100 pour 1 774 823 612 XAF, et les titres affectés en garantie
+  figurent au hors bilan sur 952100100 pour 10 039 318 740 000 XAF de mouvements. L'opération est
+  donc comptabilisée, et son collatéral est suivi : ce n'est pas une omission, c'est un CLASSEMENT.
+
+  POURQUOI LE CLASSEMENT COMPTE. Un emprunt au jour le jour en blanc et une pension livrée n'ont ni
+  la même nature juridique, ni le même profil de risque, ni le même traitement prudentiel. Le second
+  est garanti par des titres remis en pleine propriété ; le premier ne l'est pas. Présenter l'un
+  comme l'autre rend illisible, au passif, la part du refinancement qui est adossée à du collatéral
+  — donc la part du portefeuille qui n'est plus mobilisable. Le rapprochement des deux comptes de
+  charge le montre : celle de 602000100 est nulle alors que celle de 601100100 ne l'est pas, ce qui
+  veut dire que la totalité du coût du refinancement garanti est présentée comme un coût d'emprunt
+  en blanc.
+
+  ET LES CESSIONS-RÉTROCESSIONS, ELLES, NE SONT PAS COMPTABILISÉES DU TOUT. 215 opérations pour 896
+  125 677 223 XAF réglés sont enregistrées comme des cessions fermes suivies d'acquisitions fermes —
+  ni dette au passif, ni charge d'intérêt, ni hors bilan. Le contrôle 8.2 en établit le schéma ;
+  l'extraction des comptes de pension en apporte ici la confirmation directe, par l'absence. Pour
+  cette population, le constat n'est pas un classement mais une absence d'enregistrement, et il
+  reste classé CRITIQUE au contrôle 8.2.
+
+    Comptes de pension et de refinancement extraits           : 14
+    Dont sans aucun mouvement sur la période                  : 13
+    Charge d'intérêt sur pension — compte 602000100           : 0 XAF
+    Mouvements bruts sur 552400100, employé à la place        : 8 253 000 000 000 XAF
+    Charge d'intérêt prise sur 601100100                      : 1 774 823 612 XAF
+    Collatéral suivi au hors bilan sur 952100100              : 10 039 318 740 000 XAF
+    Cessions-rétrocessions sans aucun enregistrement de dette : 215
+    Montant réglé correspondant, au sens du contrôle 8.1      : 896 125 677 223 XAF
+
+    Compte     Libellé                                                           Mouvements sur la période
+    ---------  ----------------------------------------------------------------  -------------------------
+    521300100  VAL  RECU PENSION OPS INTERB                                      AUCUN                    
+    521600100  VALEURS DONNEES EN PENSION                                        AUCUN                    
+    531000100  AUTRES VAL RECUES EN PENSION OU ACHETEES FERMES                   AUCUN                    
+    532000100  AUTRES VAL DONNEES EN PENSION OU VENDUES FERMES                   AUCUN                    
+    538000100  CREANCES RATTACHEES AUTRE VAL DON PENSION OU ACHETE FERME         AUCUN                    
+    539000100  DETTES RATTACHEES AUTRE VAL DON EN PENSION OU ACHETE FERME        AUCUN                    
+    522100100  REFINANCEMENT MM GUICHET A - EMPRUNTS SUR APPEL D OFFRE           AUCUN                    
+    522200100  REFINANCEMENT MM GUICHET A - EMPRUNT SUR MISE EN PENSION          AUCUN                    
+    522300100  REFINANCEMENT MM GUICHET A - EMPRUNTS INTERVENTION PONCTUELLES    AUCUN                    
+    522400100  REFINANCEMENT MM GUICHET A - EMPRUNT EXCEPTIONELS SUR PLACEMENTS  AUCUN                    
+    702000100  INTS SUR AUT VALS RECUES  PENSION                                 AUCUN                    
+    606200100  COMM SUR AUT VAL DONNÉS EN PENSION                                AUCUN                    
+    706200100  COMMISSIONS SUR OPS DE REFINANCEMT.                               AUCUN                    
+    Les comptes que le PCEC réserve à la pension livrée et au refinancement, et qui n'ont été
+    mouvementés à aucun moment de la période d'audit.
+
+    Compte     Libellé                                                                                  Lignes  Mouvements bruts XAF  Solde net XAF  
+    ---------  ---------------------------------------------------------------------------------------  ------  --------------------  ---------------
+    552400100  EMPRUNT AU JR LE JR BQ NON ASSOC                                                         164     8 253 000 000 000     -45 000 000 000
+    559000101  DETTES RATTACHEES PRET EMPRUNT AU JR LE JR - NON ASS                                     113     6 068 641 668         66 000 000     
+    601100100  INT. SUR OPS MARCHE MONETAIRE - OPS INTERBANCAIRES                                       195     8 950 081 952         1 774 823 612  
+    952100100  TITRES D INVESTISSEMENT PUBLICS AFFECTES EN GARANTIE DES OPERATIONS DU MARCHE MONETAIRE  1 849   10 039 318 740 000    -71 847 170 000
+    995000100  CPTE GL OPS SUR TITRES ET VALS AFFECT EN GTIES OPS MM                                    1 849   10 039 318 740 000    71 847 170 000 
+    Les comptes effectivement employés pour les refinancements auprès de la banque centrale : ceux
+    de l'emprunt interbancaire au jour le jour et du hors bilan de garantie.
+
+    Compte     Libellé                             Lignes  Solde net XAF
+    ---------  ----------------------------------  ------  -------------
+    602000100  INTERET SUR VAL DONNEES EN PENSION  1       -1 458 333   
+    Le seul compte de la série des pensions qui porte une écriture sur la période, et ce qu'elle
+    représente.
+
+  Recommandation :
+    1. Faire qualifier les refinancements BEAC : s'ils sont adossés à des titres remis en garantie —
+    ce que le hors bilan confirme — ils relèvent des comptes de pension et de refinancement au
+    guichet A, non de l'emprunt au jour le jour.
+    2. Reclasser au passif la part du refinancement garantie par du collatéral, et mesurer l'effet
+    sur la présentation des ratios de liquidité et sur l'information donnée en annexe sur les actifs
+    grevés.
+    3. Ouvrir et paramétrer effectivement les comptes 521600100, 532000100, 539000100 et 602000100
+    dans le schéma comptable du produit, faute de quoi l'écriture correcte restera impossible à
+    passer.
+    4. Appliquer la même qualification aux cessions-rétrocessions du contrôle 8.2, qui pour leur
+    part ne font aujourd'hui l'objet d'aucun enregistrement de dette.
+
+----------------------------------------------------------------------------------------------------
+[12.3] Un compte d'attente porte 32 milliards de mouvements titres et reste chargé d'un milliard à la clôture
+  Gravité : ELEVEE
+  Référence : Compte 466000107 COMPTE ATTENTE FINCON DEBITEUR
+
+  CE QU'EST CE COMPTE. 466000107 COMPTE ATTENTE FINCON DEBITEUR est un compte d'attente : il reçoit
+  provisoirement une écriture dont l'imputation définitive n'est pas encore arrêtée. Par nature, un
+  compte d'attente doit se vider vite, et se présenter à zéro à chaque arrêté.
+
+  PREMIER CONSTAT — LE VOLUME. Sur la période, ce compte a reçu 1 837 écritures pour 32 125 752 380
+  XAF de mouvements bruts, réparties sur 1 117 écritures comptables distinctes. 1 295 d'entre elles
+  — soit 70,5 % — portent dans leur libellé une référence de titre ou de contrat de marché
+  monétaire. Ce compte d'attente est donc, en pratique, un compte de passage du circuit titres.
+
+  DEUXIÈME CONSTAT — L'ÉPISODE DE MARS ET AVRIL 2024. En deux mois, 1 314 lignes y ont transité pour
+  27 150 310 958 XAF de mouvements bruts, en 684 écritures manuelles saisies par 4 opérateurs. Les
+  libellés sont explicites : il s'agit d'annulations et de réenregistrements d'intérêts courus sur
+  titres — « Reversal of interest income on SALES », « Reversal of 511800101 in 466000107 ».
+  L'opération se solde à zéro : le compte est revenu à zéro au 30 avril 2024. Mais au 31 mars 2024,
+  en plein milieu de l'épisode, il portait encore 87 088 407 XAF.
+
+  Ce n'est pas une perte, c'est un problème de piste d'audit : plus de 27 milliards de produits sur
+  titres ont été défaits puis refaits par écritures manuelles, en dehors de tout traitement
+  automatique, sans qu'aucune pièce ne rattache l'ensemble à une décision de correction identifiée.
+
+  TROISIÈME CONSTAT — LE SOLDE QUI RESTE. Le compte n'est pas revenu à zéro. Au 2026-06-30 il porte
+  1 075 474 620 XAF au DÉBIT. L'essentiel tient à une seule écriture, passée le 2025-12-31 pour 1
+  075 318 728 XAF, libellée « Rclss  COMPTE INTER BRANCHES ». Une reclassification du compte inter-
+  agences vers un compte d'attente, passée le jour de l'arrêté annuel, n'est pas une imputation :
+  c'est le report d'un problème d'un compte vers un autre. Ce milliard figure à l'actif du bilan
+  sans que rien n'en justifie la nature.
+
+  À TITRE DE COMPARAISON, le compte d'attente symétrique 467000103 CPTE ATTENTE FINCON CREDITEUR se
+  présente à -200 XAF : lui est correctement apuré. La défaillance porte sur un compte, pas sur le
+  dispositif.
+
+    Écritures sur la période                       : 1 837
+    Écritures comptables distinctes                : 1 117
+    Mouvements bruts cumulés                       : 32 125 752 380 XAF
+    Dont portant une référence de titre            : 1 295
+    Épisode mars-avril 2024 — lignes               : 1 314
+    Épisode mars-avril 2024 — mouvements bruts     : 27 150 310 958 XAF
+    Épisode mars-avril 2024 — solde résiduel       : 0 XAF
+    Solde au 31 mars 2024, en cours d'épisode      : 87 088 407 XAF
+    Solde au 2026-06-30                            : 1 075 474 620 XAF
+    Dont une seule écriture de reclassement        : 1 075 318 728 XAF
+    Solde du compte d'attente symétrique 467000103 : -200 XAF
+
+    Date d'arrêté  Solde XAF    
+    -------------  -------------
+    2023-12-31     0            
+    2024-06-30     0            
+    2024-12-31     23 994 517   
+    2025-06-30     40 667 283   
+    2025-12-31     1 070 343 628
+    2026-06-30     1 075 474 620
+    Le solde du compte d'attente à chaque date d'arrêté. Un compte d'attente doit s'y présenter à
+    zéro.
+
+    Date        Référence         Sens  Montant XAF    Opérateur     Libellé                                                   
+    ----------  ----------------  ----  -------------  ------------  ----------------------------------------------------------
+    2025-12-31  099004e253650001  D     1 075 318 728  BINEID00087   Rclss  COMPTE INTER BRANCHES                              
+    2024-04-01  099000f240920001  C     391 780 822    BINEID00087   Reversal of interest income on  SALES  CM2B00000053 099OTA
+    2024-04-09  099001d241000001  D     391 780 822    CHOHOS00066   Reversal of interest income on  SALES  CM2B00000053 099OTA
+    2024-04-01  099000f240920001  D     366 164 384    BINEID00087   Reversal of 511800101 in 466000107 rf 099000e233030001 int
+    2024-04-09  0990014241000001  C     366 164 384    BINEID00087   Reversal of 511800101 in 466000107 rf 099000e233030001 int
+    2024-03-29  099000c240890046  C     336 000 000    BINEID00087   ANNUAL INTEREST FOR T BOND CM2B00000020 6BN               
+    2024-04-09  099001b241000001  D     336 000 000    BINEID00087   ANNUAL INTEREST FOR T BOND CM2B00000020 6BN               
+    2025-12-31  099004j253650061  D     321 409 835    CHEICHEID059  WISE COMPUTERS Invoice no F25D00033 of 1 8 2025 50pct adv 
+    2024-04-01  099000f240920001  D     292 575 342    BINEID00087   Reversal of  interest income on   PURCHASE  CM2L00000036  
+    2024-04-01  099000f240920001  C     292 575 342    BINEID00087   Reversal Liquidation of the Accrued interest of CM2L000000
+    Les dix plus gros mouvements du compte sur la période.
+
+  Recommandation :
+    1. Faire justifier ligne à ligne le solde de 1 075 474 620 XAF au 2026-06-30, et en premier lieu
+    le reclassement du compte inter-agences passé le jour de l'arrêté : produire la pièce qui en
+    établit la nature et l'imputation définitive.
+    2. Obtenir la note de correction qui fonde l'épisode de mars et avril 2024 : qui l'a décidée,
+    sur quel diagnostic, et pourquoi elle a été exécutée par écritures manuelles plutôt que par
+    reprise du traitement.
+    3. Instaurer une règle d'apurement : tout solde d'un compte d'attente de plus de trente jours
+    fait l'objet d'un état nominatif présenté au comité d'audit.
+    4. Étendre la revue au compte 511800101 « créances rattachées — manuelles », que les libellés
+    désignent mais qui ne figure dans aucune extraction (contrôle 12.6).
+
+----------------------------------------------------------------------------------------------------
+[12.4] Un nantissement de 6,2 milliards inscrit en doublon sur un compte de classe 2, le jour de l'arrêté annuel
+  Gravité : MOYENNE
+  Référence : Compte 265210100 — 5 mouvements sur toute la période
+
+  CE QUE CE COMPTE DEVRAIT MONTRER. Un titre remis en garantie d'un refinancement auprès de la BEAC
+  reste la propriété de la banque, mais il n'est plus disponible : il est immobilisé. Le PCEC impose
+  de l'isoler, afin que le lecteur des comptes distingue les titres cessibles de ceux qui ne le sont
+  pas. Deux dispositifs coexistent dans le plan de comptes : les comptes de HORS BILAN de classe 9 —
+  952100100 et sa contrepartie 995000100 — et les comptes de classe 2 265110100 et 265210100.
+
+  LEQUEL EST EMPLOYÉ. Le premier, et lui seul. Le contrôle 12.2 établit que le hors bilan 952100100
+  porte 1 849 écritures sur la période, pour 10 039 318 740 000 XAF de mouvements bruts : le
+  collatéral des refinancements BEAC y est suivi en continu, opération par opération.
+
+  CE QUE PORTE LE COMPTE DE CLASSE 2. Sur toute la période, 265210100 porte 5 mouvements, et pas un
+  de plus. 4 débits passés le même jour, le 2025-12-31 — la date d'arrêté annuel — pour 6 200 000
+  000 XAF, soit quatre obligations du Trésor camerounais nommément désignées. Puis un unique crédit
+  qui les reprend en bloc le 2026-06-16, soit 167 jours plus tard.
+
+  CE QUE CELA SIGNIFIE. Ces quatre titres n'ont pas été suivis : ils ont été INSCRITS le jour de la
+  clôture, sur un compte que rien d'autre n'alimente, puis effacés. Trois éléments qualifient
+  l'écriture.
+  - ELLE FAIT DOUBLE EMPLOI. Le dispositif de suivi du collatéral existe et fonctionne, au hors
+    bilan. Inscrire une seconde fois quatre titres sur un compte de classe 2 ne complète pas
+    l'information : cela la dédouble, sans que rien n'indique au lecteur des comptes que les deux
+    inscriptions portent, ou non, sur les mêmes titres.
+  - ELLE NE VIT QUE LE TEMPS DE L'ARRÊTÉ. Une inscription passée le 31 décembre et reprise ensuite
+    ne décrit pas une immobilisation : elle habille un arrêté.
+  - SA REPRISE RELÈVE D'UN AUTRE DOSSIER. Le crédit ne porte pas un libellé de mainlevée mais «
+    Reclass SCB Securities transferred/9 Dec. 2025 » : il fait partie de l'écriture d'apurement du
+    portefeuille repris de SCB, que le contrôle 12.5 décrit. Autrement dit, ces quatre titres sont
+    sortis du nantissement non parce que la garantie a été levée, mais parce qu'on soldait autre
+    chose.
+
+  À NOTER ENFIN que le compte symétrique des titres PRIVÉS nantis, 265110100, et les comptes de
+  titres à recevoir et à livrer du marché gris n'ont jamais été mouvementés sur la période.
+
+    Mouvements sur la période, tous comptes de nantissement : 5
+    Débits — titres portés en garantie                      : 4
+    Montant correspondant                                   : 6 200 000 000 XAF
+    Date de l'enregistrement                                : 2025-12-31
+    Date de la reprise                                      : 2026-06-16
+    Durée pendant laquelle le nantissement a figuré         : 167 jours
+    Écritures de collatéral au hors bilan 952100100         : 1 849
+    Comptes de hors-bilan titres jamais mouvementés         : 5
+
+    Date        Compte     Sens  Montant XAF    Opérateur     Libellé                                                     
+    ----------  ---------  ----  -------------  ------------  ------------------------------------------------------------
+    2025-12-31  265210100  D     2 000 000 000  CHOHOS00066   GPTM-CM-C017|00000000000083894655/CAMEROON TREASURY BOND | C
+    2025-12-31  265210100  D     1 400 000 000  CHOHOS00066   GPTM-CM-C017|00000000000083894656/CAMEROON TREASURY BOND | C
+    2025-12-31  265210100  D     2 000 000 000  CHOHOS00066   GPTM-CM-C017|00000000000083891656/CAMEROON TREASURY BOND | C
+    2025-12-31  265210100  D     800 000 000    CHOHOS00066   GPTM-CM-C017|00000000000083895655/CAMEROON TBOND5    03/26  
+    2026-06-16  265210100  C     6 200 000 000  NDIRID000254  Reclass SCB Securities transferred/9 Dec. 2025              
+    L'intégralité des mouvements de nantissement de la période : quatre titres portés en garantie le
+    jour de l'arrêté, repris en bloc ensuite.
+
+    Compte     Libellé                                                                                 Mouvements
+    ---------  --------------------------------------------------------------------------------------  ----------
+    265110100  TITRES D'INVESTISSEMENTS PRIVÉS ADMIS EN GARANTIE DES REFINANCEMENTS DE LA BEAC         AUCUN     
+    951100100  TITRES D'INVESTISSEMENT PRIVES AFFECTES EN GARANTIE DES OPERATIONS DU MARCHE MONETAIRE  AUCUN     
+    953000100  TITRES A RECEVOIR INTERVENTION A L EMISSION                                             AUCUN     
+    954000100  TITRES A RECEVOIR MARCHE GRIS                                                           AUCUN     
+    955000100  TITRES A LIVRER MARCHES GRIS                                                            AUCUN     
+    Les autres comptes de garantie et de hors-bilan titres, restés vides sur toute la période.
+
+  Recommandation :
+    1. Obtenir de la BEAC l'état des titres nantis à la date d'arrêté du 31 décembre 2025 et le
+    rapprocher à la fois du hors bilan 952100100 et de ces quatre inscriptions : établir si elles
+    font double emploi ou si elles portent sur des titres que le hors bilan ne couvrait pas.
+    2. Faire justifier l'écriture du 31 décembre 2025 : sur quelle pièce repose-t-elle, et pourquoi
+    a-t-elle été passée le jour de l'arrêté sur un compte autrement inutilisé ?
+    3. Faire expliquer pourquoi sa reprise du 16 juin 2026 a été incorporée à l'écriture d'apurement
+    du portefeuille SCB (contrôle 12.5) plutôt que traitée comme une mainlevée de garantie.
+    4. Arrêter la doctrine d'emploi : un seul dispositif de suivi du collatéral, et des comptes de
+    classe 2 réservés à ce que le PCEC leur destine.
+
+----------------------------------------------------------------------------------------------------
+[12.6] Comptes dormants du dispositif titres, et comptes qu'il reste à extraire
+  Gravité : MOYENNE
+  Référence : 26 comptes demandés sans aucun mouvement
+
+  CE QUE CE CONTRÔLE ÉTABLIT. La deuxième extraction portait sur 34 comptes du plan de comptes
+  intéressant le circuit des titres. 26 d'entre eux sont revenus vides. Un compte vide n'est pas une
+  absence d'information : c'est l'information qu'un dispositif prévu par le plan de comptes n'a
+  jamais été employé.
+
+  TROIS FAMILLES SE DÉGAGENT.
+  - LES PROVISIONS POUR DÉPRÉCIATION. 3 comptes de provision du portefeuille de placement n'ont
+    jamais été mouvementés, et le seul qui le soit, 591400100, présente un solde nul. AUCUNE
+    DÉPRÉCIATION N'A DONC ÉTÉ CONSTATÉE SUR LE PORTEFEUILLE TITRES PENDANT TOUTE LA PÉRIODE. Sur un
+    portefeuille souverain CEMAC de cette taille, détenu sur trois exercices, l'absence totale de
+    provision suppose que la banque a conclu, chaque année, qu'aucun titre ne présentait de risque
+    de recouvrement. Cette conclusion doit reposer sur un test de dépréciation documenté ; à défaut,
+    elle n'est pas soutenable.
+  - LES COMPTES DE PENSION ET DE REFINANCEMENT, traités au contrôle 12.2.
+  - LE HORS-BILAN DU MARCHÉ GRIS. Les comptes de titres à recevoir et à livrer sont vides, alors que
+    les opérations d'intervention à l'émission et de marché gris existent. Les engagements
+    correspondants ne sont donc pas suivis.
+
+  CE QU'IL RESTE À OBTENIR. L'examen des libellés de la deuxième vague fait apparaître des comptes
+  dont l'existence est certaine mais qui n'ont encore été extraits dans aucune des deux vagues. Le
+  plus important est 511800101 « créances rattachées — MANUELLES » : le compte d'attente 466000107
+  porte des écritures qui le désignent nommément, ce qui signifie qu'un second compte de courus,
+  réservé aux écritures manuelles, vit en parallèle de 511800100. Tant qu'il n'est pas extrait,
+  l'analyse des courus du contrôle 5.3 et du contrôle 11.7 reste établie sur une vue partielle.
+
+    Comptes demandés à la deuxième extraction                    : 34
+    Revenus avec des mouvements                                  : 8
+    Revenus vides                                                : 26
+    Comptes de provision titres sans mouvement                   : 3
+    Dépréciation constatée sur le portefeuille, toute la période : 0 XAF
+    Comptes identifiés restant à extraire                        : 10
+
+    Compte     Libellé                                                                               
+    ---------  --------------------------------------------------------------------------------------
+    521300100  VAL  RECU PENSION OPS INTERB                                                          
+    521600100  VALEURS DONNEES EN PENSION                                                            
+    531000100  AUTRES VAL RECUES EN PENSION OU ACHETEES FERMES                                       
+    532000100  AUTRES VAL DONNEES EN PENSION OU VENDUES FERMES                                       
+    538000100  CREANCES RATTACHEES AUTRE VAL DON PENSION OU ACHETE FERME                             
+    539000100  DETTES RATTACHEES AUTRE VAL DON EN PENSION OU ACHETE FERME                            
+    522100100  REFINANCEMENT MM GUICHET A - EMPRUNTS SUR APPEL D OFFRE                               
+    522200100  REFINANCEMENT MM GUICHET A - EMPRUNT SUR MISE EN PENSION                              
+    522300100  REFINANCEMENT MM GUICHET A - EMPRUNTS INTERVENTION PONCTUELLES                        
+    522400100  REFINANCEMENT MM GUICHET A - EMPRUNT EXCEPTIONELS SUR PLACEMENTS                      
+    702000100  INTS SUR AUT VALS RECUES  PENSION                                                     
+    606200100  COMM SUR AUT VAL DONNÉS EN PENSION                                                    
+    706200100  COMMISSIONS SUR OPS DE REFINANCEMT.                                                   
+    591410100  PROV DEPRECIATION DES OBLIGATIONS (OTA)_PLACEMENT                                     
+    591420100  PROV DEPRECIATION DES AUTRES OBLIGATIONS ET ASSIMILES_PLACEMENT                       
+    591500100  PROV DEPRECIATION DES OBLIGATIONS PROPRES RACHETÉES PAR ANTICIPATION                  
+    951100100  TITRES D'INVESTISSEMENT PRIVES AFFECTES EN GARANTIE DES OPERATIONS DU MARCHE MONETAIRE
+    953000100  TITRES A RECEVOIR INTERVENTION A L EMISSION                                           
+    954000100  TITRES A RECEVOIR MARCHE GRIS                                                         
+    955000100  TITRES A LIVRER MARCHES GRIS                                                          
+    265110100  TITRES D'INVESTISSEMENTS PRIVÉS ADMIS EN GARANTIE DES REFINANCEMENTS DE LA BEAC       
+    454000106  COMPTE DE CONVERSION OBLIGATION DU TRESOR                                             
+    511420100  AUTRES OBLIGATIONS ET BONS ASSIMILES PLACEMENT                                        
+    511700100  TITRES DOUTEUX - PLACEMENT                                                            
+    512420100  AUTRES OBLIGATIONS ET BONS ASSIMILES TRANSACTIONS                                     
+    467000187  ATTENTE OPERATION TRESO CALYPSO                                                       
+    Les comptes demandés lors de la deuxième extraction et revenus sans aucun mouvement sur la
+    période d'audit.
+
+    Compte     Libellé                                                                                   Pourquoi l'extraire                                                                    
+    ---------  ----------------------------------------------------------------------------------------  ---------------------------------------------------------------------------------------
+    511800101  CREANCES RATTACHEES - MANUELLES                                                           désigné en toutes lettres par les libellés du compte d'attente 466000107               
+    511801100  SCB CREANCES RATTACHEES - PLACEMENT                                                       courus du portefeuille repris de SCB, dont le contrôle 12.5 établit l'entrée           
+    601200100  INT. SUR OPS MARCHE MONETAIRE - BEAC                                                      charge d'intérêt du marché monétaire face à la BEAC, contrepartie attendue des pensions
+    601200101  INT. SUR OPS MARCHE MONETAIRE - BEAC GUICHET                                              même charge, guichet de refinancement                                                  
+    706100100  COMMISSIONS SUR OPS DU MARCHE MONET                                                       commissions perçues sur opérations de marché monétaire                                 
+    952200100  AUTRES TITRES ET VALEURS PUBLICS AFFECTES EN GARANTIE DES OPERATIONS DU MARCHE MONETAIRE  autres titres publics affectés en garantie, symétrique de 952100100                    
+    265220100  AUTRES TITRES D'INVESTISSEMENT PUBLICS                                                    autres titres d'investissement publics, hors garantie BEAC                             
+    511100100  ACTIONS ET PARTS D ETS DE CRED PLACEMENT                                                  actions et parts d'établissements de crédit — placement                                
+    511220100  AUTRES BONS ET ASSIMILES - PLACEMENT                                                      autres bons et assimilés — placement                                                   
+    512600100  AUTRES TITRES A COURT TERME - TRANSACTION                                                 autres titres à court terme — transaction                                              
+    Comptes du plan de comptes qui intéressent le circuit des titres et qui n'ont été extraits dans
+    aucune des deux vagues.
+
+  Recommandation :
+    1. Obtenir le test de dépréciation du portefeuille titres à chaque arrêté, et la conclusion qui
+    a conduit à ne constater aucune provision.
+    2. Extraire l'historique de 511800101 « créances rattachées — manuelles » et de 511801100, et
+    reprendre sur cette base l'analyse des courus des contrôles 5.3 et 11.7.
+    3. Extraire 601200100 et 601200101 : ce sont les comptes où devrait figurer la charge d'intérêt
+    des opérations de refinancement face à la BEAC, dont le contrôle 12.2 établit l'absence.
+    4. Faire expliquer pourquoi les comptes de hors-bilan du marché gris ne sont pas servis, alors
+    que les opérations correspondantes sont enregistrées.
 
 ====================================================================================================
                                            FIN DU RAPPORT                                           
