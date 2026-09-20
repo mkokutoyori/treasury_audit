@@ -92,6 +92,10 @@ SOUVERAINS_EXCLUS = ["TCHAD", "REPUBLIQUE CENTRAFRICAINE"]
 
 DATE_BASCULE = "2025-06-16"
 
+# Préfixe des références Flexcube produites par l'interface Calypso. Toute autre référence
+# désigne une écriture saisie manuellement — correction, régularisation, reprise.
+PREFIXE_INTERFACE = "099MNIP"
+
 
 @dataclass
 class Config:
@@ -417,7 +421,12 @@ class Contexte:
 
         Format à 9 séparateurs : |TradeId|TransferId|Événement|Type|Émetteur|Book|Titre|Libellé|Commentaire
         """
-        sources = [self.ecritures_calypso, self.comptes_calypso, self.grand_livre]
+        # Le compte de règlement auprès de la banque centrale ne figure ni au grand livre des
+        # 41 comptes clés ni dans l'extraction Calypso : certaines de ses jambes ne vivent que
+        # dans l'extraction des comptes clés. L'omettre reviendrait à analyser des opérations
+        # amputées de leur jambe de trésorerie.
+        sources = [self.ecritures_calypso, self.comptes_calypso, self.comptes_cles,
+                   self.grand_livre]
         morceaux = [df for df in sources if not df.empty]
         if not morceaux:
             return pd.DataFrame()
@@ -502,6 +511,13 @@ class Contexte:
         c = self.calypso_enrichi
         if c.empty:
             return pd.DataFrame()
+        # Seules les écritures PRODUITES PAR L'INTERFACE peuvent constituer un doublon
+        # d'interface. Les écritures manuelles de régularisation reprennent les mêmes
+        # comptes et les mêmes montants : les inclure ferait passer une correction pour
+        # l'anomalie qu'elle corrige.
+        c = c[c.TRN_REF_NO.str.startswith(PREFIXE_INTERFACE, na=False)]
+        if c.empty:
+            return pd.DataFrame()
         c = c.assign(cle=c.DEAL + "|" + c.MOUVEMENT + "|" + c.AC_NO + "|" + c.DRCR_IND)
         groupes = c.groupby("cle").agg(
             occurrences=("LCY_AMOUNT", "size"),
@@ -520,6 +536,56 @@ class Contexte:
                            & (groupes.references > 1)].copy()
         doublons["impact"] = doublons.montant * doublons.sens.map({"D": 1, "C": -1})
         return doublons
+
+    @cached_property
+    def doublons_par_mouvement(self) -> pd.DataFrame:
+        """Les doublons vus au niveau du MOUVEMENT, et non de la jambe d'écriture.
+
+        Un mouvement Calypso produit plusieurs jambes — deux le plus souvent, jusqu'à quatre.
+        Les compter séparément revient à compter le même mouvement autant de fois qu'il a de
+        jambes, et à additionner un débit et son crédit comme s'ils étaient deux anomalies
+        distinctes. Le volume dupliqué se mesure donc UNE FOIS PAR MOUVEMENT.
+
+        Le contrôle recherche en outre, pour chaque mouvement dupliqué, une écriture de
+        correction ultérieure : les références de l'interface commencent par « 099MNIP », les
+        écritures manuelles non. Un mouvement dont le doublon a été contre-passé ne fausse
+        plus les comptes, et ne doit pas être présenté comme s'il les faussait encore.
+        """
+        legs = self.mouvements_dupliques
+        c = self.calypso_enrichi
+        if legs.empty or c.empty:
+            return pd.DataFrame()
+        travail = c.assign(cle2=c.DEAL + "|" + c.MOUVEMENT)
+        lignes = []
+        for cle in sorted(set(legs.deal + "|" + legs.mouvement)):
+            g = travail[travail.cle2 == cle]
+            interface = g[g.TRN_REF_NO.str.startswith(PREFIXE_INTERFACE, na=False)]
+            correction = g[~g.TRN_REF_NO.str.startswith(PREFIXE_INTERFACE, na=False)]
+            # Résidu : pour chaque compte, l'écart entre l'effet net constaté et l'effet
+            # d'un déversement unique. Zéro signale un doublon effectivement corrigé.
+            residu = 0.0
+            for compte, gg in g.groupby("AC_NO"):
+                premiere = gg[gg.TRN_REF_NO.str.startswith(PREFIXE_INTERFACE, na=False)]
+                if premiere.empty:
+                    continue
+                attendu = float(premiere.iloc[0].LCY_AMOUNT) * (
+                    1 if premiere.iloc[0].DRCR_IND == "D" else -1)
+                residu = max(residu, abs(float(gg.SIGNE.sum()) - attendu))
+            lignes.append({
+                "mouvement": cle,
+                "deal": g.DEAL.iloc[0],
+                "date": interface.TRN_DT.max() if len(interface) else g.TRN_DT.max(),
+                "montant": float(interface.LCY_AMOUNT.max()) if len(interface)
+                else float(g.LCY_AMOUNT.max()),
+                "jambes": int(len(g)),
+                "evenement": g.EVENEMENT.dropna().iloc[0] if len(g.EVENEMENT.dropna()) else "",
+                "book": g.BOOK.dropna().iloc[0] if len(g.BOOK.dropna()) else "",
+                "corrige": bool(len(correction)),
+                "date_correction": correction.TRN_DT.max() if len(correction) else "",
+                "residu": residu,
+                "comptes": ", ".join(sorted(set(g.AC_NO))),
+            })
+        return pd.DataFrame(lignes)
 
     def historique_complet(self) -> pd.DataFrame:
         """Éléments de preuve de la complétude de l'historique, compte par compte.

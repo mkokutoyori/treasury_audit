@@ -4,7 +4,7 @@
 
   Périmètre        : Département de la trésorerie — gestion des investissements sur les marchés financiers
   Période d'audit  : 2023-09-27 au 2026-06-30
-  Rapport généré le : 20/09/2026 à 12:59
+  Rapport généré le : 20/09/2026 à 13:34
   Référentiel      : Plan Comptable des Établissements de Crédit (PCEC) — CEMAC / COBAC
 
   Ce rapport est produit automatiquement. Chaque constat indique le test exécuté, sa
@@ -1376,92 +1376,122 @@ suspens.
   Gravité : CRITIQUE
 
   Chaque mouvement Calypso porte un identifiant de transfert unique. Or des mouvements apparaissent
-  DEUX FOIS dans le grand livre, sous deux références Flexcube différentes, le même jour, pour le
-  même compte, le même sens et le même montant. L'interface n'est donc pas idempotente : elle peut
-  rejouer une opération déjà déversée sans la détecter.
-  Ce défaut n'est pas théorique : il fausse directement le solde des comptes touchés. Le compte de
-  règlement de la banque centrale et le compte de portefeuille figurent parmi eux, ce qui signifie
-  que le nostro et la valeur du portefeuille présentés au bilan sont affectés. Le phénomène se
-  produit sur toute la période et n'est corrigé par aucune écriture d'annulation.
+  DEUX FOIS dans le grand livre, sous deux références Flexcube différentes, pour les mêmes comptes,
+  le même sens et le même montant. L'interface n'est donc pas idempotente : elle peut rejouer une
+  opération déjà déversée sans la détecter. Les deux références sont le plus souvent consécutives,
+  ce qui signe un rejeu immédiat et non un incident isolé.
+
+  COMMENT LE VOLUME EST MESURÉ. Un mouvement produit deux à quatre jambes d'écriture. Les compter
+  séparément reviendrait à compter la même anomalie plusieurs fois, et à additionner un débit et le
+  crédit qui lui répond comme s'il s'agissait de deux anomalies distinctes. Le volume dupliqué est
+  donc compté UNE FOIS PAR MOUVEMENT. L'incidence sur les soldes se mesure en revanche jambe par
+  jambe, chacune ne faussant que le compte qu'elle touche : c'est l'objet du tableau par compte.
+
+  LA BANQUE EN CORRIGE UNE PARTIE, TARDIVEMENT ET INCOMPLÈTEMENT. 7 des 75 mouvements dupliqués ont
+  fait l'objet d'une écriture de contre-passation ultérieure, passée MANUELLEMENT — la référence
+  n'est pas celle de l'interface. Un dispositif de détection existe donc, mais il est partiel et il
+  intervient tard : plusieurs semaines après le doublon, soit bien au-delà de l'arrêté que celui-ci
+  peut traverser. L'un de ces 7 cas n'a d'ailleurs été corrigé que sur une partie de ses jambes,
+  laissant un résidu.
+
+  CE QUE CELA FAUSSE. Le défaut n'est pas théorique : il fausse directement le solde des comptes
+  touchés. Le compte de règlement de la banque centrale et le compte de portefeuille figurent parmi
+  eux, ce qui signifie que le nostro et la valeur du portefeuille présentés au bilan sont affectés.
   PÉRIMÈTRE. Le défaut est apparu pendant la période d'audit et se poursuit au-delà. Les deux volets
   sont chiffrés séparément : le premier affecte les comptes arrêtés au 30/06/2026, le second relève
   des événements postérieurs à la clôture et signale que l'anomalie n'est toujours pas corrigée.
   Il constitue par ailleurs une CAUSE RACINE d'autres constats du présent rapport, au premier rang
-  desquels la dérive des comptes de liaison (contrôle 6.4) et le solde anormal du compte d'emprunt
-  (contrôle 9.4).
+  desquels la dérive des comptes de liaison (contrôles 6.4 et 11.6) et le solde anormal du compte
+  d'emprunt (contrôle 9.4).
 
-    Mouvements déversés en double — PÉRIODE D'AUDIT : 124
-    Montant dupliqué sur la période d'audit         : 76 666 209 826 XAF
-    Mouvements déversés en double après la clôture  : 54
-    Montant dupliqué après la clôture               : 212 965 785 774 XAF
-    Total sur l'extraction                          : 178 mouvements, 289 631 995 600 XAF
-    Période couverte                                : 2025-09-29 → 2026-09-15
-    Comptes touchés                                 : 35
-    Dont comptes à impact significatif              : 22
+    MOUVEMENTS déversés en double — PÉRIODE D'AUDIT    : 53
+    Volume dupliqué sur la période d'audit             : 34 670 442 550 XAF
+    Mouvements déversés en double après la clôture     : 22
+    Volume dupliqué après la clôture                   : 104 218 393 538 XAF
+    Total sur l'extraction                             : 75 mouvements, 138 888 836 088 XAF
+    Jambes d'écriture concernées                       : 178 dont 124 sur la période
+    Période couverte                                   : 2025-09-29 → 2026-09-15
+    Dont CORRIGÉS par une écriture manuelle ultérieure : 7
+    Dont laissant encore un résidu aux comptes         : 69
+    Comptes dont le solde reste faussé                 : 33
+    Dont comptes à impact significatif                 : 22
 
-    Compte       Libellé                                 Mouvements  Impact sur le solde XAF
-    -----------  --------------------------------------  ----------  -----------------------
-    552400100    EMPRUNT AU JR LE JR BQ NON ASSOC        4           30 000 000 000         
-    467000188    CALYPSO BRIDGE ACCOUNT MONEY MARKET     15          -29 685 292 656        
-    952100100    TITRES D INVESTISSEMENT PUBLICS AFFECT  2           -16 000 000 000        
-    995000100    CPTE GL OPS SUR TITRES ET VALS AFFECT   2           16 000 000 000         
-    467000186    CALYPSO BRIDGE ACCOUNT                  17          -14 893 700 500        
-    099ACO00001  BANQUE DES ETATS DE LAFRIQUE CENTRA     7           11 693 426 801         
-    512410100    OBLIGATIONS DU TRESOR ASSIMILABLES TRA  6           3 153 680 000          
-    998000100    VALEURS GEREES POUR COMPTE DE TIERS     3           -3 043 680 000         
-    938000100    VAL GEREES POUR COMPTE DE LA CLIENTELE  3           3 043 680 000          
-    971400100    DEV VENDUES CTANT NON ENCORE LIVRES     13          -2 218 400 337         
-    971200100    DEV ACHETES CTANT NON ENCORE RECU       13          2 218 400 337          
-    972400100    DEVISE VENDU A TERM NON ENC LIVRES      8           -1 326 073 696         
-    979000100    COMPTE D AJUSTEMENT DEVISES HORS BILAN  8           1 326 073 696          
-    00110000006  STONEX FINANCIAL LIMITED                1           -1 313 881 871         
-    475000160    COMPTE POSITION DE CHANGE CALYPSO       1           1 313 881 871          
-    099ACO00013  SOCIETE GENERALE PARIS                  9           1 214 280 624          
-    476000160    CPTE DE CONT VAL POS CHGE CALYPSO       4           -1 170 369 512         
-    475000102    EUR COMPTE POSITION DE CHANGE           8           1 003 729 509          
-    ... et 17 autre(s) ligne(s)
-    Impact = montant dont le solde du compte est faussé par les doublons, sur la totalité de
-    l'extraction. Pour un arrêté au 30/06/2026, seule la fraction antérieure à cette date est à
-    retenir.
+    Compte       Libellé                                 Jambes  Impact AU 30/06/2026 XAF  Impact fin d'extraction XAF
+    -----------  --------------------------------------  ------  ------------------------  ---------------------------
+    552400100    EMPRUNT AU JR LE JR BQ NON ASSOC        4       5 000 000 000             30 000 000 000             
+    467000188    CALYPSO BRIDGE ACCOUNT MONEY MARKET     15      -4 816 951 175            -29 685 292 656            
+    952100100    TITRES D INVESTISSEMENT PUBLICS AFFECT  2       -10 000 000 000           -16 000 000 000            
+    995000100    CPTE GL OPS SUR TITRES ET VALS AFFECT   2       10 000 000 000            16 000 000 000             
+    099ACO00001  BANQUE DES ETATS DE LAFRIQUE CENTRA     6       -665 441 761              12 638 554 472             
+    467000186    CALYPSO BRIDGE ACCOUNT                  14      3 687 175 062             -9 533 828 171             
+    512410100    OBLIGATIONS DU TRESOR ASSIMILABLES TRA  4       -3 026 320 000            -3 151 320 000             
+    998000100    VALEURS GEREES POUR COMPTE DE TIERS     3       -3 043 680 000            -3 043 680 000             
+    938000100    VAL GEREES POUR COMPTE DE LA CLIENTELE  3       3 043 680 000             3 043 680 000              
+    971400100    DEV VENDUES CTANT NON ENCORE LIVRES     13      -2 161 950 547            -2 218 400 337             
+    971200100    DEV ACHETES CTANT NON ENCORE RECU       13      2 161 950 547             2 218 400 337              
+    972400100    DEVISE VENDU A TERM NON ENC LIVRES      8       761 114 998               -1 326 073 696             
+    979000100    COMPTE D AJUSTEMENT DEVISES HORS BILAN  8       -761 114 998              1 326 073 696              
+    00110000006  STONEX FINANCIAL LIMITED                1       -1 313 881 871            -1 313 881 871             
+    475000160    COMPTE POSITION DE CHANGE CALYPSO       1       1 313 881 871             1 313 881 871              
+    099ACO00013  SOCIETE GENERALE PARIS                  9       1 418 194 731             1 214 280 624              
+    476000160    CPTE DE CONT VAL POS CHGE CALYPSO       4       -1 230 645 933            -1 170 369 512             
+    475000102    EUR COMPTE POSITION DE CHANGE           8       -1 143 735 606            1 003 729 509              
+    ... et 15 autre(s) ligne(s)
+    Montant dont le solde de chaque compte est faussé. Les mouvements contre-passés par la banque en
+    sont exclus : ils ne faussent plus rien. Ces impacts ne s'additionnent pas entre eux — le débit
+    et le crédit d'un même mouvement y figurent tous deux.
 
-    Mois     Mouvements  Montant dupliqué XAF
-    -------  ----------  --------------------
-    2025-09  4           340 815 236         
-    2025-10  10          6 244 238 462       
-    2025-11  22          24 340 669 206      
-    2025-12  14          1 394 751 160       
-    2026-01  6           930 935 444         
-    2026-02  20          1 915 896 260       
-    2026-03  26          15 349 253 426      
-    2026-04  12          1 918 909 580       
-    2026-05  2           3 870 083 496       
-    2026-06  8           20 360 657 556      
-    2026-07  16          15 369 523 746      
-    2026-08  20          183 246 911 758     
-    2026-09  18          14 349 350 270      
+    Mois     Mouvements  Volume dupliqué XAF
+    -------  ----------  -------------------
+    2025-09  1           85 203 809         
+    2025-10  5           3 122 119 231      
+    2025-11  11          12 170 334 603     
+    2025-12  7           697 375 580        
+    2026-01  3           465 467 722        
+    2026-02  7           638 034 369        
+    2026-03  9           4 878 822 807      
+    2026-04  5           497 713 903        
+    2026-05  1           1 935 041 748      
+    2026-06  4           10 180 328 778     
+    2026-07  6           6 939 612 681      
+    2026-08  9           91 445 115 391     
+    2026-09  7           5 833 665 466      
 
-    Deal     Mouvement  Date        Compte       Sens  Montant XAF   
-    -------  ---------  ----------  -----------  ----  --------------
-    4184547  25573387   2026-08-04  552400100    C     25 000 000 000
-    4184547  25573387   2026-08-04  467000188    D     25 000 000 000
-    4184571  25573417   2026-08-04  467000188    C     25 000 000 000
-    4184571  25573417   2026-08-04  552400100    D     25 000 000 000
-    4184547  25573388   2026-08-04  552400100    D     25 000 000 000
-    4184547  25573388   2026-08-04  467000188    C     25 000 000 000
-    4173737  25573349   2026-08-04  099ACO00001  D     13 303 996 233
-    4173737  25573349   2026-08-04  467000186    C     13 303 996 233
-    4024895  25229148   2026-06-25  952100100    C     10 000 000 000
-    4024895  25229148   2026-06-25  995000100    D     10 000 000 000
-    4148007  25497875   2026-07-27  995000100    D     6 000 000 000 
-    4148007  25497875   2026-07-27  952100100    C     6 000 000 000 
-    Les douze doublons les plus importants, toutes périodes confondues.
+    Mouvement  Deal     Date        Événement          Portefeuille              Montant XAF     Jambes  Corrigé le   Résidu XAF    
+    ---------  -------  ----------  -----------------  ------------------------  --------------  ------  -----------  --------------
+    25573388   4184547  2026-08-04  PRINCIPAL_DEPOSIT  ABCM_MM.Plmt.Tkn.Secured  25 000 000 000  4       non corrigé  25 000 000 000
+    25573387   4184547  2026-08-04  PRINCIPAL_DEPOSIT  ABCM_MM.Plmt.Tkn.Secured  25 000 000 000  4       non corrigé  25 000 000 000
+    25573417   4184571  2026-08-04  PRINCIPAL_DEPOSIT  ABCM_MM.Plmt.Tkn.Secured  25 000 000 000  4       non corrigé  25 000 000 000
+    25573349   4173737  2026-08-04  CST_S_SETTLED      ABCM_FVOCI.Bond           13 303 996 233  4       non corrigé  13 303 996 233
+    25229148   4024895  2026-06-25  NOMINAL            ABCM_MM.Plmt.Tkn.Secured  10 000 000 000  4       non corrigé  10 000 000 000
+    25497875   4148007  2026-07-27  NOMINAL            ABCM_MM.Plmt.Tkn.Secured  6 000 000 000   4       non corrigé  6 000 000 000 
+    23630318   3186053  2025-11-07  PRINCIPAL_DEPOSIT  ABCM_MM.Plmt.Tkn.Secured  5 000 000 000   4       non corrigé  5 000 000 000 
+    25816929   4300455  2026-09-02  NOMINAL            ABCM_FVOCI.Bond           4 305 000 000   6       2026-09-15   0,00          
+    23766410   3253670  2025-11-26  CST_S_SETTLED      ABCM_FVOCI.Bond           3 083 424 658   4       non corrigé  3 083 424 658 
+    23392477   3039302  2025-10-02  NOMINAL            ABCM_FI.Sales             3 000 000 000   4       non corrigé  3 000 000 000 
+    23766412   3254028  2025-11-26  NOMINAL            ABCM_FVOCI.Bond           3 000 000 000   4       non corrigé  3 000 000 000 
+    25597236   4184899  2026-08-06  NOMINAL            ABCM_FVOCI.Bond           2 000 000 000   6       2026-08-27   0,00          
+    Les douze mouvements dupliqués les plus importants, toutes périodes.
+
+    Mouvement  Deal     Date du doublon  Montant XAF    Date de correction  Délai (j)  Résidu XAF
+    ---------  -------  ---------------  -------------  ------------------  ---------  ----------
+    24421131   3595014  2026-02-26       12 791 289     2026-05-22          85         12 791 289
+    25597236   4184899  2026-08-06       2 000 000 000  2026-08-27          21         0,00      
+    25829513   4263904  2026-09-03       160 000        2026-09-15          12         0,00      
+    25801186   4295428  2026-08-31       5 671 832      2026-09-15          15         0,00      
+    25801318   4296327  2026-08-31       945 127 671    2026-09-15          15         0,00      
+    25805258   4296484  2026-09-01       1 851 111      2026-09-15          14         0,00      
+    25816929   4300455  2026-09-02       4 305 000 000  2026-09-15          13         0,00      
+    Doublons repris par la banque. Le délai mesure le temps écoulé avant la correction ; un résidu
+    non nul signale une correction partielle.
 
   Recommandation :
     Faire corriger l'interface pour qu'elle rejette tout mouvement déjà déversé, en s'appuyant sur
     l'identifiant de transfert. Quantifier l'incidence cumulée sur les soldes à chaque date d'arrêté
-    et passer les écritures de correction. Mettre en place un contrôle de rapprochement quotidien
-    entre le nombre de mouvements émis par Calypso et le nombre d'écritures reçues dans le grand
-    livre.
+    et passer les écritures de correction pour les mouvements qui n'en ont pas fait l'objet.
+    Documenter le contrôle qui a permis de détecter les quelques doublons déjà repris, et en faire
+    un contrôle quotidien et exhaustif : le test d'égalité de règlement du contrôle 11.7 les détecte
+    tous.
 
 ----------------------------------------------------------------------------------------------------
 [6.2] Le contrôle des quatre yeux de Flexcube est intégralement neutralisé sur le flux Calypso
@@ -1523,12 +1553,12 @@ suspens.
   identifiable.
 
     Écritures Calypso dans le périmètre        : 191 417
-    Dont libellé structuré (deal identifiable) : 25 589 (13 %)
-    Dont commentaire libre renseigné           : 15 925
+    Dont libellé structuré (deal identifiable) : 25 688 (13 %)
+    Dont commentaire libre renseigné           : 16 019
 
     Commentaire libre le plus fréquent  Occurrences
     ----------------------------------  -----------
-    /ACC/ACCOUNT FUNDING                368        
+    /ACC/ACCOUNT FUNDING                372        
     FAR LEG SBB WITH CCA                186        
     NEAR LEG SBB WITH CCA               144        
     FAR LEG SBB WITH SOCGEN             138        
@@ -1873,7 +1903,7 @@ appliqué avec celui que le PCEC prévoit pour une pension livrée.
     Compte       Libellé                               Lignes  Débits  Crédits  Montant XAF      
     -----------  ------------------------------------  ------  ------  -------  -----------------
     467000186    CALYPSO BRIDGE ACCOUNT                724     365     359      1 882 988 323 975
-    099ACO00001  BANQUE DES ETATS DE LAFRIQUE CENTRA   223     114     109      935 166 296 386  
+    099ACO00001  BANQUE DES ETATS DE LAFRIQUE CENTRA   224     115     109      936 111 424 057  
     512410100    OBLIGATIONS DU TRESOR ASSIMILABLES T  212     104     108      881 876 070 000  
     511210100    BONS DE TRESOR (BTA) - PLACEMENT      11      6       5        35 793 000 000   
     512800100    CREANCES RATTACHEES - TRANSACTION     293     178     115      23 614 246 741   
@@ -1935,7 +1965,7 @@ appliqué avec celui que le PCEC prévoit pour une pension livrée.
     Jambe mentionnée  Lignes
     ----------------  ------
     FAR               760   
-    NEAR              729   
+    NEAR              730   
     FIRST             42    
     SECOND            14    
 
@@ -2580,8 +2610,8 @@ séparation des tâches dans le système amont et qualité du référentiel des 
   que le grand livre.
 
     Deals orphelins                                : 41
-    Écritures concernées                           : 500
-    Volume                                         : 2 597 746 495 286 XAF
+    Écritures concernées                           : 501
+    Volume                                         : 2 598 761 172 514 XAF
     Période des écritures                          : 2026-09-10 → 2026-09-18
     Dernière négociation au référentiel extrait    : 2026-09-09
     Deals orphelins dans la fenêtre du référentiel : 0
@@ -2595,8 +2625,8 @@ séparation des tâches dans le système amont et qualité du référentiel des 
     4342920  ABCM_MM.Plmt.Tkn.Secured                42         401 222 972 224  2026-09-10  2026-09-10
     4361074  ABCM_FX.Trading.Spot                    16         64 757 722 810   2026-09-15  2026-09-15
     4360309  ABCM_FX.Trading.Fwd                     24         30 759 007 584   2026-09-15  2026-09-15
+    4342714  ABCM_FX.Trading.Fwd                     25         25 197 535 880   2026-09-10  2026-09-16
     4342700  ABCM_FX.Trading.Fwd                     24         24 182 862 828   2026-09-10  2026-09-10
-    4342714  ABCM_FX.Trading.Fwd                     24         24 182 858 652   2026-09-10  2026-09-10
     4342876  ABCM_FX.Trading.Spot                    16         21 053 595 872   2026-09-10  2026-09-10
     4356382  ABCM_FVOCI.Bond           CM2L00000036  8          20 934 301 368   2026-09-15  2026-09-15
     4356240  ABCM_FVOCI.Bond           GA2K00000249  6          20 096 164 384   2026-09-15  2026-09-15

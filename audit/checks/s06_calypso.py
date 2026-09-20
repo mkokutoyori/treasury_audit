@@ -317,80 +317,142 @@ def _c66_tracabilite(ctx) -> Constat:
 
 
 def _c67_doublons_interface(ctx) -> Constat:
-    """L'interface doit être idempotente : un mouvement Calypso ne doit être déversé qu'une fois."""
-    doublons = ctx.mouvements_dupliques
-    if doublons.empty:
+    """L'interface doit être idempotente : un mouvement Calypso ne doit être déversé qu'une fois.
+
+    Le contrôle se mène au niveau du MOUVEMENT et non de la jambe d'écriture : un mouvement
+    produit deux à quatre jambes, et les compter séparément reviendrait à compter la même
+    anomalie plusieurs fois, en additionnant un débit et son crédit. L'incidence sur les
+    SOLDES se mesure en revanche compte par compte, chaque jambe ne faussant que le sien.
+    """
+    legs = ctx.mouvements_dupliques
+    mouvements = ctx.doublons_par_mouvement
+    if legs.empty or mouvements.empty:
         return Constat(
             code="6.7", titre="Idempotence de l'interface Calypso", gravite=Gravite.CONFORME,
             constat="Aucun mouvement Calypso n'apparaît plusieurs fois dans le grand livre.",
         )
-    # Les doublons débordent la période d'audit : on distingue ce qui la concerne de ce qui
-    # relève des événements postérieurs, faute de quoi le chiffre annoncé serait dominé par
-    # des mois hors périmètre.
-    dans_periode = doublons[(doublons.date >= ctx.config.debut) & (doublons.date <= ctx.config.fin)]
-    hors_periode = doublons[doublons.date > ctx.config.fin]
-    par_compte = (doublons.groupby(["compte", "libelle"])
-                  .agg(mouvements=("montant", "size"), impact=("impact", "sum"))
+    cfg = ctx.config
+    periode = mouvements[mouvements.date <= cfg.fin]
+    apres = mouvements[mouvements.date > cfg.fin]
+    corriges = mouvements[mouvements.corrige]
+    solde = mouvements[mouvements.residu > 1]
+    # Incidence sur les soldes : une jambe fausse le compte qu'elle touche, une seule fois.
+    legs_periode = legs[legs.date <= cfg.fin]
+    # Les jambes des mouvements effectivement contre-passés ne faussent plus aucun solde :
+    # les inclure surestimerait l'incidence. On ne retient que celles qui laissent un résidu.
+    non_resorbes = set(solde.mouvement)
+    legs_actives = legs[(legs.deal + "|" + legs.mouvement).isin(non_resorbes)]
+    par_compte = (legs_actives.groupby(["compte", "libelle"])
+                  .agg(jambes=("montant", "size"),
+                       impact=("impact", "sum"),
+                       impact_periode=("impact", "sum"))
                   .sort_values("impact", key=abs, ascending=False))
-    par_mois = doublons.assign(mois=doublons.date.str[:7]).groupby("mois").agg(
+    # Incidence arrêtée à la clôture, compte par compte
+    actives_periode = legs_actives[legs_actives.date <= cfg.fin]
+    impact_arrete = actives_periode.groupby("compte").impact.sum().to_dict()
+    par_compte["impact_periode"] = [impact_arrete.get(i[0], 0.0) for i in par_compte.index]
+    materiels = par_compte[par_compte.impact.abs() > cfg.seuil_significatif]
+    par_mois = mouvements.assign(mois=mouvements.date.str[:7]).groupby("mois").agg(
         mouvements=("montant", "size"), montant=("montant", "sum"))
-    materiels = par_compte[par_compte.impact.abs() > ctx.config.seuil_significatif]
+    pire = mouvements.reindex(mouvements.montant.sort_values(ascending=False).index).head(12)
     return Constat(
         code="6.7",
         titre="L'interface Calypso déverse certains mouvements en double dans le grand livre",
         gravite=Gravite.CRITIQUE,
         constat=(
-            "Chaque mouvement Calypso porte un identifiant de transfert unique. Or des mouvements "
-            "apparaissent DEUX FOIS dans le grand livre, sous deux références Flexcube "
-            "différentes, le même jour, pour le même compte, le même sens et le même montant. "
+            "Chaque mouvement Calypso porte un identifiant de transfert unique. Or des "
+            "mouvements apparaissent DEUX FOIS dans le grand livre, sous deux références "
+            "Flexcube différentes, pour les mêmes comptes, le même sens et le même montant. "
             "L'interface n'est donc pas idempotente : elle peut rejouer une opération déjà "
-            "déversée sans la détecter.\n"
-            "Ce défaut n'est pas théorique : il fausse directement le solde des comptes touchés. "
-            "Le compte de règlement de la banque centrale et le compte de portefeuille figurent "
-            "parmi eux, ce qui signifie que le nostro et la valeur du portefeuille présentés au "
-            "bilan sont affectés. Le phénomène se produit sur toute la période et n'est corrigé "
-            "par aucune écriture d'annulation.\n"
+            "déversée sans la détecter. Les deux références sont le plus souvent consécutives, "
+            "ce qui signe un rejeu immédiat et non un incident isolé.\n"
+            "\n"
+            "COMMENT LE VOLUME EST MESURÉ. Un mouvement produit deux à quatre jambes "
+            "d'écriture. Les compter séparément reviendrait à compter la même anomalie "
+            "plusieurs fois, et à additionner un débit et le crédit qui lui répond comme s'il "
+            "s'agissait de deux anomalies distinctes. Le volume dupliqué est donc compté UNE "
+            "FOIS PAR MOUVEMENT. L'incidence sur les soldes se mesure en revanche jambe par "
+            "jambe, chacune ne faussant que le compte qu'elle touche : c'est l'objet du tableau "
+            "par compte.\n"
+            "\n"
+            "LA BANQUE EN CORRIGE UNE PARTIE, TARDIVEMENT ET INCOMPLÈTEMENT. "
+            + (f"{len(corriges)} des {len(mouvements)} mouvements dupliqués ont fait l'objet "
+               "d'une écriture de contre-passation ultérieure, passée MANUELLEMENT — la "
+               "référence n'est pas celle de l'interface. Un dispositif de détection existe "
+               "donc, mais il est partiel et il intervient tard : plusieurs semaines après le "
+               "doublon, soit bien au-delà de l'arrêté que celui-ci peut traverser. "
+               + (f"L'un de ces {len(corriges)} cas n'a d'ailleurs été corrigé que sur une "
+                  "partie de ses jambes, laissant un résidu."
+                  if len(corriges) > len(mouvements) - len(solde) else "")
+               if len(corriges) else
+               "Aucune écriture de correction ultérieure n'est identifiée : aucun des doublons "
+               "n'a été repris.")
+            + "\n"
+            "\n"
+            "CE QUE CELA FAUSSE. Le défaut n'est pas théorique : il fausse directement le solde "
+            "des comptes touchés. Le compte de règlement de la banque centrale et le compte de "
+            "portefeuille figurent parmi eux, ce qui signifie que le nostro et la valeur du "
+            "portefeuille présentés au bilan sont affectés.\n"
             "PÉRIMÈTRE. Le défaut est apparu pendant la période d'audit et se poursuit au-delà. "
-            "Les deux volets sont chiffrés séparément : le premier affecte les comptes arrêtés au "
-            "30/06/2026, le second relève des événements postérieurs à la clôture et signale que "
-            "l'anomalie n'est toujours pas corrigée.\n"
-            "Il constitue par ailleurs une CAUSE RACINE d'autres constats du présent rapport, au "
-            "premier rang desquels la dérive des comptes de liaison (contrôle 6.4) et le solde "
-            "anormal du compte d'emprunt (contrôle 9.4)."
+            "Les deux volets sont chiffrés séparément : le premier affecte les comptes arrêtés "
+            "au 30/06/2026, le second relève des événements postérieurs à la clôture et signale "
+            "que l'anomalie n'est toujours pas corrigée.\n"
+            "Il constitue par ailleurs une CAUSE RACINE d'autres constats du présent rapport, "
+            "au premier rang desquels la dérive des comptes de liaison (contrôles 6.4 et 11.6) "
+            "et le solde anormal du compte d'emprunt (contrôle 9.4)."
         ),
         chiffres=[
-            ("Mouvements déversés en double — PÉRIODE D'AUDIT", str(len(dans_periode))),
-            ("Montant dupliqué sur la période d'audit",
-             xaf(float(dans_periode.montant.sum()))),
-            ("Mouvements déversés en double après la clôture", str(len(hors_periode))),
-            ("Montant dupliqué après la clôture", xaf(float(hors_periode.montant.sum()))),
-            ("Total sur l'extraction", f"{len(doublons)} mouvements, "
-                                       f"{xaf(float(doublons.montant.sum()))}"),
-            ("Période couverte", f"{doublons.date.min()} → {doublons.date.max()}"),
-            ("Comptes touchés", str(doublons.compte.nunique())),
+            ("MOUVEMENTS déversés en double — PÉRIODE D'AUDIT", str(len(periode))),
+            ("Volume dupliqué sur la période d'audit", xaf(float(periode.montant.sum()))),
+            ("Mouvements déversés en double après la clôture", str(len(apres))),
+            ("Volume dupliqué après la clôture", xaf(float(apres.montant.sum()))),
+            ("Total sur l'extraction",
+             f"{len(mouvements)} mouvements, {xaf(float(mouvements.montant.sum()))}"),
+            ("Jambes d'écriture concernées", f"{len(legs)} dont {len(legs_periode)} sur la période"),
+            ("Période couverte", f"{mouvements.date.min()} → {mouvements.date.max()}"),
+            ("Dont CORRIGÉS par une écriture manuelle ultérieure", str(len(corriges))),
+            ("Dont laissant encore un résidu aux comptes", str(len(solde))),
+            ("Comptes dont le solde reste faussé", str(legs_actives.compte.nunique())),
             ("Dont comptes à impact significatif", str(len(materiels))),
         ],
         tableaux=[
-            Tableau(["Compte", "Libellé", "Mouvements", "Impact sur le solde XAF"],
-                    [[i[0], i[1][:38], int(r.mouvements), float(r.impact)]
+            Tableau(["Compte", "Libellé", "Jambes", "Impact AU 30/06/2026 XAF",
+                     "Impact fin d'extraction XAF"],
+                    [[i[0], i[1][:38], int(r.jambes), float(r.impact_periode), float(r.impact)]
                      for i, r in par_compte.iterrows()],
                     max_lignes=18,
-                    note=("Impact = montant dont le solde du compte est faussé par les doublons, "
-                          "sur la totalité de l'extraction. Pour un arrêté au 30/06/2026, seule "
-                          "la fraction antérieure à cette date est à retenir.")),
-            Tableau(["Mois", "Mouvements", "Montant dupliqué XAF"],
+                    note=("Montant dont le solde de chaque compte est faussé. Les mouvements "
+                          "contre-passés par la banque en sont exclus : ils ne faussent plus "
+                          "rien. Ces impacts ne s'additionnent pas entre eux — le débit et le "
+                          "crédit d'un même mouvement y figurent tous deux.")),
+            Tableau(["Mois", "Mouvements", "Volume dupliqué XAF"],
                     [[i, int(r.mouvements), float(r.montant)] for i, r in par_mois.iterrows()],
                     max_lignes=18),
-            Tableau(["Deal", "Mouvement", "Date", "Compte", "Sens", "Montant XAF"],
-                    [[r.deal, r.mouvement, r.date, r.compte, r.sens, float(r.montant)]
-                     for _, r in doublons.sort_values("montant", ascending=False).head(12).iterrows()],
-                    note="Les douze doublons les plus importants, toutes périodes confondues."),
+            Tableau(["Mouvement", "Deal", "Date", "Événement", "Portefeuille", "Montant XAF",
+                     "Jambes", "Corrigé le", "Résidu XAF"],
+                    [[r.mouvement.split("|")[1], r.deal, r.date, r.evenement, r.book,
+                      float(r.montant), int(r.jambes),
+                      r.date_correction if r.corrige else "non corrigé", float(r.residu)]
+                     for _, r in pire.iterrows()],
+                    max_lignes=12,
+                    note="Les douze mouvements dupliqués les plus importants, toutes périodes."),
+            Tableau(["Mouvement", "Deal", "Date du doublon", "Montant XAF",
+                     "Date de correction", "Délai (j)", "Résidu XAF"],
+                    [[r.mouvement.split("|")[1], r.deal, r.date, float(r.montant),
+                      r.date_correction,
+                      (pd.Timestamp(r.date_correction) - pd.Timestamp(r.date)).days,
+                      float(r.residu)]
+                     for _, r in corriges.iterrows()],
+                    note=("Doublons repris par la banque. Le délai mesure le temps écoulé "
+                          "avant la correction ; un résidu non nul signale une correction "
+                          "partielle.")),
         ],
         recommandation=(
             "Faire corriger l'interface pour qu'elle rejette tout mouvement déjà déversé, en "
             "s'appuyant sur l'identifiant de transfert. Quantifier l'incidence cumulée sur les "
-            "soldes à chaque date d'arrêté et passer les écritures de correction. Mettre en place "
-            "un contrôle de rapprochement quotidien entre le nombre de mouvements émis par "
-            "Calypso et le nombre d'écritures reçues dans le grand livre."
+            "soldes à chaque date d'arrêté et passer les écritures de correction pour les "
+            "mouvements qui n'en ont pas fait l'objet. Documenter le contrôle qui a permis de "
+            "détecter les quelques doublons déjà repris, et en faire un contrôle quotidien et "
+            "exhaustif : le test d'égalité de règlement du contrôle 11.7 les détecte tous."
         ),
     )

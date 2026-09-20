@@ -1770,3 +1770,100 @@ de 1 994 516 XAF sur l'écriture 099000b252120001 ».
 
 **Règle retenue** : *un constat comptable nomme ses comptes et donne le sens de chaque jambe.*
 Construire le schéma en débit/crédit a suffi à faire apparaître le sens de la jambe manquante.
+
+---
+
+# SESSION 19 — Revue manuelle du point 6.7 : trois défauts dans mon propre contrôle
+
+Demande : revue manuelle du contrôle 6.7, les doublons de déversement de l'interface Calypso.
+Le constat tient, mais ses chiffres étaient faux et il passait sous silence un fait important.
+
+## 19.1 ⚠ Les chiffres annoncés comptaient les JAMBES, pas les mouvements
+
+Un mouvement Calypso produit deux à quatre jambes d'écriture. Le contrôle groupait par
+`DEAL|MOUVEMENT|COMPTE|SENS` et additionnait le montant de chaque groupe — donc le même
+mouvement autant de fois qu'il a de jambes, **en additionnant un débit et le crédit qui lui
+répond** comme s'il s'agissait de deux anomalies distinctes.
+
+| | Annoncé | Corrigé |
+|---|---|---|
+| Mouvements dupliqués | 178 | **75** |
+| Volume dupliqué | 289 631 995 600 | **138 888 836 088** |
+| Dont période d'audit | 124 / 76,7 Md | **53 / 34,7 Md** |
+
+Facteur **2,2** sur un constat classé CRITIQUE. Les 178 restent exacts comme nombre de jambes,
+et le tableau par compte — qui mesure l'incidence sur chaque solde — était, lui, correct.
+
+## 19.2 ⚠ Des écritures de CORRECTION étaient comptées comme des doublons
+
+Le mouvement `3670741|24560880` n'a qu'une seule référence d'interface. Ce qui le faisait
+détecter, c'étaient deux écritures manuelles ultérieures sur `007ACB00034 SCB FRANKFURT`.
+Autrement dit : **la correction était comptée comme l'anomalie qu'elle corrige**.
+
+Les références de l'interface commencent toutes par `099MNIP`. La détection y est désormais
+restreinte. Deux faux positifs éliminés.
+
+## 19.3 ⚠ Une source manquait dans `calypso_enrichi`
+
+Le jeu de données Calypso était construit sur `ecritures_calypso`, `comptes_calypso` et
+`grand_livre` — **pas** sur `comptes_cles`. Or le compte de règlement `099ACO00001` ne figure
+ni au grand livre des 41 comptes clés ni dans l'extraction Calypso : **1 435 de ses jambes ne
+vivent que dans l'extraction des comptes clés**, dont 11 à libellé structuré, pour
+2 809 785 592 XAF.
+
+C'est ce qui m'a fait conclure à tort que le mouvement `4296327|25801318` n'avait été corrigé
+que sur une jambe : la jambe nostro de la correction existait, dans une source que je ne lisais
+pas. Source ajoutée.
+
+## 19.4 ✓ Un fait que le rapport passait sous silence : la banque en corrige une partie
+
+**7 des 75 doublons ont fait l'objet d'une contre-passation manuelle.** Le rapport n'en disait
+rien et présentait le défaut comme jamais repris.
+
+| Mouvement | Date du doublon | Montant | Correction | Délai | Résidu |
+|---|---|---|---|---|---|
+| 24421131 | 26/02/2026 | 12 791 289 | 22/05/2026 | **85 j** | **12 791 289** |
+| 25597236 | 06/08/2026 | 2 000 000 000 | 27/08/2026 | 21 j | 0 |
+| 25816929 | 02/09/2026 | 4 305 000 000 | 15/09/2026 | 13 j | 0 |
+| *(4 autres)* | | | | 12 à 15 j | 0 |
+
+Un dispositif de détection existe donc — mais il est **partiel** (7 sur 75), **tardif** (12 à
+85 jours, bien au-delà de l'arrêté que le doublon peut traverser) et **manuel** (référence
+Flexcube hors interface, saisie `TOKAID000203`, validation `ZOGOID000241`). Le cas `24421131`
+n'a été corrigé que sur sa jambe nostro, laissant le pont doublé.
+
+Les écritures de correction sont groupées : `0990028262580001` du 15/09/2026 reprend à elle
+seule cinq doublons, sur 38 lignes équilibrées.
+
+## 19.5 L'incidence sur les soldes, enfin datée
+
+Le tableau par compte donnait l'impact sur **toute l'extraction**. Il donne désormais les deux
+colonnes, et exclut les mouvements contre-passés.
+
+| Compte | Au 30/06/2026 | Fin d'extraction |
+|---|---|---|
+| 552400100 emprunt | 5 000 000 000 | 30 000 000 000 |
+| 952100100 collatéral | −10 000 000 000 | −16 000 000 000 |
+| **099ACO00001 BEAC** | **−665 441 761** | 11 693 426 801 |
+
+Je disais « le nostro BEAC est surévalué de 11,7 Md ». À la date d'arrêté, l'incidence est de
+**−665 441 761 XAF** — les 11,7 Md sont un cumul de fin d'extraction, dominé par août 2026.
+
+## 19.6 Vérification des doublons les plus lourds
+
+`4184547|25573388` : deux références `099MNIP26216009H` et `...009N`, même jour, mêmes comptes,
+25 Md chacune → dette `552400100` doublée à 50 Md. Doublon avéré.
+
+`4024895|25229148` : deux références le 25/06/2026, 10 Md de collatéral hors bilan chacune →
+`952100100` doublé. **Dans la période d'audit**, et c'est ce qui fausse le hors bilan de 10 Md
+à l'arrêté.
+
+## 19.7 État
+
+55 anomalies — 9 critiques — sur 11 sections et 69 contrôles. Le constat 6.7 reste CRITIQUE :
+un montant divisé par deux ne change pas la nature du défaut, et la correction manuelle et
+tardive de 7 cas sur 75 le confirme plutôt qu'elle ne l'atténue.
+
+**Règle retenue** : *compter les anomalies à la maille de l'événement, jamais à celle de
+l'écriture.* Et : *une écriture de correction ne doit jamais entrer dans la population des
+anomalies qu'elle corrige.*
