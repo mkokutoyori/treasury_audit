@@ -82,55 +82,150 @@ def _c51_rapprochement_positions(ctx) -> Constat:
 
 
 def _c52_reprise_courus(ctx) -> Constat:
+    """Le couru repris dans Calypso correspond-il à celui que portaient les positions migrées ?
+
+    Le test ne compare pas la reprise au SOLDE DU COMPTE — celui-ci contient aussi des courus
+    de positions qui ne sont plus au portefeuille — mais au couru effectivement porté par les
+    65 positions qui ont migré. C'est la seule comparaison qui ait un sens.
+    """
     gl = ctx.grand_livre
     jour = gl[gl.TRN_DT == DATE_BASCULE]
-    repris = jour[(jour.AC_NO == CPT_COURUS_CALYPSO) & (jour.DRCR_IND == "D")
-                  & jour.DESCRIPTION.fillna("").str.contains("ACCRUAL_BS")]
+    structure = jour[jour.DESCRIPTION.fillna("").str.count(r"\|") == 9].copy()
+    if structure.empty:
+        return Constat(code="5.2", titre="Reprise des intérêts courus",
+                       gravite=Gravite.ELEVEE,
+                       constat="Aucune reprise d'intérêts courus identifiée dans Calypso.")
+    structure["deal"] = structure.DESCRIPTION.str.split("|").str[1]
+    structure["evt"] = structure.DESCRIPTION.str.split("|").str[3]
+    entrees = structure[(structure.evt == "NOMINAL")
+                        & structure.AC_NO.isin(CPT_PORTEFEUILLE_CALYPSO)]
+    repris = structure[(structure.evt == "ACCRUAL_BS") & (structure.AC_NO == CPT_COURUS_CALYPSO)]
     montant = float(repris.LCY_AMOUNT.sum())
-    # Le montant repris dans le nouveau système doit égaler le solde réel du compte d'origine.
-    # Ce solde est établi au contrôle 5.3 ; on le recalcule ici pour confronter les deux.
-    courus = ctx.courus
-    solde_reel = None
-    if not courus.empty:
-        avant = float(courus[courus.TRN_DT < DATE_BASCULE].SIGNE.sum())
-        du_jour = float(courus[(courus.TRN_DT == DATE_BASCULE)
-                               & (courus.DRCR_IND == "D")].LCY_AMOUNT.sum())
-        solde_reel = avant + du_jour
-    ecart_reprise = montant - solde_reel if solde_reel is not None else None
-    ecart_significatif = (ecart_reprise is not None
-                          and abs(ecart_reprise) > ctx.config.seuil_materialite)
+
+    # Positions sorties de Flexcube et couru réellement porté par chacune
+    sorties = jour[(jour.MODULE == "MM") & (jour.AMOUNT_TAG == "PRINCIPAL_LIQD")
+                   & (jour.DRCR_IND == "C")]
+    nominaux_mm = sorties.groupby("TRN_REF_NO").LCY_AMOUNT.sum()
+    courus = ctx.courus.copy()
+    if courus.empty:
+        return Constat(code="5.2", titre="Reprise des intérêts courus", gravite=Gravite.FAIBLE,
+                       constat="Historique du compte de créances rattachées indisponible.")
+    # Le contrat est la référence elle-même pour les courus automatiques, et le libellé pour
+    # les écritures manuelles d'apurement.
+    courus["contrat"] = courus.TRN_REF_NO.where(
+        courus.TRN_REF_NO.str.match(r"^099[A-Z]{4}\d{9}$", na=False))
+    courus["contrat"] = courus.contrat.fillna(
+        courus.DESCRIPTION.str.extract(r"(099[A-Z]{4}\d{9})")[0])
+    debits = courus[(courus.DRCR_IND == "D")
+                    & (courus.TRN_DT <= DATE_BASCULE)].groupby("contrat").LCY_AMOUNT.sum()
+    apures = courus[(courus.DRCR_IND == "C")
+                    & (courus.TRN_DT < DATE_BASCULE)].groupby("contrat").LCY_AMOUNT.sum()
+    reel = debits - apures.reindex(debits.index).fillna(0)
+    couru_migre = float(reel.reindex(nominaux_mm.index).fillna(0).sum())
+    hors_portefeuille = reel[~reel.index.isin(set(nominaux_mm.index))]
+
+    # Solde réel du compte à apurer, tel que l'établit le contrôle 5.3
+    solde_compte = (float(courus[courus.TRN_DT < DATE_BASCULE].SIGNE.sum())
+                    + float(courus[(courus.TRN_DT == DATE_BASCULE)
+                                   & (courus.DRCR_IND == "D")].LCY_AMOUNT.sum()))
+    ecart_reprise = montant - couru_migre
+    non_attribuable = solde_compte - couru_migre
+
+    # Positions entrées sans reprise de couru : les bons à escompte n'en portent pas
+    sans_reprise = entrees[~entrees.deal.isin(set(repris.deal))]
+    par_compte_sans = sans_reprise.groupby("AC_NO").agg(
+        positions=("LCY_AMOUNT", "size"), nominal=("LCY_AMOUNT", "sum"))
+    # Le rapprochement position par position est-il possible ?
+    doublons_nominal = int((nominaux_mm.value_counts() > 1).sum())
+    positions_ambigues = int(nominaux_mm.value_counts()[nominaux_mm.value_counts() > 1].sum())
+    significatif = abs(ecart_reprise) > ctx.config.seuil_significatif
     return Constat(
         code="5.2",
-        titre=("Reprise des intérêts courus dans le nouveau système"
-               if not repris.empty and not ecart_significatif else
-               "Écart entre les intérêts courus repris et le solde du compte d'origine"),
-        gravite=(Gravite.ELEVEE if repris.empty else
-                 Gravite.MOYENNE if ecart_significatif else Gravite.CONFORME),
+        titre=("Le couru repris dans le nouveau système excède celui des positions migrées"
+               if significatif else "Reprise des intérêts courus dans le nouveau système"),
+        gravite=Gravite.ELEVEE if significatif else Gravite.CONFORME,
         constat=(
-            "Les intérêts courus attachés aux positions migrées ont été réintroduits dans Calypso "
-            f"par l'événement ACCRUAL_BS, sur le compte {CPT_COURUS_CALYPSO}. Le compte d'origine "
-            f"({CPT_COURUS_MM}) a été soldé le même jour — voir le contrôle 5.3, qui établit que "
-            "ce solde a été passé pour un montant supérieur au solde réel."
-            + ("" if ecart_reprise is None or abs(ecart_reprise) < 1 else
-               f"\nLe montant repris s'écarte par ailleurs de {xaf(abs(ecart_reprise))} du solde "
-               "réel du compte d'origine : les deux systèmes ne partent donc pas du même encours "
-               "de courus. L'écart est d'un autre ordre de grandeur que le sur-apurement du "
-               "contrôle 5.3 et s'en distingue, mais il doit lui aussi être justifié position par "
-               "position.")
-            if len(repris) else
-            "Aucune reprise d'intérêts courus n'est identifiée dans Calypso au jour de la bascule."
+            "CE QUI EST COMPARÉ. Le contrôle ne rapproche pas la reprise du SOLDE du compte de "
+            f"créances rattachées {CPT_COURUS_MM} : ce solde contient aussi des courus de "
+            "positions qui ne sont plus au portefeuille. Il la rapproche du couru effectivement "
+            "porté par les positions QUI ONT MIGRÉ, seule comparaison qui ait un sens.\n"
+            "\n"
+            f"LES POSITIONS SE RAPPROCHENT EXACTEMENT. {len(entrees)} positions sortent de "
+            f"Flexcube et {len(entrees)} entrent dans Calypso, pour un nominal identique de "
+            f"{xaf(float(entrees.LCY_AMOUNT.sum()))}, et chaque nominal se retrouve des deux "
+            "côtés. La reprise du portefeuille est donc exhaustive.\n"
+            + (f"{len(sans_reprise)} de ces positions n'emportent AUCUN couru, et c'est normal : "
+               f"il s'agit des bons du Trésor logés au compte "
+               f"{', '.join(par_compte_sans.index)}, titres à ESCOMPTE qui ne portent pas de "
+               "coupon. Leur rémunération est logée en compte de régularisation, pas en créances "
+               "rattachées.\n"
+               if len(sans_reprise) else "")
+            + "\n"
+            + (f"LE COURU, LUI, NE SE RAPPROCHE PAS. Les positions migrées portaient "
+               f"{xaf(couru_migre)} de coupons courus. Calypso en a repris {xaf(montant)}, soit "
+               f"{xaf(ecart_reprise)} DE PLUS. Le nouveau système démarre donc avec un actif "
+               "supérieur à celui que l'ancien lui transmettait, sans qu'aucune écriture ne "
+               "justifie la différence.\n"
+               if significatif else
+               f"LE COURU SE RAPPROCHE ÉGALEMENT : {xaf(couru_migre)} portés par les positions "
+               f"migrées contre {xaf(montant)} repris.\n")
+            + "\n"
+            "UN SECOND ÉCART, DE NATURE DIFFÉRENTE. Le solde du compte d'origine à apurer "
+            f"s'élevait à {xaf(solde_compte)}, dont {xaf(couru_migre)} seulement se rattachent "
+            f"aux positions migrées. Il reste {xaf(non_attribuable)} qui ne se rattachent à "
+            "AUCUNE position du portefeuille au jour de la bascule. Le compte portait en effet "
+            f"un couru résiduel sur {len(hors_portefeuille)} contrats déjà sortis du "
+            "portefeuille — des créances rattachées à des titres dénoués de longue date, jamais "
+            "apurées, et soldées à la migration sans avoir jamais été encaissées. Le nombre de "
+            "contrats et le montant non rattachable ne se recoupent pas exactement : certains de "
+            "ces contrats portent un solde négatif, effet des apurements antérieurs excédentaires "
+            "relevés au contrôle 3.4.\n"
+            "\n"
+            "CE QUI NE PEUT PAS ÊTRE FAIT. Un rapprochement POSITION PAR POSITION est impossible "
+            "avec les données disponibles : les deux systèmes n'ont aucun identifiant commun — "
+            "Flexcube désigne une position par sa référence de contrat, Calypso par le code du "
+            f"titre — et {positions_ambigues} des {len(nominaux_mm)} positions partagent leur "
+            f"nominal avec une autre, sur {doublons_nominal} valeurs. Le rapprochement en masse "
+            "est donc le seul possible, et l'écart ne peut être imputé à des positions "
+            "identifiées sans le concours des deux services."
         ),
         chiffres=[
-            ("Positions dont les courus sont repris", str(len(repris))),
-            ("Courus repris dans le nouveau système", xaf(montant)),
-        ] + ([] if solde_reel is None else [
-            ("Solde réel du compte d'origine (voir 5.3)", xaf(solde_reel)),
-            ("Écart de reprise", xaf(ecart_reprise)),
-        ]),
+            ("Positions sorties de Flexcube / entrées dans Calypso",
+             f"{len(nominaux_mm)} / {len(entrees)}"),
+            ("Nominal migré, identique des deux côtés", xaf(float(entrees.LCY_AMOUNT.sum()))),
+            ("Positions sans couru (bons à escompte)",
+             f"{len(sans_reprise)} — {xaf(float(sans_reprise.LCY_AMOUNT.sum()))}"),
+            ("Couru PORTÉ par les positions migrées", xaf(couru_migre)),
+            ("Couru REPRIS dans le nouveau système", xaf(montant)),
+            ("ÉCART DE REPRISE", xaf(ecart_reprise)),
+            ("Solde du compte d'origine à apurer (voir 5.3)", xaf(solde_compte)),
+            ("Dont NON rattachable aux positions migrées", xaf(non_attribuable)),
+            ("Contrats hors portefeuille portant un couru résiduel", str(len(hors_portefeuille))),
+        ],
+        tableaux=[
+            Tableau(["Élément", "Montant XAF", "Lecture"],
+                    [["Couru porté par les positions migrées", couru_migre,
+                      "ce que l'ancien système transmettait"],
+                     ["Couru repris par Calypso", montant, "ce que le nouveau a enregistré"],
+                     ["ÉCART DE REPRISE", ecart_reprise, "actif créé sans contrepartie"],
+                     ["Solde du compte d'origine à apurer", solde_compte, "voir contrôle 5.3"],
+                     ["Dont rattachable aux positions migrées", couru_migre, ""],
+                     ["Dont NON rattachable", non_attribuable,
+                      "courus de titres sortis du portefeuille"]],
+                    note=("Les deux écarts sont indépendants : le premier oppose la reprise au "
+                          "couru migré, le second décompose le solde du compte d'origine.")),
+            Tableau(["Compte", "Positions", "Nominal XAF"],
+                    [[i, int(r.positions), float(r.nominal)]
+                     for i, r in par_compte_sans.iterrows()],
+                    note=("Positions entrées sans reprise de couru. Les bons du Trésor sont des "
+                          "titres à escompte : l'absence de couru y est normale.")),
+        ],
         recommandation=(
-            "Rapprocher position par position les courus repris dans le nouveau système et les "
-            "courus portés par le compte d'origine, et faire justifier l'écart constaté. Ce "
-            "rapprochement est distinct de celui du contrôle 5.3, qui porte sur le montant apuré."
+            "Obtenir du service la justification de l'écart de reprise, position par position : "
+            "seul le rapprochement entre la référence de contrat Flexcube et le code titre "
+            "Calypso, que les deux systèmes ne partagent pas, permet de l'imputer. Faire "
+            "expliquer séparément les créances rattachées à des titres sortis du portefeuille, "
+            "soldées à la migration sans avoir été encaissées."
         ),
     )
 

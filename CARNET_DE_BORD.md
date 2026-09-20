@@ -1947,3 +1947,86 @@ expliqué.
 **Règle retenue** : *un solde anormal doit être décomposé jusqu'à ce que ses composantes
 s'additionnent exactement à lui.* Les 8,7 Md d'écart entre deux de mes contrôles cachaient une
 population entière — douze opérations ouvertes six mois et annulées après coup.
+
+---
+
+# SESSION 21 — Revue manuelle du point 5.2 : le mauvais terme de comparaison
+
+Demande : revue manuelle du contrôle 5.2, l'écart entre les intérêts courus repris dans Calypso
+et le solde du compte d'origine. Le contrôle annonçait **125 570 147 XAF**. Le chiffre est faux,
+parce que le terme de comparaison l'était.
+
+## 21.1 ⚠ Comparer à un solde de compte n'a pas de sens ici
+
+Le contrôle opposait la reprise Calypso (3 089 462 049) au **solde du compte 511800100** à
+apurer (2 963 891 902). Or ce solde contient deux choses de natures différentes : les courus des
+positions qui migrent, et des courus résiduels de positions **déjà sorties du portefeuille**.
+
+La seule comparaison qui ait un sens oppose la reprise au couru **porté par les 65 positions
+qui ont effectivement migré**.
+
+| | Montant |
+|---|---|
+| Couru porté par les positions migrées | 2 725 169 325 |
+| Couru repris par Calypso | 3 089 462 049 |
+| **ÉCART DE REPRISE** | **364 292 724** |
+
+**L'écart réel est de 364 292 724 XAF, près du triple des 125 570 147 annoncés.**
+
+## 21.2 ✓ Ce qui se rapproche parfaitement, et qu'il fallait dire
+
+Le contrôle ne le disait pas : **les 65 positions se rapprochent exactement**. 65 sortent de
+Flexcube, 65 entrent dans Calypso, nominal identique de **126 688 763 333 XAF**, et chaque
+nominal se retrouve des deux côtés comme multi-ensemble. La reprise du portefeuille est
+exhaustive.
+
+**10 positions entrent sans aucun couru — et c'est normal.** Ce sont les bons du Trésor logés
+au compte `511210100`, 19 485 000 000 de nominal : des titres **à escompte**, sans coupon, dont
+la rémunération vit en compte de régularisation et non en créances rattachées. Le rapport
+laissait planer un doute sur ces dix positions.
+
+## 21.3 ⚠ Un second écart, que rien ne relevait
+
+| Composante du solde à apurer | Montant |
+|---|---|
+| Rattachable aux positions migrées | 2 725 169 325 |
+| **NON rattachable** | **238 722 577** |
+| Solde du compte (contrôle 5.3) | 2 963 891 902 |
+
+Ces 238 722 577 XAF sont des créances rattachées à des titres **dénoués de longue date**,
+jamais apurées, et soldées à la migration sans avoir jamais été encaissées. Le compte portait
+un couru résiduel sur **412 contrats déjà sortis du portefeuille**.
+
+Précision de méthode consignée au rapport : le nombre de contrats et le montant non rattachable
+ne se recoupent pas exactement, certains de ces contrats portant un solde négatif — effet des
+apurements excédentaires antérieurs du contrôle 3.4.
+
+## 21.4 ⚠ Une population parasite dans la mesure de la reprise
+
+Le compte `512800100` reçoit **89 lignes** le jour de la bascule, pas 55 :
+- 55 `ACCRUAL_BS` — la reprise, 3 089 462 049
+- **34 `TRADE VALUATION/TDWAC_ACCRUAL/`** — 18 072 130, le couru du jour de Calypso lui-même
+
+Le net du compte ce jour-là est donc 3 107 534 179 et non 3 089 462 049. Un lecteur rapprochant
+le chiffre du contrôle au solde du compte trouvait 18 M d'écart inexpliqué. Le constat le dit
+désormais.
+
+## 21.5 ⚠ Ce que le rapport ne pouvait pas faire, et ne le disait pas
+
+Un rapprochement position par position est **impossible** avec les données disponibles :
+- les deux systèmes n'ont **aucun identifiant commun** — Flexcube désigne une position par sa
+  référence de contrat, Calypso par le code du titre ;
+- **35 des 65 positions partagent leur nominal avec une autre**, sur 9 valeurs distinctes.
+
+J'avais d'abord tenté un appariement 1-1 par nominal trié, qui produisait des écarts par
+position de plus de 150 M. **Ces chiffres étaient des artefacts d'appariement** et n'ont pas été
+retenus. Le rapport énonce désormais la limite au lieu de la contourner.
+
+## 21.6 État
+
+55 anomalies — 9 critiques, 20 élevées, 23 moyennes, 3 faibles — sur 11 sections et 69 contrôles.
+5.2 reste ELEVEE, avec un écart triplé et deux constats nouveaux.
+
+**Règle retenue** : *avant de chiffrer un écart, vérifier que les deux termes portent sur la
+même population.* Et : *un appariement qui n'est pas déterministe ne produit pas un constat —
+il produit du bruit qu'il faut jeter.*

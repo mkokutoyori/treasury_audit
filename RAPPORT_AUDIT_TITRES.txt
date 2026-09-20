@@ -4,7 +4,7 @@
 
   Périmètre        : Département de la trésorerie — gestion des investissements sur les marchés financiers
   Période d'audit  : 2023-09-27 au 2026-06-30
-  Rapport généré le : 20/09/2026 à 13:41
+  Rapport généré le : 20/09/2026 à 16:29
   Référentiel      : Plan Comptable des Établissements de Crédit (PCEC) — CEMAC / COBAC
 
   Ce rapport est produit automatiquement. Chaque constat indique le test exécuté, sa
@@ -46,8 +46,8 @@ RÉCAPITULATIF DES ANOMALIES PAR GRAVITÉ
 ----------------------------------------------------------------------------------------------------
 
   CRITIQUE   : 9
-  ELEVEE     : 19
-  MOYENNE    : 24
+  ELEVEE     : 20
+  MOYENNE    : 23
   FAIBLE     : 3
   TOTAL      : 55
 
@@ -63,6 +63,7 @@ RÉCAPITULATIF DES ANOMALIES PAR GRAVITÉ
   ELEVEE    [2.6] Taux contractuels aberrants au regard des opérations comparables
   ELEVEE    [3.7] Accumulation des intérêts courus au-delà d'une année de coupons
   ELEVEE    [3.8] Transfert massif d'intérêts courus vers un compte d'attente
+  ELEVEE    [5.2] Le couru repris dans le nouveau système excède celui des positions migrées
   ELEVEE    [5.5] Changement de catégorie comptable opéré à la migration
   ELEVEE    [6.2] Le contrôle des quatre yeux de Flexcube est intégralement neutralisé sur le flux Calypso
   ELEVEE    [6.3] Perte de l'information comptable structurée dans les écritures
@@ -91,7 +92,6 @@ RÉCAPITULATIF DES ANOMALIES PAR GRAVITÉ
   MOYENNE   [4.1] Contrôle des quatre yeux neutralisé pour les flux automatiques
   MOYENNE   [4.3] Poids des comptes techniques dans la comptabilisation
   MOYENNE   [4.4] Saisies nocturnes sur les comptes de titres
-  MOYENNE   [5.2] Écart entre les intérêts courus repris et le solde du compte d'origine
   MOYENNE   [6.5] Contre-passation quotidienne intégrale : les volumes Calypso ne sont pas exploitables bruts
   MOYENNE   [7.1] Pensions à terme comptabilisées dans un compte d'emprunt au jour le jour
   MOYENNE   [7.2] Aucun couru n'est constaté sur les pensions, y compris celles à cheval sur un arrêté
@@ -1209,6 +1209,77 @@ classement comptable retenu.
     opératoire.
 
 ----------------------------------------------------------------------------------------------------
+[5.2] Le couru repris dans le nouveau système excède celui des positions migrées
+  Gravité : ELEVEE
+
+  CE QUI EST COMPARÉ. Le contrôle ne rapproche pas la reprise du SOLDE du compte de créances
+  rattachées 511800100 : ce solde contient aussi des courus de positions qui ne sont plus au
+  portefeuille. Il la rapproche du couru effectivement porté par les positions QUI ONT MIGRÉ, seule
+  comparaison qui ait un sens.
+
+  LES POSITIONS SE RAPPROCHENT EXACTEMENT. 65 positions sortent de Flexcube et 65 entrent dans
+  Calypso, pour un nominal identique de 126 688 763 333 XAF, et chaque nominal se retrouve des deux
+  côtés. La reprise du portefeuille est donc exhaustive.
+  10 de ces positions n'emportent AUCUN couru, et c'est normal : il s'agit des bons du Trésor logés
+  au compte 511210100, titres à ESCOMPTE qui ne portent pas de coupon. Leur rémunération est logée
+  en compte de régularisation, pas en créances rattachées.
+
+  LE COURU, LUI, NE SE RAPPROCHE PAS. Les positions migrées portaient 2 725 169 325 XAF de coupons
+  courus. Calypso en a repris 3 089 462 049 XAF, soit 364 292 724 XAF DE PLUS. Le nouveau système
+  démarre donc avec un actif supérieur à celui que l'ancien lui transmettait, sans qu'aucune
+  écriture ne justifie la différence.
+
+  UN SECOND ÉCART, DE NATURE DIFFÉRENTE. Le solde du compte d'origine à apurer s'élevait à 2 963 891
+  902 XAF, dont 2 725 169 325 XAF seulement se rattachent aux positions migrées. Il reste 238 722
+  577 XAF qui ne se rattachent à AUCUNE position du portefeuille au jour de la bascule. Le compte
+  portait en effet un couru résiduel sur 412 contrats déjà sortis du portefeuille — des créances
+  rattachées à des titres dénoués de longue date, jamais apurées, et soldées à la migration sans
+  avoir jamais été encaissées. Le nombre de contrats et le montant non rattachable ne se recoupent
+  pas exactement : certains de ces contrats portent un solde négatif, effet des apurements
+  antérieurs excédentaires relevés au contrôle 3.4.
+
+  CE QUI NE PEUT PAS ÊTRE FAIT. Un rapprochement POSITION PAR POSITION est impossible avec les
+  données disponibles : les deux systèmes n'ont aucun identifiant commun — Flexcube désigne une
+  position par sa référence de contrat, Calypso par le code du titre — et 35 des 65 positions
+  partagent leur nominal avec une autre, sur 9 valeurs. Le rapprochement en masse est donc le seul
+  possible, et l'écart ne peut être imputé à des positions identifiées sans le concours des deux
+  services.
+
+    Positions sorties de Flexcube / entrées dans Calypso : 65 / 65
+    Nominal migré, identique des deux côtés              : 126 688 763 333 XAF
+    Positions sans couru (bons à escompte)               : 10 — 19 485 000 000 XAF
+    Couru PORTÉ par les positions migrées                : 2 725 169 325 XAF
+    Couru REPRIS dans le nouveau système                 : 3 089 462 049 XAF
+    ÉCART DE REPRISE                                     : 364 292 724 XAF
+    Solde du compte d'origine à apurer (voir 5.3)        : 2 963 891 902 XAF
+    Dont NON rattachable aux positions migrées           : 238 722 577 XAF
+    Contrats hors portefeuille portant un couru résiduel : 412
+
+    Élément                                 Montant XAF    Lecture                                
+    --------------------------------------  -------------  ---------------------------------------
+    Couru porté par les positions migrées   2 725 169 325  ce que l'ancien système transmettait   
+    Couru repris par Calypso                3 089 462 049  ce que le nouveau a enregistré         
+    ÉCART DE REPRISE                        364 292 724    actif créé sans contrepartie           
+    Solde du compte d'origine à apurer      2 963 891 902  voir contrôle 5.3                      
+    Dont rattachable aux positions migrées  2 725 169 325                                         
+    Dont NON rattachable                    238 722 577    courus de titres sortis du portefeuille
+    Les deux écarts sont indépendants : le premier oppose la reprise au couru migré, le second
+    décompose le solde du compte d'origine.
+
+    Compte     Positions  Nominal XAF   
+    ---------  ---------  --------------
+    511210100  10         19 485 000 000
+    Positions entrées sans reprise de couru. Les bons du Trésor sont des titres à escompte :
+    l'absence de couru y est normale.
+
+  Recommandation :
+    Obtenir du service la justification de l'écart de reprise, position par position : seul le
+    rapprochement entre la référence de contrat Flexcube et le code titre Calypso, que les deux
+    systèmes ne partagent pas, permet de l'imputer. Faire expliquer séparément les créances
+    rattachées à des titres sortis du portefeuille, soldées à la migration sans avoir été
+    encaissées.
+
+----------------------------------------------------------------------------------------------------
 [5.5] Changement de catégorie comptable opéré à la migration
   Gravité : ELEVEE
 
@@ -1228,29 +1299,6 @@ classement comptable retenu.
     Obtenir la note de décision du reclassement, son approbation, et la position du commissaire aux
     comptes. Vérifier l'incidence sur la méthode d'évaluation retenue et sur les états
     réglementaires COBAC.
-
-----------------------------------------------------------------------------------------------------
-[5.2] Écart entre les intérêts courus repris et le solde du compte d'origine
-  Gravité : MOYENNE
-
-  Les intérêts courus attachés aux positions migrées ont été réintroduits dans Calypso par
-  l'événement ACCRUAL_BS, sur le compte 512800100. Le compte d'origine (511800100) a été soldé le
-  même jour — voir le contrôle 5.3, qui établit que ce solde a été passé pour un montant supérieur
-  au solde réel.
-  Le montant repris s'écarte par ailleurs de 125 570 147 XAF du solde réel du compte d'origine : les
-  deux systèmes ne partent donc pas du même encours de courus. L'écart est d'un autre ordre de
-  grandeur que le sur-apurement du contrôle 5.3 et s'en distingue, mais il doit lui aussi être
-  justifié position par position.
-
-    Positions dont les courus sont repris     : 55
-    Courus repris dans le nouveau système     : 3 089 462 049 XAF
-    Solde réel du compte d'origine (voir 5.3) : 2 963 891 902 XAF
-    Écart de reprise                          : 125 570 147 XAF
-
-  Recommandation :
-    Rapprocher position par position les courus repris dans le nouveau système et les courus portés
-    par le compte d'origine, et faire justifier l'écart constaté. Ce rapprochement est distinct de
-    celui du contrôle 5.3, qui porte sur le montant apuré.
 
 ----------------------------------------------------------------------------------------------------
 CONTRÔLES SANS ANOMALIE
