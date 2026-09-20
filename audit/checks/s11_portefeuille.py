@@ -791,6 +791,23 @@ def _c118_cas_le_plus_lourd(ctx) -> Constat:
                        float(sous[sous.AC_NO == "552400100"].SIGNE.sum()),
                        float(sous[sous.AC_NO == "952100100"].SIGNE.sum())])
 
+    # LA SOMME N'EST-ELLE PAS SORTIE PAR UN AUTRE COMPTE ? Deux vérifications indépendantes.
+    toutes = ctx.toutes_ecritures
+    # a) combien de comptes de règlement auprès de la banque centrale existe-t-il réellement ?
+    nostros_bc = sorted(set(toutes[toutes.AC_NATURAL_GL == "560100100"].AC_NO.dropna()))
+    # b) le montant manquant apparaît-il quelque part, tous comptes et toutes dates confondus ?
+    manquant = abs(float(pire.solde))
+    trouve_ailleurs = int((toutes.LCY_AMOUNT.round(0) == round(manquant)).sum())
+
+    # LA BANQUE CORRIGE-T-ELLE CE GENRE DE RÉSIDU ? Les écritures manuelles passées sur le
+    # compte de liaison le disent : celles qui portent la mention REGUL désignent le deal
+    # qu'elles redressent.
+    pont = toutes[toutes.AC_NO.isin(["467000186", "467000188"])]
+    regul = pont[pont.DESCRIPTION.fillna("").str.upper().str.startswith("REGUL")]
+    deals_corriges = sorted({dl for dl in anormaux.index
+                             if regul.DESCRIPTION.fillna("").str.contains(dl).any()})
+    deal_corrige = deal in deals_corriges
+
     nostro = float(g[g.AC_NO == "099ACO00001"].SIGNE.sum())
     attendu_nostro = -float(fiche.interet.iloc[0]) if not fiche.empty and fiche.interet.notna().iloc[0] else 0.0
     collateral = g[(g.AC_NO == "952100100") & (g.DRCR_IND == "C")]
@@ -845,10 +862,42 @@ def _c118_cas_le_plus_lourd(ctx) -> Constat:
                f"{nb(nb_un)} pensions arrivées à échéance dont le règlement de remboursement "
                "n'a jamais été déversé, dont celle-ci.") + "\n"
             "\n"
-            "L'ABSENCE EST ÉTABLIE SUR UNE SOURCE COMPLÈTE. Le compte de liaison a été extrait "
-            "intégralement et séparément ; la recherche du montant manquant dans l'ensemble "
-            "des écritures reçues, tous comptes et toutes dates confondus, ne renvoie rien. Il "
-            "ne s'agit donc pas d'une lacune d'extraction.\n"
+            "L'ARGENT N'EST PAS SORTI PAR UN AUTRE COMPTE — ET CE N'EST PAS UNE QUESTION "
+            "D'EXTRACTION. C'est l'objection naturelle, et elle se traite par trois "
+            "vérifications indépendantes.\n"
+            "- PREMIÈREMENT, LE COMPTE DE LIAISON. Toute écriture produite par Calypso "
+            "transite par lui : c'est le pivot de l'interface, un compte purement interne qui "
+            "n'appartient à aucune contrepartie et qui doit revenir à zéro quand une opération "
+            "est intégralement déversée. Si le décaissement était parti d'un AUTRE compte de "
+            "trésorerie — un autre nostro, un compte de mouvement de fonds, n'importe lequel — "
+            "l'écriture aurait été « compte de liaison au DÉBIT, compte de trésorerie au "
+            "CRÉDIT », et le compte de liaison serait revenu à zéro. Il est à "
+            f"{xaf(float(pire.solde))}. CE N'EST DONC PAS L'ARGENT QUI MANQUE SUR UN COMPTE : "
+            "C'EST UN MOUVEMENT ENTIER QUI N'EST JAMAIS ARRIVÉ DANS LE CORE BANKING. Aucun "
+            "compte, extrait ou non, ne peut le porter.\n"
+            "- DEUXIÈMEMENT, LE NOMBRE DE COMPTES. La banque ne dispose que d'"
+            + (f"UN SEUL compte rattaché au grand livre NOSTRI BANQUE CENTRALE, "
+               f"{nostros_bc[0]}" if len(nostros_bc) == 1 else
+               f"{nb(len(nostros_bc))} comptes rattachés au grand livre NOSTRI BANQUE "
+               f"CENTRALE : {', '.join(nostros_bc)}")
+            + ". Il n'y a pas de second compte de règlement auprès de la banque centrale vers "
+            "lequel le décaissement aurait pu être aiguillé.\n"
+            f"- TROISIÈMEMENT, LE MONTANT. Recherché dans l'ensemble des écritures reçues — "
+            f"{nb(len(toutes))} lignes, {nb(toutes.AC_NO.nunique())} comptes, toutes dates "
+            f"confondues — le montant de {xaf(manquant)} apparaît "
+            + ("ZÉRO fois" if trouve_ailleurs == 0 else f"{nb(trouve_ailleurs)} fois")
+            + ".\n"
+            "\n"
+            "LA BANQUE SAIT CORRIGER CES RÉSIDUS — ELLE NE L'A PAS FAIT POUR CELUI-CI. Le "
+            "compte de liaison porte des écritures manuelles de régularisation, identifiées "
+            "par la mention REGUL et par le numéro du deal qu'elles redressent. "
+            + (f"Les deals {', '.join(deals_corriges)} en ont bénéficié"
+               if deals_corriges else "Aucun deal n'en a bénéficié")
+            + ". "
+            + ("Celui-ci NON." if not deal_corrige else "Celui-ci également.")
+            + " Le constat de la taxonomie ci-dessous se vérifie donc jusque dans le "
+            "comportement de la banque : les jambes déversées en double ont fini par être "
+            "repérées et redressées à la main ; la jambe absente, elle, n'a alerté personne.\n"
             "\n"
             "L'ANOMALIE N'EST PAS LA MÊME AUX DEUX ARRÊTÉS — ET C'EST LE POINT ESSENTIEL.\n"
             "\n"
@@ -914,6 +963,10 @@ def _c118_cas_le_plus_lourd(ctx) -> Constat:
             ("Erreur sur la trésorerie au 2025-12-31", xaf(0)),
             ("Nature de l'anomalie au 2025-12-31",
              "cut-off — pension échue présentée comme vivante"),
+            ("Comptes de règlement auprès de la banque centrale", nb(len(nostros_bc))),
+            ("Occurrences du montant manquant dans toutes les écritures reçues",
+             nb(trouve_ailleurs)),
+            ("Régularisation manuelle du compte de liaison", "NON" if not deal_corrige else "oui"),
             ("Corrigée à la clôture de la période", "NON"),
         ],
         tableaux=[

@@ -4,7 +4,7 @@
 
   Périmètre        : Département de la trésorerie — gestion des investissements sur les marchés financiers
   Période d'audit  : 2023-09-27 au 2026-06-30
-  Rapport généré le : 20/09/2026 à 18:13
+  Rapport généré le : 20/09/2026 à 20:20
   Référentiel      : Plan Comptable des Établissements de Crédit (PCEC) — CEMAC / COBAC
 
   Ce rapport est produit automatiquement. Chaque constat indique le test exécuté, sa
@@ -2872,9 +2872,28 @@ codification des titres du nouveau dispositif et mesure l'exposition souveraine 
   est à zéro. Il reste UNE SEULE pension arrivée à échéance dont le règlement de remboursement n'a
   jamais été déversé : celle-ci.
 
-  L'ABSENCE EST ÉTABLIE SUR UNE SOURCE COMPLÈTE. Le compte de liaison a été extrait intégralement et
-  séparément ; la recherche du montant manquant dans l'ensemble des écritures reçues, tous comptes
-  et toutes dates confondus, ne renvoie rien. Il ne s'agit donc pas d'une lacune d'extraction.
+  L'ARGENT N'EST PAS SORTI PAR UN AUTRE COMPTE — ET CE N'EST PAS UNE QUESTION D'EXTRACTION. C'est
+  l'objection naturelle, et elle se traite par trois vérifications indépendantes.
+  - PREMIÈREMENT, LE COMPTE DE LIAISON. Toute écriture produite par Calypso transite par lui : c'est
+    le pivot de l'interface, un compte purement interne qui n'appartient à aucune contrepartie et
+    qui doit revenir à zéro quand une opération est intégralement déversée. Si le décaissement était
+    parti d'un AUTRE compte de trésorerie — un autre nostro, un compte de mouvement de fonds,
+    n'importe lequel — l'écriture aurait été « compte de liaison au DÉBIT, compte de trésorerie au
+    CRÉDIT », et le compte de liaison serait revenu à zéro. Il est à -90 101 000 000 XAF. CE N'EST
+    DONC PAS L'ARGENT QUI MANQUE SUR UN COMPTE : C'EST UN MOUVEMENT ENTIER QUI N'EST JAMAIS ARRIVÉ
+    DANS LE CORE BANKING. Aucun compte, extrait ou non, ne peut le porter.
+  - DEUXIÈMEMENT, LE NOMBRE DE COMPTES. La banque ne dispose que d'UN SEUL compte rattaché au grand
+    livre NOSTRI BANQUE CENTRALE, 099ACO00001. Il n'y a pas de second compte de règlement auprès de
+    la banque centrale vers lequel le décaissement aurait pu être aiguillé.
+  - TROISIÈMEMENT, LE MONTANT. Recherché dans l'ensemble des écritures reçues — 512 826 lignes, 121
+    comptes, toutes dates confondues — le montant de 90 101 000 000 XAF apparaît ZÉRO fois.
+
+  LA BANQUE SAIT CORRIGER CES RÉSIDUS — ELLE NE L'A PAS FAIT POUR CELUI-CI. Le compte de liaison
+  porte des écritures manuelles de régularisation, identifiées par la mention REGUL et par le numéro
+  du deal qu'elles redressent. Les deals 4184547, 4184571 en ont bénéficié. Celui-ci NON. Le constat
+  de la taxonomie ci-dessous se vérifie donc jusque dans le comportement de la banque : les jambes
+  déversées en double ont fini par être repérées et redressées à la main ; la jambe absente, elle,
+  n'a alerté personne.
 
   L'ANOMALIE N'EST PAS LA MÊME AUX DEUX ARRÊTÉS — ET C'EST LE POINT ESSENTIEL.
 
@@ -2913,22 +2932,25 @@ codification des titres du nouveau dispositif et mesure l'exposition souveraine 
   cette durée, ils apparaissaient indisponibles alors qu'ils ne l'étaient plus, ce qui minore
   d'autant la réserve de liquidité mobilisable affichée (contrôle 7.3).
 
-    Contrepartie                                         : BEAC
-    Montant emprunté                                     : 90 000 000 000 XAF
-    Durée CONTRACTUELLE                                  : 8 jours (2025-12-18 → 2025-12-26)
-    Comptabilisation                                     : tirage le 2025-12-23, remboursement le 2026-03-31
-    Titres donnés en garantie                            : 19 lignes — 91 333 110 000 XAF
-    Jours de gage au-delà de l'échéance contractuelle    : 95 jours
-    Règlements en trésorerie attendus                    : 2 — tirage et remboursement
-    Règlements effectivement déversés                    : 1 — celui du tirage
-    Pensions de la période portant leurs deux règlements : 126 sur 129
-    Effet ATTENDU sur le compte de règlement             : sortie de 101 000 000 XAF (l'intérêt)
-    Effet CONSTATÉ sur le compte de règlement            : entrée de 90 000 000 000 XAF
-    ERREUR SUR LA TRÉSORERIE, à compter du 2026-03-31    : 90 101 000 000 XAF
-    Résidu porté par le compte de liaison                : -90 101 000 000 XAF
-    Erreur sur la trésorerie au 2025-12-31               : 0 XAF
-    Nature de l'anomalie au 2025-12-31                   : cut-off — pension échue présentée comme vivante
-    Corrigée à la clôture de la période                  : NON
+    Contrepartie                                                     : BEAC
+    Montant emprunté                                                 : 90 000 000 000 XAF
+    Durée CONTRACTUELLE                                              : 8 jours (2025-12-18 → 2025-12-26)
+    Comptabilisation                                                 : tirage le 2025-12-23, remboursement le 2026-03-31
+    Titres donnés en garantie                                        : 19 lignes — 91 333 110 000 XAF
+    Jours de gage au-delà de l'échéance contractuelle                : 95 jours
+    Règlements en trésorerie attendus                                : 2 — tirage et remboursement
+    Règlements effectivement déversés                                : 1 — celui du tirage
+    Pensions de la période portant leurs deux règlements             : 126 sur 129
+    Effet ATTENDU sur le compte de règlement                         : sortie de 101 000 000 XAF (l'intérêt)
+    Effet CONSTATÉ sur le compte de règlement                        : entrée de 90 000 000 000 XAF
+    ERREUR SUR LA TRÉSORERIE, à compter du 2026-03-31                : 90 101 000 000 XAF
+    Résidu porté par le compte de liaison                            : -90 101 000 000 XAF
+    Erreur sur la trésorerie au 2025-12-31                           : 0 XAF
+    Nature de l'anomalie au 2025-12-31                               : cut-off — pension échue présentée comme vivante
+    Comptes de règlement auprès de la banque centrale                : 1
+    Occurrences du montant manquant dans toutes les écritures reçues : 0
+    Régularisation manuelle du compte de liaison                     : NON
+    Corrigée à la clôture de la période                              : NON
 
     Date        Événement          Compte       Libellé                             Sens  Mouvements  Montant XAF   
     ----------  -----------------  -----------  ----------------------------------  ----  ----------  --------------

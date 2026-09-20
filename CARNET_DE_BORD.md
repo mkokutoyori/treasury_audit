@@ -2274,3 +2274,53 @@ pensions. Cela **confirme le 12.2** — la charge de refinancement BEAC est bien
 
 **62 anomalies — 11 critiques, 23 élevées, 25 moyennes, 3 faibles — sur 12 sections et
 76 contrôles.**
+
+## 23.8 « L'argent ne revient pas, même avec le nouveau fichier ? » — vérification
+
+Question posée : le fichier `099ACO00001.csv` correspond à l'historique d'un compte de la
+banque centrale ; le décaissement manquant n'y apparaît-il pas ?
+
+**Non — et le fichier ne pouvait pas changer la réponse : il apporte 0 ligne nouvelle.**
+Trois vérifications indépendantes :
+
+1. **Le compte de liaison.** Toute écriture Calypso transite par lui. Si le décaissement
+   était parti de *n'importe quel autre* compte de trésorerie, l'écriture aurait été
+   « pont au DÉBIT / trésorerie au CRÉDIT » et le pont serait revenu à zéro. Il est à
+   **−90 101 000 000**. Ce n'est donc pas l'argent qui manque sur un compte : c'est un
+   **mouvement entier qui n'est jamais arrivé dans le core banking**. Aucun compte, extrait
+   ou non, ne peut le porter.
+2. **Le nombre de comptes.** `AC_NATURAL_GL = 560100100 NOSTRI BANQUE CENTRALE` ne
+   correspond qu'à **un seul compte** : `099ACO00001`. Pas de second compte de règlement BEAC.
+3. **Le montant.** Recherché dans les 512 826 lignes reçues, 121 comptes, toutes dates :
+   **zéro occurrence** de 90 101 000 000.
+
+## 23.9 Découverte connexe — la banque corrige, mais pas celui-ci
+
+Le pont `467000188` porte 47 écritures manuelles. Quarante-trois sont des balayages
+quotidiens de quelques milliers de francs. **Quatre sont des régularisations de repos**,
+passées le **14/08/2026** par `TOKAID000203`, libellées `REGUL <deal> <mouvement> ...` :
+
+| Deal | Résidu | Régularisé à la main ? |
+|---|---|---|
+| 4184547 | −11 979 167 | **oui**, 14/08/2026 |
+| 4184571 | −25 000 000 000 | **oui**, 14/08/2026 |
+| 3186053 | −5 000 000 000 | non |
+| 3490796 | −77 000 000 | non |
+| 3737062 | −63 184 722 | non |
+| **3349072** | **−90 101 000 000** | **non** |
+
+Les deux deals redressés sont des **jambes déversées en double**. La jambe **absente** —
+la plus lourde de toutes — n'a alerté personne. Cela confirme, dans le comportement même de
+la banque, ce que la taxonomie du 11.8 énonce : *une écriture en double se voit ; une
+écriture absente ne laisse aucune trace de son absence.*
+
+Le solde du pont le montre à l'œil nu : **−3 801 476 456 au 30/03/2026, −93 902 460 379 au
+31/03/2026** — un saut de −90 100 983 923 en un jour.
+
+## 23.10 Comptes BEAC jamais extraits (pour mémoire)
+
+Le plan de comptes en porte cinq qui n'ont jamais été extraits : `575000198` MOUVEMENT DE
+FONDS AVEC LA BANQUE CENTRALE, `561100100` LORI BANQUE CENTRALE, `526000100` BEAC RESERVES
+OBLIGATOIRES, `466000145` / `467000145` DÉBITEURS / CRÉDITEURS DIVERS BEAC. Ils ne changent
+pas la conclusion — l'argument du pont est indépendant du compte de trésorerie — mais leur
+extraction permettrait de clore formellement la question.
