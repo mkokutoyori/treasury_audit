@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 from ..core import Constat, Gravite, Section, Tableau, xaf
-from ..data import COMPTES_TECHNIQUES
+import pandas as pd
+
+from ..data import COMPTES_TECHNIQUES, CPT_TITRES, DATE_BASCULE
 
 SECTION = (4, "Contrôle interne et séparation des tâches")
 
@@ -152,70 +154,141 @@ def _c43_comptes_techniques(ctx) -> Constat:
 
 
 def _c44_horaires(ctx) -> Constat:
+    """Saisies hors heures ouvrables, restreintes aux opérations sur titres.
+
+    Le test ne porte que sur les comptes du périmètre titres : une saisie tardive sur un
+    compte clientèle relève d'un autre contrôle. Une saisie en soirée n'est pas anormale dans
+    une salle de marché ; une saisie en pleine nuit l'est.
+    """
     cfg = ctx.config
-    df = ctx.toutes_ecritures.copy()
-    heures = df.STMT_DT.str.slice(11, 13)
-    df["heure"] = heures.where(heures.str.isdigit()).astype(float)
-    hors = df[(df.heure < cfg.heure_ouverture) | (df.heure >= cfg.heure_fermeture)]
-    humains = _humains(hors)
-    if humains.empty:
+    gl = ctx.grand_livre.copy()
+    heures = gl.STMT_DT.str.slice(11, 13)
+    gl["heure"] = pd.to_numeric(heures, errors="coerce")
+    titres = gl[gl.AC_NO.isin(CPT_TITRES)]
+    humains = _humains(titres)
+    soiree = humains[(humains.heure >= cfg.heure_fermeture) & (humains.heure < 24)]
+    nuit = humains[humains.heure < 6]
+    repartition = humains.groupby("heure").agg(ecritures=("LCY_AMOUNT", "size"),
+                                               montant=("LCY_AMOUNT", "sum"))
+    if nuit.empty:
         return Constat(
-            code="4.4", titre="Saisies en dehors des heures ouvrables", gravite=Gravite.CONFORME,
+            code="4.4", titre="Horaires de saisie des opérations sur titres",
+            gravite=Gravite.CONFORME,
             constat=(
-                f"Les {len(hors):,} écritures passées hors de la plage "
-                f"{cfg.heure_ouverture} h – {cfg.heure_fermeture} h sont toutes le fait de "
-                "traitements automatiques."
-            ).replace(",", " "),
+                f"Les saisies sur les comptes du périmètre titres se concentrent sur la plage "
+                f"ouvrable. Les {len(soiree)} écritures passées en soirée, après "
+                f"{cfg.heure_fermeture} h, restent compatibles avec l'activité d'une salle de "
+                "marché et le traitement de fin de journée. Aucune saisie nocturne n'est "
+                "constatée."
+            ),
+            tableaux=[Tableau(["Heure", "Écritures", "Montant XAF"],
+                              [[int(i), int(r.ecritures), float(r.montant)]
+                               for i, r in repartition.iterrows()], max_lignes=24)],
         )
-    par = humains.groupby("USER_ID").agg(n=("LCY_AMOUNT", "size"), montant=("LCY_AMOUNT", "sum"))
+    par_nuit = nuit.groupby(["TRN_DT", "USER_ID", "AUTH_ID", "MODULE"]).agg(
+        ecritures=("LCY_AMOUNT", "size"), montant=("LCY_AMOUNT", "sum"),
+        heure_min=("heure", "min"), heure_max=("heure", "max"))
+    dates = sorted(nuit.TRN_DT.unique())
+    bascule = [d for d in dates if d == DATE_BASCULE]
     return Constat(
         code="4.4",
-        titre="Saisies manuelles en dehors des heures ouvrables",
+        titre="Saisies nocturnes sur les comptes de titres",
         gravite=Gravite.MOYENNE,
         constat=(
-            f"Des utilisateurs nominatifs ont comptabilisé des écritures avant "
-            f"{cfg.heure_ouverture} h ou après {cfg.heure_fermeture} h. Une saisie hors plage n'est "
-            "pas anormale en soi dans une salle de marché, mais elle échappe à la supervision "
-            "hiérarchique habituelle et doit être justifiée."
+            "Le contrôle se restreint aux comptes du périmètre titres, pour ne retenir que les "
+            "opérations de marché.\n"
+            f"Les saisies en soirée, après {cfg.heure_fermeture} h, sont nombreuses mais restent "
+            "compatibles avec l'activité d'une salle de marché et le traitement de fin de "
+            "journée : elles ne sont pas rapportées comme anomalies.\n"
+            "En revanche, des écritures ont été passées en PLEINE NUIT, avant 6 h du matin, par "
+            "des opérateurs nominatifs. Ces saisies échappent à toute supervision hiérarchique et "
+            "se concentrent sur un très petit nombre de dates."
+            + (f" L'une d'elles correspond à la bascule vers le nouveau système, ce qui l'explique."
+               if bascule else "")
         ),
         chiffres=[
-            ("Écritures hors plage (toutes origines)", f"{len(hors):,}".replace(",", " ")),
-            ("Dont utilisateurs nominatifs", f"{len(humains):,}".replace(",", " ")),
-            ("Montant concerné", xaf(float(humains.LCY_AMOUNT.sum()))),
+            ("Écritures titres saisies par un opérateur", f"{len(humains):,}".replace(",", " ")),
+            (f"Dont en soirée ({cfg.heure_fermeture} h – 24 h)", f"{len(soiree):,}".replace(",", " ")),
+            ("Dont nocturnes (0 h – 6 h)", str(len(nuit))),
+            ("Dates concernées", ", ".join(dates)),
+            ("Montant des saisies nocturnes", xaf(float(nuit.LCY_AMOUNT.sum()))),
         ],
-        tableaux=[Tableau(["Opérateur", "Écritures", "Montant XAF"],
-                          [[i, int(r.n), float(r.montant)] for i, r in par.sort_values("n", ascending=False).head(12).iterrows()])],
-        recommandation="Rapprocher ces horaires des plannings de la salle des marchés et des astreintes.",
+        tableaux=[
+            Tableau(["Date", "Opérateur", "Validation", "Module", "Écritures", "Montant XAF",
+                     "De", "À"],
+                    [[i[0], i[1], i[2], i[3], int(r.ecritures), float(r.montant),
+                      f"{int(r.heure_min)} h", f"{int(r.heure_max)} h"]
+                     for i, r in par_nuit.iterrows()]),
+            Tableau(["Heure", "Écritures", "Montant XAF"],
+                    [[int(i), int(r.ecritures), float(r.montant)]
+                     for i, r in repartition.iterrows()], max_lignes=24,
+                    note="Répartition horaire de l'ensemble des saisies sur titres."),
+        ],
+        recommandation=(
+            "Obtenir la justification des saisies nocturnes hors bascule : rapprocher des "
+            "plannings de la salle des marchés et des éventuelles astreintes."
+        ),
     )
 
 
 def _c45_concentration(ctx) -> Constat:
+    """La concentration des saisies reflète-t-elle la taille réelle de l'équipe ?
+
+    Les opérations sur titres étaient traitées, sous l'ancien système, par l'équipe Treasury
+    Operations, qui n'a historiquement pas dépassé cinq personnes. Un petit nombre
+    d'opérateurs nominatifs est donc ATTENDU et non anormal ; ce qui compte est que la
+    validation soit assurée par des personnes distinctes.
+    """
     mm = ctx.grand_livre[ctx.grand_livre.MODULE == "MM"]
     humains = _humains(mm)
     if humains.empty:
-        return Constat(code="4.5", titre="Concentration des opérations", gravite=Gravite.CONFORME,
-                       constat="Aucune saisie manuelle sur le module MM.")
-    par = humains.groupby("USER_ID").agg(n=("LCY_AMOUNT", "size"), montant=("LCY_AMOUNT", "sum"))
-    par = par.sort_values("montant", ascending=False)
-    part_premier = float(par.montant.iloc[0]) / float(par.montant.sum()) * 100
+        return Constat(code="4.5", titre="Répartition des saisies sur titres", gravite=Gravite.CONFORME,
+                       constat="Aucune saisie manuelle sur le module de marché monétaire.")
+    par_saisie = humains.groupby("USER_ID").agg(ecritures=("LCY_AMOUNT", "size"),
+                                                montant=("LCY_AMOUNT", "sum"))
+    par_saisie = par_saisie.sort_values("montant", ascending=False)
+    valideurs = _humains(mm).AUTH_ID.dropna().nunique()
+    croisement = humains.groupby(["USER_ID", "AUTH_ID"]).size().reset_index(name="ecritures")
+    auto = croisement[croisement.USER_ID == croisement.AUTH_ID]
+    effectif_attendu = 5
+    depassement = len(par_saisie) > effectif_attendu
     return Constat(
         code="4.5",
-        titre="Concentration des opérations de titres sur un nombre restreint d'opérateurs",
-        gravite=Gravite.MOYENNE if len(par) <= 5 or part_premier > 50 else Gravite.FAIBLE,
+        titre="Répartition des saisies entre opérateurs et valideurs",
+        gravite=Gravite.MOYENNE if depassement or len(auto) else Gravite.CONFORME,
         constat=(
-            f"Les saisies manuelles du module de marché monétaire sont le fait de {len(par)} "
-            f"opérateurs, dont le premier concentre {part_premier:.0f} % des montants. Une telle "
-            "concentration limite la rotation des tâches et la capacité de détection mutuelle des "
-            "erreurs ; elle appelle un contrôle compensatoire de second niveau."
+            f"Les saisies manuelles sur le module de marché monétaire sont le fait de "
+            f"{len(par_saisie)} opérateurs nominatifs, validées par {valideurs} personnes "
+            "distinctes.\n"
+            "Ce nombre restreint n'est PAS une anomalie : les opérations sur titres étaient "
+            "traitées, sous l'ancien système, par l'équipe Treasury Operations, qui n'a "
+            f"historiquement pas dépassé {effectif_attendu} personnes. La concentration constatée "
+            "reflète donc la taille réelle de l'équipe.\n"
+            "Ce qui importe est ailleurs : que la validation soit assurée par des personnes "
+            "distinctes du saisisseur, et que la matrice saisie/validation ne laisse pas un "
+            "opérateur valider ses propres écritures."
+            + ("\nLe croisement saisie/validation ne fait apparaître AUCUN cas d'auto-validation "
+               "par un opérateur nominatif." if len(auto) == 0 else
+               "\nDes cas d'auto-validation par un opérateur nominatif sont constatés et "
+               "constituent, eux, une défaillance du contrôle.")
         ),
         chiffres=[
-            ("Opérateurs nominatifs", str(len(par))),
-            ("Part du premier opérateur", f"{part_premier:.0f} %"),
+            ("Opérateurs de saisie", str(len(par_saisie))),
+            ("Valideurs distincts", str(valideurs)),
+            ("Effectif type de l'équipe Treasury Operations", f"≤ {effectif_attendu}"),
+            ("Cas d'auto-validation nominative", str(len(auto))),
         ],
-        tableaux=[Tableau(["Opérateur", "Écritures", "Montant XAF"],
-                          [[i, int(r.n), float(r.montant)] for i, r in par.iterrows()])],
+        tableaux=[
+            Tableau(["Opérateur", "Écritures", "Montant XAF"],
+                    [[i, int(r.ecritures), float(r.montant)] for i, r in par_saisie.iterrows()]),
+            Tableau(["Saisie", "Validation", "Écritures"],
+                    [[r.USER_ID, r.AUTH_ID, int(r.ecritures)]
+                     for _, r in croisement.sort_values("ecritures", ascending=False).iterrows()],
+                    max_lignes=20, note="Matrice saisie / validation."),
+        ],
         recommandation=(
-            "Vérifier l'existence d'une rotation des opérateurs, de délégations formalisées et "
-            "d'un contrôle de second niveau sur les opérations de marché."
+            "Vérifier l'existence de délégations formalisées et d'un contrôle de second niveau "
+            "sur les opérations de marché, la taille de l'équipe limitant structurellement la "
+            "rotation des tâches."
         ),
     )

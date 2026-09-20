@@ -1175,3 +1175,98 @@ signifie des coupons échus non encaissés ou des courus non apurés.
 > absente : il peut être l'anomalie elle-même.
 
 Appliquée ici, cette vérification a transformé une limite supposée en trois constats d'audit.
+
+---
+
+# SESSION 13 — Approfondissement sur retours métier
+
+La banque a apporté 16 commentaires. Plusieurs invalident des constats, d'autres demandent
+un approfondissement. Une extraction native de Calypso a également été fournie.
+
+## 13.1 Faux positifs retirés ou reclassés
+
+| Constat | Retour de la banque | Traitement |
+|---|---|---|
+| Liquidation anticipée | La banque revend des titres pour faire face aux **tensions de liquidité** : c'est le mode de gestion normal du portefeuille | **3.1 réécrit** : seule la liquidation **après échéance** est rapportée |
+| Liquidation au pair | Les titres d'État sont **toujours cédés au nominal**, l'acquéreur profitant du coupon couru | **Constat supprimé** |
+| Concentration sur 4 souverains | Décision de **politique de risque** : exclusion délibérée du Tchad et de la RCA | **2.8 reclassé CONFORME** ; le contrôle vérifie désormais le respect de l'univers autorisé |
+| Peu d'opérateurs nominatifs | L'équipe **Treasury Operations** n'a jamais dépassé 5 personnes | **4.5 reclassé** ; le contrôle porte sur la matrice saisie/validation |
+| `ACCESSAFRIK` | Compte de la **plateforme Access Africa** (réseau propriétaire Access Bank), pas un utilisateur | Ajouté aux comptes techniques |
+
+## 13.2 Périmètre resserré
+La revue du référentiel porte désormais sur les **416 contrats bookés dans la période**
+(sur 596 au total) — les autres relèvent d'exercices déjà audités.
+
+## 13.3 Annulations et rebookings (points 5 et 6)
+Sur les contrats bookés et liquidés le même jour dans la période : **ce sont TOUS des
+annulations pures** — aucun ne porte d'écriture ultérieure. Ce sont des corrections de saisie.
+
+⚠ **Constat nouveau (3.4)** : l'annulation **ne contre-passe pas les intérêts courus**.
+- 47 contrats annulés, dont 40 portant des courus pour **24 483 539 XAF**
+- **0 contre-passation** par la liquidation
+- Apurements ultérieurs incohérents : **4 contrats jamais apurés**, **20 sur-apurés**
+  (fréquemment le double exact du couru enregistré)
+
+## 13.4 Recalcul des courus approfondi (point 8)
+Méthode désormais explicitée dans le rapport. **Trois conventions testées** : exact/365,
+exact/360 et **exact/exact** (chaque jour rapporté aux 365 ou 366 jours de son année civile).
+La période couvre deux années bissextiles ; ignorer la distinction biaise de 0,27 %.
+Chaque contrat en écart est **classé par cause** : aucun couru enregistré, contre-passations
+partielles, période non représentative, courus au-delà de l'échéance, écart inexpliqué.
+
+## 13.5 Horaires (point 10)
+Test restreint aux **comptes du périmètre titres**. Les saisies en soirée (20 h-24 h) sont
+compatibles avec une salle de marché et ne sont plus rapportées. Restent **2 dates de saisie
+nocturne**, dont une est le jour de la bascule.
+
+## 13.6 Constat 5.3 entièrement décomposé (point 12)
+15 chiffres numérotés, 4 tableaux : contrepartie trésorerie de l'écriture, **décomposition
+contrat par contrat** (cumul depuis l'origine / déjà encaissé / solde réel / crédité / crédité
+en trop), soldes à chaque arrêté, écriture de correction et sa troisième jambe.
+
+## 13.7 Sell-Buy-Back — raisonnement en schéma comptable (points 13-15)
+
+**8.2 — la démonstration par le PCEC.** Comparaison des comptes mouvementés :
+
+| Marqueur d'une pension livrée | Compte | Pensions BEAC | Cessions-rétrocessions |
+|---|---|---|---|
+| Dette au passif | `552400100` | ✔ | **absent** |
+| Charge d'intérêt | `601100100` | ✔ | **absent** |
+| Titres affectés en garantie (hors bilan) | `952100100` / `995000100` | ✔ | **absent** |
+| Sortie du portefeuille | `512410100` crédité | non | **oui, 457 Md** |
+
+→ La banque applique correctement le schéma de pension à ses opérations BEAC. Elle ne
+l'applique pas aux cessions-rétrocessions, qu'elle enregistre en cession ferme.
+
+**8.3 — le book dédié existe et n'est pas utilisé.** `ABCM_BSB.Bond` ne compte que
+**8 deals, dont 6 annulés**. Les **215 opérations commentées SBB sont toutes** dans
+`ABCM_FVOCI.Bond` (204) et `.Bills` (11). **Zéro dans le book dédié.**
+
+**8.1 — détection indépendante du commentaire.** Signature d'aller-retour dans le référentiel
+des deals : même titre, même contrepartie, quantités opposées, rachat sous 120 jours.
+- **107 paires détectées**, dont **44 (41 %) NE portent aucun commentaire SBB**
+- Cas emblématique : `BondGOCM/CM2K00000060` avec SGCM, **5 aller-retours successifs** de
+  500 410 titres exactement, tous les 21 à 30 jours, jamais commentés
+→ L'identification par le libellé **manque 41 % des opérations**.
+- Concentration : **194 des 200 deals SBB traités par un seul opérateur**
+
+## 13.8 Point 9.2 réécrit pour être accessible (point 16)
+Explication en cinq temps : le principe des deux familles de titres (placement = garder,
+transaction = revendre vite), la règle (« comme une chaussure gauche avec une chaussure
+gauche »), le constat, pourquoi c'est gênant (le régulateur distingue les deux natures de
+revenus : l'une récurrente, l'autre volatile), et l'origine (le bilan a suivi la migration,
+le compte de résultat ne l'a pas suivi).
+
+## 13.9 ⚠ NOUVELLE SECTION 10 — cohérence Calypso ↔ grand livre (point 7)
+`extraction_from_calypso.csv` : **3 480 deals**, 08/07/2022 → 09/09/2026, avec **statut**,
+**trader**, **utilisateur de saisie**, contrepartie, quantité et prix.
+
+| Contrôle | Constat |
+|---|---|
+| **10.1** | **1 355 deals aboutis (42 %) sans aucune écriture comptable** — à départager entre périmètre de comptes et échec de déversement |
+| **10.2** | **26 deals non aboutis ont produit de la comptabilité** : 22 annulés, 1 **HYPOTHÉTIQUE**, 3 en attente. 24 sont correctement contre-passés ; **2 laissent un résidu définitif** (82 850 XAF au résultat) dont le deal hypothétique (71 550 XAF de commission + 60 M de hors bilan) |
+| **10.3** | 41 deals du grand livre absents du référentiel amont |
+| **10.4** | **Saisie sous comptes génériques** (`admin`, `calypso_user`) ; **511 deals sans trader identifié** ; **aucun champ de validation** dans le référentiel |
+| **10.5** | Référentiel des opérateurs non normalisé : même personne sous plusieurs libellés, valeurs de remplissage (`NONE`, `0`, `TRADER1`) |
+
+→ **46 anomalies** (contre 41), dont **7 critiques**, sur **10 sections et 58 contrôles**.

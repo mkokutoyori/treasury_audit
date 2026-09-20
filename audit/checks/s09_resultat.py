@@ -4,7 +4,7 @@ from __future__ import annotations
 import pandas as pd
 
 from ..core import Constat, Gravite, Section, Tableau, xaf
-from ..data import CPT_PORTEFEUILLE, CPT_PRODUITS
+from ..data import CPT_PORTEFEUILLE, CPT_PRODUITS, DATE_BASCULE
 
 SECTION = (9, "Résultat, classement comptable et rendement")
 
@@ -84,12 +84,17 @@ def _c91_resultat(ctx) -> Constat:
 
 
 def _c92_classement(ctx) -> Constat:
-    """Un titre de transaction doit produire un revenu de transaction, et réciproquement."""
+    """Un titre de transaction doit produire un revenu de transaction, et réciproquement.
+
+    Le PCEC classe les titres en deux catégories selon l'intention de détention, et prévoit
+    pour chacune une série de comptes de produits distincte. Croiser les deux permet de
+    vérifier que le compte de résultat est cohérent avec le compte de bilan.
+    """
     gl = ctx.grand_livre
     pertinents = gl[gl.AC_NO.isin(set(CATEGORIE_BILAN) | set(CATEGORIE_PRODUIT))]
     par_ecriture = pertinents.groupby("TRN_REF_NO").AC_NO.apply(set)
-    couples = {}
-    for comptes in par_ecriture:
+    couples, montants = {}, {}
+    for reference, comptes in par_ecriture.items():
         bilan = {CATEGORIE_BILAN[c] for c in comptes if c in CATEGORIE_BILAN}
         produit = {CATEGORIE_PRODUIT[c] for c in comptes if c in CATEGORIE_PRODUIT}
         if not bilan or not produit:
@@ -104,40 +109,80 @@ def _c92_classement(ctx) -> Constat:
             gravite=Gravite.CONFORME,
             constat="Chaque catégorie de titre est associée au compte de produit correspondant.",
         )
-    total_inc = sum(incoherents.values())
+    total = sum(incoherents.values())
     principal = max(incoherents.items(), key=lambda x: x[1])
+    # Montant du produit imputé à la mauvaise catégorie, sur la période Calypso
+    produits_places = gl[(gl.AC_NO == "733400100") & (gl.TRN_DT >= DATE_BASCULE)]
+    montant_mal_impute = -float(produits_places.SIGNE.sum())
+    nomenclature = [
+        ["511 / 512 — titres", "Titres de PLACEMENT", "511410100, 511210100",
+         "733 — Revenus du portefeuille de placement"],
+        ["511 / 512 — titres", "Titres de TRANSACTION", "512410100, 512200100",
+         "734 — Revenus du portefeuille de transaction"],
+    ]
     return Constat(
         code="9.2",
         titre="Revenus du portefeuille imputés à la mauvaise catégorie comptable",
         gravite=Gravite.ELEVEE,
+        reference="PCEC CEMAC — comptes 733 (revenus du portefeuille de placement) et 734 (revenus du portefeuille de transaction)",
         constat=(
-            "Le PCEC distingue deux catégories de portefeuille et deux séries de comptes de "
-            "produits correspondantes : les revenus du portefeuille de placement d'une part, ceux "
-            "du portefeuille de transaction d'autre part.\n"
-            "Or des écritures associent systématiquement un compte de bilan d'une catégorie à un "
-            "compte de produit de l'AUTRE catégorie. Concrètement, les intérêts courus du "
-            "portefeuille de transaction sont crédités en revenus du portefeuille de placement.\n"
-            "Cette imputation fausse la ventilation du produit net bancaire dans les états "
-            "réglementaires transmis à la COBAC, qui distinguent précisément ces deux natures de "
-            "revenus. Elle est par ailleurs cohérente avec le reclassement opéré à la migration "
-            "(contrôle 5.5) : le portefeuille a changé de catégorie au bilan, mais pas au compte "
-            "de résultat."
+            "LE PRINCIPE, EN TERMES SIMPLES. Le plan comptable range les titres détenus par une "
+            "banque en deux familles, selon l'INTENTION avec laquelle elle les détient. Les titres "
+            "de PLACEMENT sont ceux qu'elle compte garder un certain temps. Les titres de "
+            "TRANSACTION sont ceux qu'elle compte revendre rapidement, pour profiter des "
+            "mouvements de prix.\n"
+            "Cette distinction n'est pas cosmétique : les deux familles n'obéissent pas aux mêmes "
+            "règles d'évaluation, et surtout elles ne se rangent pas au même endroit dans le "
+            "compte de résultat. Le plan comptable prévoit DEUX SÉRIES DE COMPTES DE PRODUITS "
+            "distinctes, une pour chaque famille.\n"
+            "\n"
+            "LA RÈGLE EST DONC SIMPLE : un titre rangé au bilan dans la famille « placement » doit "
+            "produire ses revenus dans les comptes « revenus du portefeuille de placement ». Un "
+            "titre rangé en « transaction » doit produire ses revenus dans les comptes « revenus "
+            "du portefeuille de transaction ». Les deux doivent aller ensemble, comme une "
+            "chaussure gauche avec une chaussure gauche.\n"
+            "\n"
+            "CE QUI SE PASSE EN PRATIQUE. Le test croise, pour chaque écriture, le compte de bilan "
+            "utilisé et le compte de produit utilisé. Le résultat est massivement incohérent : "
+            "l'immense majorité des écritures associe un compte de bilan de la famille "
+            "« transaction » à un compte de produit de la famille « placement ». Concrètement, "
+            "les intérêts des titres rangés en transaction sont enregistrés comme des revenus de "
+            "titres de placement.\n"
+            "\n"
+            "POURQUOI C'EST GÊNANT. Les états que la banque transmet au régulateur distinguent "
+            "précisément ces deux natures de revenus, parce qu'elles n'ont pas la même "
+            "signification : un revenu de placement est récurrent et prévisible, un revenu de "
+            "transaction est volatil. En les mélangeant, la banque présente au régulateur une "
+            "image faussée de la composition de son produit net bancaire. Le total est juste, mais "
+            "sa ventilation ne l'est pas.\n"
+            "\n"
+            "D'OÙ CELA VIENT. Cette incohérence est le prolongement direct du reclassement opéré "
+            "lors de la bascule vers le nouveau système (contrôle 5.5) : le portefeuille a changé "
+            "de famille AU BILAN, en passant en « transaction », mais le paramétrage des schémas "
+            "comptables a continué d'alimenter les comptes de produits de la famille "
+            "« placement ». Le bilan a suivi la migration, le compte de résultat ne l'a pas suivi."
         ),
         chiffres=[
             ("Écritures à imputation cohérente", f"{sum(coherents.values()):,}".replace(",", " ")),
-            ("Écritures à imputation incohérente", f"{total_inc:,}".replace(",", " ")),
+            ("Écritures à imputation INCOHÉRENTE", f"{total:,}".replace(",", " ")),
             ("Cas principal", f"bilan {principal[0][0]} → produit {principal[0][1]} "
                               f"({principal[1]:,} écritures)".replace(",", " ")),
+            ("Produit enregistré en « placement » depuis la bascule", xaf(montant_mal_impute)),
         ],
         tableaux=[
+            Tableau(["Famille au bilan", "Intention de détention", "Comptes de bilan",
+                     "Comptes de produits attendus"], nomenclature,
+                    note="La règle du PCEC : à chaque famille de titres sa série de comptes de produits."),
             Tableau(["Catégorie au bilan", "Catégorie du produit", "Écritures", "Cohérent"],
                     [[k[0], k[1], v, k[0] == k[1]] for k, v in
-                     sorted(couples.items(), key=lambda x: -x[1])])
+                     sorted(couples.items(), key=lambda x: -x[1])],
+                    note="Ce qui est réellement constaté."),
         ],
         recommandation=(
-            "Faire corriger le paramétrage des schémas comptables afin que chaque catégorie de "
-            "portefeuille alimente le compte de produit correspondant. Mesurer l'incidence sur les "
-            "états réglementaires déjà transmis."
+            "Faire corriger le paramétrage des schémas comptables afin que chaque famille de "
+            "portefeuille alimente la série de comptes de produits correspondante. Mesurer "
+            "l'incidence sur la ventilation du produit net bancaire dans les états réglementaires "
+            "déjà transmis et, le cas échéant, les rectifier."
         ),
     )
 

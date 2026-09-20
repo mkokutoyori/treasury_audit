@@ -4,8 +4,8 @@ from __future__ import annotations
 import pandas as pd
 
 from ..core import Constat, Gravite, Section, Tableau, xaf
-from ..data import (CPT_COURUS_CALYPSO, CPT_COURUS_MM, CPT_PORTEFEUILLE_CALYPSO,
-                    CPT_PORTEFEUILLE_MM, CPT_PROVISION, DATE_BASCULE)
+from ..data import (CPT_BEAC, CPT_COURUS_CALYPSO, CPT_COURUS_MM,
+                    CPT_PORTEFEUILLE_CALYPSO, CPT_PORTEFEUILLE_MM, CPT_PROVISION, DATE_BASCULE)
 
 SECTION = (5, "Migration Flexcube MM vers Calypso")
 
@@ -106,14 +106,18 @@ def _c52_reprise_courus(ctx) -> Constat:
 
 
 def _c53_sur_apurement(ctx) -> Constat:
-    """Le solde passé à la migration doit être égal au solde comptable du compte."""
+    """Le montant passé à la migration pour solder le compte de courus était-il le bon ?
+
+    Le contrôle décompose entièrement l'opération : solde de départ, écriture d'apurement
+    contrat par contrat, contrepartie en trésorerie, solde résultant, dates d'arrêté
+    traversées et écriture de correction.
+    """
     courus = ctx.courus
     if courus.empty:
-        return Constat(
-            code="5.3", titre="Apurement du compte de courus à la migration", gravite=Gravite.FAIBLE,
-            constat="L'historique complet du compte de créances rattachées n'est pas disponible.",
-            recommandation="Extraire l'historique du compte 511800100 tous modules confondus.",
-        )
+        return Constat(code="5.3", titre="Apurement du compte de courus à la migration",
+                       gravite=Gravite.FAIBLE,
+                       constat="Historique du compte de créances rattachées indisponible.",
+                       recommandation="Extraire l'historique du compte 511800100 tous modules confondus.")
     avant = courus[courus.TRN_DT < DATE_BASCULE]
     solde_avant = float(avant.SIGNE.sum())
     jour = courus[courus.TRN_DT == DATE_BASCULE]
@@ -121,55 +125,147 @@ def _c53_sur_apurement(ctx) -> Constat:
     credit = float(jour[jour.DRCR_IND == "C"].LCY_AMOUNT.sum())
     a_apurer = solde_avant + debits_jour
     sur = credit - a_apurer
-    apres = courus[courus.TRN_DT > DATE_BASCULE]
-    solde_post = float(courus[courus.TRN_DT <= DATE_BASCULE].SIGNE.sum())
     if abs(sur) < 1:
-        return Constat(
-            code="5.3", titre="Apurement du compte de courus à la migration", gravite=Gravite.CONFORME,
-            constat="Le montant apuré correspond exactement au solde comptable du compte.",
-        )
+        return Constat(code="5.3", titre="Apurement du compte de courus à la migration",
+                       gravite=Gravite.CONFORME,
+                       constat="Le montant apuré correspond exactement au solde comptable du compte.")
+
+    # --- 1. L'écriture d'apurement et sa contrepartie en trésorerie
+    ecriture = jour[jour.DRCR_IND == "C"]
+    reference = ecriture.TRN_REF_NO.iloc[0] if len(ecriture) else ""
+    # Le compte de règlement est un nostro : il ne figure pas parmi les comptes généraux
+    # extraits. La contrepartie se cherche donc dans l'union de toutes les sources.
+    gl = ctx.toutes_ecritures
+    contrepartie = gl[(gl.TRN_REF_NO == reference) & (gl.AC_NO != CPT_COURUS_MM)]
+    cpt_contrepartie = contrepartie.groupby(["AC_NO", "AC_GL_DESC", "DRCR_IND"]).agg(
+        lignes=("LCY_AMOUNT", "size"), montant=("LCY_AMOUNT", "sum"))
+
+    # --- 2. Décomposition contrat par contrat : couru réel contre montant crédité
+    ecriture = ecriture.copy()
+    ecriture["contrat"] = ecriture.DESCRIPTION.str.extract(r"(099[A-Z]{4}\d{9})")[0]
+    cumul_par_contrat = (courus[(courus.DRCR_IND == "D") & (courus.TRN_DT <= DATE_BASCULE)]
+                         .groupby("TRN_REF_NO").LCY_AMOUNT.sum())
+    deja_apure = courus[(courus.DRCR_IND == "C") & (courus.TRN_DT < DATE_BASCULE)].copy()
+    deja_apure["contrat"] = deja_apure.DESCRIPTION.str.extract(r"(099[A-Z]{4}\d{9})")[0]
+    apure_avant = deja_apure.groupby("contrat").LCY_AMOUNT.sum()
+    detail = []
+    for _, r in ecriture.iterrows():
+        contrat = r.contrat
+        if not isinstance(contrat, str):
+            continue
+        cumul = float(cumul_par_contrat.get(contrat, 0))
+        deja = float(apure_avant.get(contrat, 0))
+        solde_reel = cumul - deja
+        detail.append([contrat, cumul, deja, solde_reel, float(r.LCY_AMOUNT),
+                       float(r.LCY_AMOUNT) - solde_reel])
+    detail.sort(key=lambda l: -l[5])
+    touches = [d for d in detail if d[5] > 0.5]
+    ecart_contrats = sum(d[5] for d in detail)
+
+    # --- 3. Arrêtés traversés et correction
+    apres = courus[courus.TRN_DT > DATE_BASCULE]
     correction = apres[apres.DRCR_IND == "D"]
-    jours_anomalie = 0
-    if not correction.empty:
-        jours_anomalie = int((correction.TRN_DT_d.min() - pd.Timestamp(DATE_BASCULE)).days)
-    lignes_corr = [
-        [r.TRN_DT, r.TRN_REF_NO, r.DRCR_IND, float(r.LCY_AMOUNT), r.USER_ID, r.AUTH_ID,
-         (r.DESCRIPTION or "")[:45]]
-        for r in correction.itertuples()
-    ]
+    date_correction = correction.TRN_DT.min() if not correction.empty else None
+    jours = int((pd.Timestamp(date_correction) - pd.Timestamp(DATE_BASCULE)).days) if date_correction else 0
+    arretes_traverses = [a for a in ctx.arretes
+                         if DATE_BASCULE <= a < (date_correction or "9999")]
+    soldes_arretes = [[a, ctx.solde(CPT_COURUS_MM, a_la_date=a, df=courus)]
+                      for a in ctx.arretes]
+
+    # --- 4. La contrepartie trésorerie de la correction
+    corr_ref = correction.TRN_REF_NO.iloc[0] if not correction.empty else ""
+    corr_autres = gl[(gl.TRN_REF_NO == corr_ref) & (gl.AC_NO != CPT_COURUS_MM)]
+    corr_detail = [[r.TRN_DT, r.AC_NO, (r.AC_GL_DESC or "")[:34], r.DRCR_IND, float(r.LCY_AMOUNT),
+                    r.USER_ID, r.AUTH_ID] for _, r in corr_autres.iterrows()]
+    jambe_corr_courus = float(correction.LCY_AMOUNT.sum())
+    jambe_corr_tresorerie = float(corr_autres.LCY_AMOUNT.sum())
+    troisieme_jambe = jambe_corr_tresorerie - jambe_corr_courus
+
     return Constat(
         code="5.3",
         titre="Sur-apurement du compte de courus à la migration, laissant un compte d'actif en solde créditeur",
         gravite=Gravite.CRITIQUE,
+        reference=f"Écriture d'apurement {reference} — écriture de correction {corr_ref}",
         constat=(
-            "L'écriture manuelle passée le jour de la bascule pour solder le compte de créances "
-            "rattachées a crédité, pour chaque contrat, le CUMUL DES INTÉRÊTS COURUS DEPUIS "
-            "L'ORIGINE, sans déduire les coupons déjà encaissés. Le montant crédité excède donc le "
-            "solde comptable réel du compte.\n"
-            "Il en résulte une double conséquence : le compte de créances rattachées, qui est un "
-            "compte d'ACTIF, s'est retrouvé en SOLDE CRÉDITEUR ; et la contrepartie étant un débit "
-            "du compte de règlement BEAC, le nostro a été surévalué du même montant sur la même "
-            "période. L'anomalie traverse l'arrêté semestriel."
+            "CE QUI DEVAIT SE PASSER. Au jour de la bascule, le compte de créances rattachées "
+            "portait le solde des intérêts courus non encore encaissés. Pour le solder, il fallait "
+            "le créditer de CE SOLDE, ni plus ni moins, la contrepartie étant l'encaissement "
+            "correspondant sur le compte de règlement.\n"
+            "\n"
+            "CE QUI S'EST PASSÉ. L'écriture manuelle passée ce jour-là a crédité, pour chaque "
+            "contrat, le CUMUL DES INTÉRÊTS COURUS DEPUIS L'ORIGINE DU CONTRAT — et non le solde "
+            "restant. Or, pour une partie des contrats, des coupons avaient déjà été encaissés "
+            "antérieurement et avaient donc déjà réduit le solde. Ces encaissements passés n'ont "
+            "pas été déduits : ils ont été crédités une seconde fois.\n"
+            "\n"
+            "COMMENT LE LIRE SUR UN CONTRAT. Prenons le cas le plus important du tableau de "
+            "décomposition ci-dessous. La colonne « cumul depuis l'origine » est le total des "
+            "intérêts jamais courus sur le contrat. La colonne « déjà encaissé » est ce qui en "
+            "avait déjà été réglé. Leur différence, « solde réel », est le seul montant qu'il "
+            "fallait créditer. La colonne « crédité » montre ce qui l'a effectivement été : le "
+            "cumul complet. L'écart est le montant crédité en trop.\n"
+            "\n"
+            "LES DEUX CONSÉQUENCES. Premièrement, le compte de créances rattachées — un compte "
+            "d'ACTIF — s'est retrouvé en SOLDE CRÉDITEUR, position impossible par construction : "
+            "cela revient à dire que la banque devait de l'argent au titre d'intérêts qu'elle "
+            "devait recevoir. Deuxièmement, la contrepartie de l'écriture étant un DÉBIT DU COMPTE "
+            "DE RÈGLEMENT auprès de la banque centrale, la banque a enregistré avoir encaissé plus "
+            "de trésorerie qu'elle n'en a reçu : le nostro a été surévalué du même montant.\n"
+            "\n"
+            "LA DURÉE. L'anomalie n'a pas été corrigée immédiatement. Elle a persisté et a traversé "
+            "une date d'arrêté, ce qui signifie que les états produits à cette date portent un "
+            "compte d'actif créditeur et un nostro surévalué. Un écart de cette ampleur sur le "
+            "compte de règlement de la banque centrale aurait dû être détecté par le rapprochement "
+            "bancaire mensuel.\n"
+            "\n"
+            "LA CORRECTION. Elle est intervenue par une écriture manuelle explicitement libellée "
+            "comme se rapportant à la mise en service du nouveau système. Ses deux jambes connues "
+            "ne s'équilibrent pas exactement : une troisième jambe existe, sur un compte non "
+            "couvert par les extractions."
         ),
         chiffres=[
-            ("Solde du compte la veille de la bascule", xaf(solde_avant)),
-            ("Courus du jour de la bascule", xaf(debits_jour)),
-            ("Solde réel à apurer", xaf(a_apurer)),
-            ("Montant effectivement crédité", xaf(credit)),
-            ("SUR-APUREMENT", xaf(sur)),
-            ("Solde du compte après la bascule", xaf(solde_post)),
-            ("Délai avant correction", f"{jours_anomalie} jours" if jours_anomalie else "non corrigé"),
+            ("1. Solde du compte la veille de la bascule", xaf(solde_avant)),
+            ("2. Courus du jour de la bascule", xaf(debits_jour)),
+            ("3. SOLDE RÉEL À APURER (1 + 2)", xaf(a_apurer)),
+            ("4. Montant effectivement crédité", xaf(credit)),
+            ("5. SUR-APUREMENT (4 − 3)", xaf(sur)),
+            ("6. Contrats crédités", str(len(detail))),
+            ("7. Dont crédités en trop", str(len(touches))),
+            ("8. Écart cumulé au niveau contrat", xaf(ecart_contrats)),
+            ("9. Solde du compte après la bascule", xaf(ctx.solde(CPT_COURUS_MM, a_la_date=DATE_BASCULE, df=courus))),
+            ("10. Date de correction", str(date_correction) if date_correction else "non corrigé"),
+            ("11. Durée de l'anomalie", f"{jours} jours"),
+            ("12. Dates d'arrêté traversées", ", ".join(arretes_traverses) if arretes_traverses else "aucune"),
+            ("13. Jambe courus de la correction", xaf(jambe_corr_courus)),
+            ("14. Jambe trésorerie de la correction", xaf(jambe_corr_tresorerie)),
+            ("15. TROISIÈME JAMBE NON IDENTIFIÉE (14 − 13)", xaf(troisieme_jambe)),
         ],
         tableaux=[
-            Tableau(["Date", "Référence", "Sens", "Montant XAF", "Saisie", "Validation", "Libellé"],
-                    lignes_corr, note="Écriture(s) de correction postérieure(s) à la bascule.")
+            Tableau(["Compte", "Libellé", "Sens", "Lignes", "Montant XAF"],
+                    [[i[0], i[1][:38], i[2], int(r.lignes), float(r.montant)]
+                     for i, r in cpt_contrepartie.iterrows()],
+                    note="Contrepartie de l'écriture d'apurement : la trésorerie enregistrée comme encaissée."),
+            Tableau(["Contrat", "Cumul depuis l'origine", "Déjà encaissé", "Solde réel",
+                     "Crédité", "Crédité en trop"],
+                    detail, max_lignes=20,
+                    note="Décomposition contrat par contrat. Le sur-apurement est la somme de la dernière colonne."),
+            Tableau(["Date d'arrêté", "Solde du compte de courus"],
+                    soldes_arretes,
+                    note="Le solde du compte de courus à chaque arrêté : un compte d'actif ne peut être négatif."),
+            Tableau(["Date", "Compte", "Libellé", "Sens", "Montant XAF", "Saisie", "Validation"],
+                    corr_detail,
+                    note="Écriture de correction et sa contrepartie."),
         ],
         recommandation=(
-            "Obtenir les états financiers à la date d'arrêté traversée par l'anomalie et vérifier "
-            "si le solde créditeur y figure. Obtenir le rapprochement du nostro BEAC des mois "
-            "concernés : un écart de cette ampleur aurait dû être détecté par le rapprochement "
-            "bancaire mensuel. Faire expliquer le mode opératoire retenu pour calculer les courus "
-            "à reprendre, fondé sur le cumul théorique et non sur le solde comptable."
+            "1. Obtenir les états financiers à la date d'arrêté traversée et vérifier si le solde "
+            "créditeur du compte d'actif et la surévaluation du nostro y figurent.\n"
+            "2. Obtenir le rapprochement bancaire du compte de règlement des mois concernés et "
+            "comprendre pourquoi un écart de cette ampleur n'a pas été détecté plus tôt.\n"
+            "3. Faire expliquer le mode opératoire retenu pour calculer les courus à reprendre, "
+            "fondé sur le cumul théorique par contrat et non sur le solde comptable.\n"
+            "4. Identifier la troisième jambe de l'écriture de correction.\n"
+            "5. Vérifier qu'aucune autre écriture de migration n'a été construite sur le même "
+            "mode opératoire."
         ),
     )
 

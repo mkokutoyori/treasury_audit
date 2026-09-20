@@ -48,10 +48,24 @@ NATURE_COMPTE = {
     "938000100": "neutre", "998000100": "neutre",
 }
 
+# Comptes applicatifs, non rattachés à une personne physique.
+# ACCESSAFRIK est le compte de la plateforme Access Africa, le réseau de paiement propriétaire
+# du groupe Access Bank : ce n'est pas un utilisateur nominatif.
 COMPTES_TECHNIQUES = {
     "SYSTEM", "CALYPSOUSR", "ADMINUSER1", "FLEXSWITCH", "PRIMUSUSR",
-    "PROCESSMAKER", "NEXTGENUSR", "ONLINETAXPAY", "MIGRATION",
+    "PROCESSMAKER", "NEXTGENUSR", "ONLINETAXPAY", "MIGRATION", "ACCESSAFRIK",
 }
+
+# Comptes du périmètre titres, utilisés pour isoler les opérations de marché.
+CPT_TITRES = [
+    "511410100", "511210100", "512200100", "512410100", "511800100", "512800100",
+    "472200106", "472200108", "552400100", "559000101", "952100100", "995000100",
+    "467000186", "467000188", "591400100",
+]
+
+# Pays exclus du périmètre d'investissement par décision de la banque, en raison de leur
+# profil de risque : la concentration sur les quatre autres souverains CEMAC est donc voulue.
+SOUVERAINS_EXCLUS = ["TCHAD", "REPUBLIQUE CENTRAFRICAINE"]
 
 DATE_BASCULE = "2025-06-16"
 
@@ -123,7 +137,40 @@ class Contexte:
 
     @cached_property
     def contrats_uniques(self) -> pd.DataFrame:
+        """Référentiel dédoublonné sur la référence de contrat."""
         return self.contrats.drop_duplicates("CONTRACT_REF_NO")
+
+    @cached_property
+    def contrats_periode(self) -> pd.DataFrame:
+        """Contrats comptabilisés pendant la période d'audit.
+
+        La revue du référentiel porte sur les contrats bookés dans la période : ceux
+        antérieurs relèvent des exercices déjà audités.
+        """
+        df = self.contrats_uniques
+        return df[(df.BOOKING_DATE >= "") & (df.BOOKING_DATE_d >= self.config.debut)
+                  & (df.BOOKING_DATE_d <= self.config.fin)]
+
+    @cached_property
+    def deals_calypso(self) -> pd.DataFrame:
+        """Référentiel des deals extrait directement de Calypso.
+
+        Les dates y sont des numéros de série Excel (origine 30/12/1899).
+        """
+        chemin = os.path.join(RACINE, "extraction_from_calypso.csv")
+        if not os.path.exists(chemin):
+            return pd.DataFrame()
+        df = pd.read_csv(chemin, dtype=str, keep_default_na=False, na_values=[""])
+        df.columns = [c.strip() for c in df.columns]
+        for col in ("Trade Date", "Trade Settle Date", "Entered Date"):
+            if col in df.columns:
+                df[col + "_d"] = pd.to_datetime(
+                    pd.to_numeric(df[col], errors="coerce"), unit="D", origin="1899-12-30")
+        for col in ("Quantity", "Trade Price"):
+            if col in df.columns:
+                df[col + "_n"] = pd.to_numeric(df[col], errors="coerce")
+        df["DEAL"] = df["Trade Id"]
+        return df
 
     @cached_property
     def ecritures_mm(self) -> pd.DataFrame:

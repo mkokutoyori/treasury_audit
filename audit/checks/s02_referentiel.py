@@ -8,6 +8,7 @@ from __future__ import annotations
 import datetime as dt
 
 from ..core import Constat, Gravite, Section, Tableau, xaf
+from ..data import SOUVERAINS_EXCLUS
 
 SECTION = (2, "Référentiel des contrats de marché monétaire")
 
@@ -17,9 +18,10 @@ def run(ctx) -> Section:
         numero=SECTION[0],
         titre=SECTION[1],
         objet=(
-            "Contrôles sur MM_CONTRACT : unicité des références, cohérence de la codification et "
-            "des dates, plausibilité des taux, rapprochement avec la comptabilité et concentration "
-            "par contrepartie."
+            "Contrôles sur MM_CONTRACT, RESTREINTS AUX CONTRATS COMPTABILISÉS PENDANT LA PÉRIODE "
+            "D'AUDIT : les contrats antérieurs relèvent d'exercices déjà audités. Unicité des "
+            "références, cohérence de la codification et des dates, cohérence interne des montants "
+            "d'intérêt, plausibilité des taux et rapprochement avec la comptabilité."
         ),
     )
     s.ajouter(_c21_doublons(ctx))
@@ -72,7 +74,7 @@ def _c21_doublons(ctx) -> Constat:
 
 def _c22_codification(ctx) -> Constat:
     """La référence encode agence, produit et date de booking ; elle doit être cohérente."""
-    df = ctx.contrats_uniques.copy()
+    df = ctx.contrats_periode.copy()
     df["ref_agence"] = df.CONTRACT_REF_NO.str[:3]
     df["ref_produit"] = df.CONTRACT_REF_NO.str[3:7]
     incoherents = df[(df.ref_agence != df.BRANCH) | (df.ref_produit != df.PRODUCT)]
@@ -126,7 +128,7 @@ def _c22_codification(ctx) -> Constat:
 
 
 def _c23_dates(ctx) -> Constat:
-    df = ctx.contrats_uniques
+    df = ctx.contrats_periode
     anomalies = {
         "Date de négociation postérieure à la date de valeur": df[df.TRADE_DATE_d > df.VALUE_DATE_d],
         "Date de valeur postérieure à l'échéance": df[df.VALUE_DATE_d > df.MATURITY_DATE_d],
@@ -154,7 +156,7 @@ def _c23_dates(ctx) -> Constat:
 
 def _c24_delai_saisie(ctx) -> Constat:
     """Un délai important entre négociation et comptabilisation est un risque de non-exhaustivité."""
-    df = ctx.contrats_uniques.copy()
+    df = ctx.contrats_periode.copy()
     df["delai"] = (df.BOOKING_DATE_d - df.TRADE_DATE_d).dt.days
     tardifs = df[df.delai > 5].sort_values("delai", ascending=False)
     tres_tardifs = df[df.delai > 30]
@@ -206,7 +208,7 @@ def _base_de_calcul(contrats):
 
 def _c25_coherence_interne(ctx) -> Constat:
     """Le montant d'intérêt porté au référentiel doit se déduire du nominal, du taux et de la durée."""
-    df = _base_de_calcul(ctx.contrats_uniques)
+    df = _base_de_calcul(ctx.contrats_periode)
     incoherents = df[df.base == "non déterminée"]
     par_produit = df.groupby(["PRODUCT", "base"]).size().reset_index(name="contrats")
     bases = sorted(df[df.base != "non déterminée"].base.unique())
@@ -259,7 +261,7 @@ def _c25b_taux_aberrants(ctx) -> Constat:
     temps et diffèrent entre obligations et bons du Trésor. Le test retient donc un écart
     robuste (médiane absolue des écarts) au sein de chaque groupe produit-exercice.
     """
-    df = ctx.contrats_uniques.copy()
+    df = ctx.contrats_periode.copy()
     df["exercice"] = df.VALUE_DATE_d.dt.year
     aberrants = []
     for (produit, exercice), groupe in df.groupby(["PRODUCT", "exercice"]):
@@ -315,9 +317,9 @@ def _c25b_taux_aberrants(ctx) -> Constat:
 
 def _c26_orphelins(ctx) -> Constat:
     """Un contrat au référentiel sans écriture comptable, ou l'inverse."""
-    contrats = set(ctx.contrats_uniques.CONTRACT_REF_NO)
+    contrats = set(ctx.contrats_periode.CONTRACT_REF_NO)
     ecritures = set(ctx.grand_livre[ctx.grand_livre.MODULE == "MM"].TRN_REF_NO)
-    sans_ecriture = ctx.contrats_uniques[~ctx.contrats_uniques.CONTRACT_REF_NO.isin(ecritures)]
+    sans_ecriture = ctx.contrats_periode[~ctx.contrats_periode.CONTRACT_REF_NO.isin(ecritures)]
     sans_contrat = ecritures - contrats
     if sans_ecriture.empty and not sans_contrat:
         return Constat(
@@ -358,33 +360,62 @@ def _c26_orphelins(ctx) -> Constat:
 
 
 def _c27_concentration(ctx) -> Constat:
-    df = ctx.contrats_uniques
-    par_cpty = df.groupby("FULL_NAME").agg(contrats=("CONTRACT_REF_NO", "count"), nominal=("AMOUNT", "sum"))
+    """La concentration résulte-t-elle d'une décision de politique de risque documentée ?
+
+    La banque a restreint son univers d'investissement à quatre des six souverains de la
+    CEMAC, écartant délibérément le Tchad et la République Centrafricaine en raison de leur
+    profil de risque. La concentration constatée est donc le RÉSULTAT d'une politique de
+    risque, et non son absence.
+    """
+    df = ctx.contrats_periode
+    par_cpty = df.groupby("FULL_NAME").agg(contrats=("CONTRACT_REF_NO", "count"),
+                                           nominal=("AMOUNT", "sum"))
     par_cpty["part"] = par_cpty.nominal / par_cpty.nominal.sum() * 100
     par_cpty = par_cpty.sort_values("nominal", ascending=False)
-    premiere = float(par_cpty.part.iloc[0])
+    hors_souverains = df[~df.FULL_NAME.str.upper().str.startswith(("ETAT", "ÉTAT"))]
+    exclus_presents = [p for p in SOUVERAINS_EXCLUS
+                       if df.FULL_NAME.str.upper().str.contains(p).any()]
+    if exclus_presents:
+        return Constat(
+            code="7.c",
+            titre="Contreparties souveraines hors univers d'investissement autorisé",
+            gravite=Gravite.ELEVEE,
+            constat=(
+                "Des contrats portent sur des souverains que la politique de risque exclut de "
+                "l'univers d'investissement."
+            ),
+            chiffres=[("Souverains exclus rencontrés", ", ".join(exclus_presents))],
+            recommandation="Obtenir l'autorisation dérogatoire de ces opérations.",
+        )
     return Constat(
         code="2.8",
-        titre="Concentration du portefeuille sur les souverains CEMAC",
-        gravite=Gravite.MOYENNE if premiere > 50 else Gravite.FAIBLE,
+        titre="Structure du portefeuille par contrepartie",
+        gravite=Gravite.CONFORME,
         constat=(
-            "La totalité du portefeuille de marché monétaire historique est exposée à des "
-            f"émetteurs souverains de la CEMAC, dont {premiere:.1f} % sur la seule première "
-            "contrepartie. Aucune diversification sectorielle ou géographique n'est constatée."
+            "Le portefeuille est exposé à quatre souverains de la CEMAC. Cette concentration "
+            "n'est pas une anomalie : elle résulte d'une DÉCISION DE POLITIQUE DE RISQUE de la "
+            "banque, qui a restreint son univers d'investissement en écartant délibérément le "
+            "Tchad et la République Centrafricaine en raison de leur profil de risque. Aucun "
+            "contrat sur ces deux souverains n'est constaté, ce qui atteste le respect de la "
+            "politique.\n"
+            "Le contrôle reste utile à double titre : il vérifie le respect de l'univers "
+            "autorisé, et il documente la répartition effective, qui doit être rapprochée des "
+            "limites internes par contrepartie et des ratios prudentiels de division des risques."
         ),
         chiffres=[
-            ("Contreparties distinctes", str(len(par_cpty))),
-            ("Nominal total du référentiel", xaf(float(par_cpty.nominal.sum()))),
-            ("Part de la première contrepartie", f"{premiere:.1f} %"),
+            ("Contreparties", str(len(par_cpty))),
+            ("Nominal de la période", xaf(float(par_cpty.nominal.sum()))),
+            ("Contrats hors souverains", str(len(hors_souverains))),
+            ("Souverains exclus par la politique", ", ".join(SOUVERAINS_EXCLUS)),
         ],
         tableaux=[
-            Tableau(
-                ["Contrepartie", "Contrats", "Nominal XAF", "Part %"],
-                [[i, int(r.contrats), float(r.nominal), round(float(r.part), 1)] for i, r in par_cpty.iterrows()],
-            )
+            Tableau(["Contrepartie", "Contrats", "Nominal XAF", "Part %"],
+                    [[i, int(r.contrats), float(r.nominal), round(float(r.part), 1)]
+                     for i, r in par_cpty.iterrows()])
         ],
         recommandation=(
-            "Obtenir les limites internes de contrepartie et de concentration, ainsi que la preuve "
-            "de leur suivi ; rapprocher des ratios prudentiels COBAC de division des risques."
+            "Rapprocher cette répartition des limites internes par contrepartie et des ratios "
+            "COBAC de division des risques, afin de vérifier que la concentration voulue reste "
+            "dans les plafonds autorisés."
         ),
     )
