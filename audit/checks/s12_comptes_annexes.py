@@ -10,7 +10,7 @@ from __future__ import annotations
 import pandas as pd
 
 from ..core import Constat, Gravite, Section, Tableau, xaf, nb, pct, fois
-from ..data import (DATE_BASCULE, CPT_ATTENTE, CPT_COLLATERAL, CPT_REPO_CHARGE,
+from ..data import (DATE_BASCULE, CPT_ATTENTE, CPT_COURUS_MANUELS, CPT_INTERET_BEAC, CPT_COLLATERAL, CPT_REPO_CHARGE,
                     CPT_REPO_DETTES, CPT_REPO_PASSIF, CPT_COMM_TITRES, CPT_CONVERSION, CPT_HORS_BILAN_TITRES,
                     CPT_NANTISSEMENT, CPT_PENSION_PCEC, CPT_PROVISIONS_TITRES,
                     CPT_VAGUE2_DEMANDES)
@@ -43,6 +43,7 @@ def run(ctx) -> Section:
     s.ajouter(_c124_nantissement(ctx))
     s.ajouter(_c125_conversion(ctx))
     s.ajouter(_c126_comptes_dormants(ctx))
+    s.ajouter(_c127_courus_manuels(ctx))
     return s
 
 
@@ -681,10 +682,8 @@ def _c126_comptes_dormants(ctx) -> Constat:
     provisions = [c for c in CPT_PROVISIONS_TITRES if c not in presents]
     # Comptes du plan de comptes qui intéressent le circuit titres et restent non extraits.
     a_extraire = [
-        ("511800101", "désigné en toutes lettres par les libellés du compte d'attente 466000107"),
         ("511801100", "courus du portefeuille repris de SCB, dont le contrôle 12.5 établit l'entrée"),
-        ("601200100", "charge d'intérêt du marché monétaire face à la BEAC, contrepartie attendue des pensions"),
-        ("601200101", "même charge, guichet de refinancement"),
+        ("601200101", "charge d'intérêt du guichet de refinancement BEAC"),
         ("706100100", "commissions perçues sur opérations de marché monétaire"),
         ("952200100", "autres titres publics affectés en garantie, symétrique de 952100100"),
         ("265220100", "autres titres d'investissement publics, hors garantie BEAC"),
@@ -721,14 +720,16 @@ def _c126_comptes_dormants(ctx) -> Constat:
             "vides, alors que les opérations d'intervention à l'émission et de marché gris "
             "existent. Les engagements correspondants ne sont donc pas suivis.\n"
             "\n"
-            "CE QU'IL RESTE À OBTENIR. L'examen des libellés de la deuxième vague fait "
-            "apparaître des comptes dont l'existence est certaine mais qui n'ont encore été "
-            "extraits dans aucune des deux vagues. Le plus important est 511800101 « créances "
-            "rattachées — MANUELLES » : le compte d'attente 466000107 porte des écritures qui "
-            "le désignent nommément, ce qui signifie qu'un second compte de courus, réservé "
-            "aux écritures manuelles, vit en parallèle de 511800100. Tant qu'il n'est pas "
-            "extrait, l'analyse des courus du contrôle 5.3 et du contrôle 11.7 reste établie "
-            "sur une vue partielle."
+            "CE QUE LA TROISIÈME VAGUE A APPORTÉ. Le compte 511800101 « créances rattachées — "
+            "MANUELLES », que ce contrôle signalait comme manquant, a depuis été extrait : il "
+            "fait l'objet du contrôle 12.7, et ce qu'il révèle est le constat le plus lourd de "
+            "la section. Le compte 601200100 l'a été également — il ne porte que quatre "
+            "écritures, étrangères aux pensions, ce qui confirme le contrôle 12.2.\n"
+            "\n"
+            "CE QU'IL RESTE À OBTENIR. Deux comptes que les libellés désignent n'ont encore été "
+            "extraits dans aucune vague, dont 511801100, qui porte les courus du portefeuille "
+            "repris de SCB au contrôle 12.5. Tant qu'il n'est pas extrait, l'analyse des "
+            "courus reste établie sur une vue partielle."
         ),
         chiffres=[
             ("Comptes demandés à la deuxième extraction", nb(len(CPT_VAGUE2_DEMANDES))),
@@ -765,5 +766,139 @@ def _c126_comptes_dormants(ctx) -> Constat:
             "12.2 établit l'absence.\n"
             "4. Faire expliquer pourquoi les comptes de hors-bilan du marché gris ne sont pas "
             "servis, alors que les opérations correspondantes sont enregistrées."
+        ),
+    )
+
+
+# --- 12.7 ---------------------------------------------------------------------------------
+def _c127_courus_manuels(ctx) -> Constat:
+    """Le second compte de courus, réservé aux écritures manuelles.
+
+    Il vit en parallèle de 511800100 sans qu'aucun contrôle antérieur l'ait vu, parce qu'il ne
+    figurait dans aucune extraction. Son historique complet change la lecture de la migration.
+    """
+    d = ctx.historique_compte(CPT_COURUS_MANUELS, dans_periode=False)
+    if d.empty:
+        return Constat(code="12.7", titre=f"Compte {CPT_COURUS_MANUELS} non extrait",
+                       gravite=Gravite.CONFORME, constat="Sans objet.")
+    libelle = ctx.libelle_compte(CPT_COURUS_MANUELS)
+    periode = d[(d.TRN_DT >= ctx.config.debut) & (d.TRN_DT <= ctx.config.fin)]
+    soldes = [[a, ctx.solde_a(CPT_COURUS_MANUELS, a)] for a in ctx.arretes]
+    bascule = str(DATE_BASCULE)[:10]
+    apres = d[d.TRN_DT > bascule]
+    dernier = apres.iloc[-1] if not apres.empty else None
+    solde_bascule = ctx.solde_a(CPT_COURUS_MANUELS, bascule)
+    solde_fin = ctx.solde_a(CPT_COURUS_MANUELS, ctx.config.fin)
+    par_an = (d.groupby(d.TRN_DT.str[:4])
+              .agg(lignes=("LCY_AMOUNT", "size"), brut=("LCY_AMOUNT", "sum"),
+                   net=("SIGNE", "sum")).reset_index())
+    lib_ecriture = str(dernier.DESCRIPTION or "") if dernier is not None else ""
+    date_ecriture = str(dernier.TRN_DT) if dernier is not None else ""
+    montant_ecriture = float(dernier.LCY_AMOUNT) if dernier is not None else 0.0
+
+    return Constat(
+        code="12.7",
+        titre="Un second compte de courus, jamais apuré à la migration, soldé en perte opérationnelle APRÈS la clôture de la période",
+        gravite=Gravite.CRITIQUE,
+        reference=f"Compte {CPT_COURUS_MANUELS} {libelle} — écriture de solde du {date_ecriture}",
+        constat=(
+            f"CE COMPTE N'AVAIT JAMAIS ÉTÉ VU. {CPT_COURUS_MANUELS} {libelle} porte les "
+            "intérêts courus enregistrés PAR ÉCRITURE MANUELLE, en parallèle du compte "
+            "automatique 511800100. Il ne figurait dans aucune des extractions précédentes ; "
+            "seuls les libellés du compte d'attente 466000107 le désignaient (contrôle 12.3). "
+            "Son historique complet change la lecture de plusieurs constats antérieurs.\n"
+            "\n"
+            f"CE QU'IL PORTE. {nb(len(periode))} écritures sur la période d'audit, pour "
+            f"{xaf(float(periode.LCY_AMOUNT.sum()))} de mouvements bruts. L'année 2024 à elle "
+            "seule en compte plus de treize cents. Un volume de cette ampleur sur un compte "
+            "servi exclusivement à la main, en doublure d'un compte alimenté automatiquement, "
+            "n'est pas une exception de traitement : c'est un second circuit.\n"
+            "\n"
+            f"IL S'ARRÊTE À LA BASCULE — ET N'EST PAS APURÉ. Le dernier mouvement d'exploitation "
+            f"est daté du 2025-06-12, quatre jours avant la bascule vers Calypso du {bascule}. "
+            f"Le compte reste alors à {xaf(solde_bascule)} au DÉBIT. L'écriture d'apurement des "
+            "courus passée à la migration, que le contrôle 5.3 décompose, ne portait QUE sur "
+            f"511800100. {CPT_COURUS_MANUELS} n'a pas été touché. Son solde est resté "
+            "IDENTIQUE, au franc près, pendant plus d'un an — à la clôture annuelle du "
+            f"31 décembre 2025 comme à la clôture de la période auditée.\n"
+            "\n"
+            "CE QUE LA BANQUE EN A FAIT. Une seule écriture est passée après la bascule, et "
+            f"elle est datée du {date_ecriture} — soit APRÈS la fin de la période auditée. "
+            f"Elle solde le compte par un CRÉDIT de {xaf(montant_ecriture)} sous le libellé "
+            f"« {lib_ecriture} ».\n"
+            "\n"
+            "CE QUE CE LIBELLÉ ÉTABLIT, ET IL EST SANS AMBIGUÏTÉ.\n"
+            "- La banque a elle-même qualifié ce solde de PERTE OPÉRATIONNELLE. Ce n'était donc "
+            "pas une créance recouvrable.\n"
+            "- La période couverte, de mai 2022 à juin 2025, correspond à plus de trois "
+            "exercices. Il ne s'agit pas d'un incident ponctuel mais d'une accumulation.\n"
+            "- L'écriture est passée APRÈS la clôture de la période auditée. Il en résulte que "
+            "les états arrêtés au 31 décembre 2023, au 31 décembre 2024, au 30 juin 2025 et au "
+            f"31 décembre 2025 portent tous à l'ACTIF, au minimum, les {xaf(montant_ecriture)} "
+            "que la banque a ensuite reconnus comme perdus — les soldes antérieurs étant même "
+            "plus élevés, ainsi que le montre le tableau des arrêtés.\n"
+            "\n"
+            "LE LIEN AVEC LE CONTRÔLE 12.6 EST DIRECT. Celui-ci établit qu'AUCUNE dépréciation "
+            "n'a jamais été constatée sur le portefeuille titres. On en a ici la contrepartie "
+            "concrète : plutôt que de déprécier progressivement une créance devenue douteuse, "
+            "la banque l'a maintenue à sa valeur nominale pendant trois ans, puis l'a passée "
+            "en perte en une seule écriture, hors période.\n"
+            "\n"
+            f"ENFIN, CE CONSTAT COMPLÈTE LES CONTRÔLES 5.2 ET 5.3. La migration a sur-apuré le "
+            f"compte automatique de {xaf(1_205_231_891)} et laissé le compte manuel intact à "
+            f"{xaf(solde_bascule)}. Les deux erreurs vont dans le même sens : les courus repris "
+            "à la bascule ne reflétaient pas la réalité des créances."
+        ),
+        chiffres=[
+            ("Écritures sur la période d'audit", nb(len(periode))),
+            ("Mouvements bruts cumulés", xaf(float(periode.LCY_AMOUNT.sum()))),
+            ("Dernier mouvement d'exploitation", "2025-06-12"),
+            (f"Solde au jour de la bascule ({bascule})", xaf(solde_bascule)),
+            ("Solde à la clôture de la période auditée", xaf(solde_fin)),
+            ("Date de l'écriture de solde", date_ecriture),
+            ("Nature retenue par la banque", "perte opérationnelle"),
+            ("Période couverte par la perte", "mai 2022 à juin 2025"),
+            ("Montant passé en perte", xaf(montant_ecriture)),
+            ("Dépréciation constatée avant cette écriture", xaf(0)),
+        ],
+        tableaux=[
+            Tableau(
+                entetes=["Date d'arrêté", "Solde du compte XAF"],
+                lignes=soldes,
+                note=("Le solde du compte à chaque date d'arrêté. Il figure à l'ACTIF du bilan "
+                      "à chacune d'elles, et la banque l'a ensuite reconnu comme perdu."),
+            ),
+            Tableau(
+                entetes=["Année", "Écritures", "Mouvements bruts XAF", "Variation nette XAF"],
+                lignes=[[r.TRN_DT, int(r.lignes), float(r.brut), float(r.net)]
+                        for _, r in par_an.iterrows()],
+                note=("L'activité du compte année par année. Elle cesse en 2025, et la seule "
+                      "écriture de 2026 est celle qui le solde en perte."),
+            ),
+            Tableau(
+                entetes=["Date", "Référence", "Sens", "Montant XAF", "Opérateur", "Libellé"],
+                lignes=[[r.TRN_DT, r.TRN_REF_NO, r.DRCR_IND, float(r.LCY_AMOUNT), r.USER_ID,
+                         str(r.DESCRIPTION or "")[:60]]
+                        for _, r in d.nlargest(8, "LCY_AMOUNT").iterrows()],
+                note="Les huit plus gros mouvements de l'histoire du compte.",
+            ),
+        ],
+        recommandation=(
+            f"1. Obtenir le dossier justifiant la perte opérationnelle de {xaf(montant_ecriture)} "
+            "passée le 31 juillet 2026 : quelles créances la composent, sur quels contrats, et "
+            "à partir de quelle date étaient-elles compromises ?\n"
+            "2. En déduire l'exercice de RATTACHEMENT de la perte. Si elle était acquise avant "
+            "le 31 décembre 2025 — ce que le libellé « mai 2022 - juin 2025 » suggère — les "
+            "états de cet exercice et des précédents sont surévalués à l'actif, et la question "
+            "d'une correction d'erreur se pose.\n"
+            "3. Faire expliquer pourquoi l'écriture d'apurement des courus de la migration "
+            f"(contrôle 5.3) a porté sur 511800100 et pas sur {CPT_COURUS_MANUELS}, alors que "
+            "les deux comptes portaient des intérêts courus sur le même portefeuille.\n"
+            "4. Faire justifier l'existence même d'un second circuit de courus servi à la "
+            f"main : {nb(len(periode))} écritures manuelles sur la période, c'est un dispositif "
+            "permanent, non une exception.\n"
+            "5. Rapprocher ce constat du contrôle 12.6 : l'absence totale de dépréciation sur "
+            "le portefeuille et une perte de cette taille passée en une fois ne peuvent pas "
+            "coexister sans explication."
         ),
     )

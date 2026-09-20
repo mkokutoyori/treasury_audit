@@ -744,6 +744,53 @@ def _c118_cas_le_plus_lourd(ctx) -> Constat:
                 "COMPLET" if abs(float(gv[gv.AC_NO.str.startswith("4670")].SIGNE.sum())) < 1
                 else "INCOMPLET"])
 
+    # PREUVE PAR LA STRUCTURE — Calypso numérote les mouvements d'une pension en série. Une
+    # pension arrivée à échéance en porte DEUX de règlement : celui du tirage et celui du
+    # remboursement. On compte combien en portent deux, et lesquelles n'en portent qu'un.
+    repos_tous = c[c.BOOK == "ABCM_MM.Plmt.Tkn.Secured"]
+    reglements = repos_tous[repos_tous.EVENEMENT == "CST_S_SETTLED"].groupby("DEAL").MOUVEMENT.nunique()
+    nb_repos = int(repos_tous.DEAL.nunique())
+    nb_deux = int((reglements == 2).sum())
+    # Une pension encore vivante à la date d'extraction ne porte légitimement qu'un règlement,
+    # celui de son tirage : son compte de liaison est alors à zéro. On ne retient donc comme
+    # anormales que celles dont le pont ne se solde pas.
+    ponts_tous = repos_tous[repos_tous.AC_NO.str.startswith("4670")].groupby("DEAL").SIGNE.sum()
+    nb_un = int(sum(1 for dl in reglements[reglements == 1].index
+                    if abs(float(ponts_tous.get(dl, 0))) > 1))
+    nb_vivantes = int((reglements == 1).sum()) - nb_un
+
+    # TAXONOMIE DES RÉSIDUS — tous les deals de pension dont le compte de liaison ne revient
+    # pas à zéro, avec la cause lue sur la structure des mouvements.
+    ponts = repos_tous[repos_tous.AC_NO.str.startswith("4670")].groupby("DEAL").SIGNE.sum()
+    anormaux = ponts[ponts.abs() > 1].sort_values()
+    taxonomie = []
+    for dl, solde in anormaux.items():
+        gg = repos_tous[repos_tous.DEAL == dl]
+        n_regl = int(gg[gg.EVENEMENT == "CST_S_SETTLED"].MOUVEMENT.nunique())
+        # une jambe déversée deux fois se reconnaît à un mouvement portant deux fois la
+        # même écriture sur le même compte, dans le même sens
+        doublons = (gg.groupby(["MOUVEMENT", "AC_NO", "DRCR_IND"]).size() > 1).sum()
+        if n_regl < 2:
+            cause = "règlement du remboursement JAMAIS déversé"
+        elif doublons:
+            cause = "jambes du remboursement déversées en double"
+        else:
+            cause = "règlement rejoué en sens inverse"
+        taxonomie.append([dl, float(solde), n_regl, cause])
+
+    # SITUATION AUX DATES D'ARRÊTÉ — l'anomalie ne naît pas le jour du contrat.
+    etapes = []
+    jalons = sorted(set(list(ctx.arretes) + [str(g.TRN_DT.min()), str(g.TRN_DT.max())]))
+    for a in jalons:
+        sous = g[g.TRN_DT <= a]
+        if sous.empty:
+            continue
+        etapes.append([a,
+                       float(sous[sous.AC_NO == "099ACO00001"].SIGNE.sum()),
+                       float(sous[sous.AC_NO.str.startswith("4670")].SIGNE.sum()),
+                       float(sous[sous.AC_NO == "552400100"].SIGNE.sum()),
+                       float(sous[sous.AC_NO == "952100100"].SIGNE.sum())])
+
     nostro = float(g[g.AC_NO == "099ACO00001"].SIGNE.sum())
     attendu_nostro = -float(fiche.interet.iloc[0]) if not fiche.empty and fiche.interet.notna().iloc[0] else 0.0
     collateral = g[(g.AC_NO == "952100100") & (g.DRCR_IND == "C")]
@@ -772,27 +819,73 @@ def _c118_cas_le_plus_lourd(ctx) -> Constat:
                "comptabilité. Il s'agit donc d'une pension COURTE, parfaitement ordinaire.\n"
                if not fiche.empty else "conditions non lisibles.\n")
             + "\n"
-            "CE QUI A ÉTÉ COMPTABILISÉ. Le tirage est complet et correct : les titres sont "
-            "inscrits au hors bilan, la dette est constatée au passif, la trésorerie est "
-            "encaissée. Le compte de liaison revient à zéro ce jour-là.\n"
-            "Le remboursement, lui, est enregistré trois mois après l'échéance contractuelle "
-            "(contrôle 7.5) et surtout, IL EST AMPUTÉ DE SA JAMBE DE TRÉSORERIE. La dette est "
-            "éteinte, l'intérêt est constaté en charge, les titres sont libérés — mais AUCUNE "
-            "écriture ne sort l'argent du compte de règlement auprès de la banque centrale.\n"
+            "COMMENT UNE PENSION SE DÉVERSE NORMALEMENT. Calypso produit, pour chaque pension, "
+            "une série de mouvements numérotés : la mise en gage des titres, la constatation "
+            "de la dette, l'intérêt, puis DEUX RÈGLEMENTS en trésorerie — celui du tirage, qui "
+            "fait entrer l'argent, et celui du remboursement, qui le fait sortir avec "
+            f"l'intérêt. Sur les {nb(nb_repos)} pensions de la période, {nb(nb_deux)} portent "
+            "bien leurs deux règlements.\n"
             "\n"
-            "CE QUE CELA PRODUIT. L'effet net de l'opération sur le compte de règlement devrait "
-            f"être une sortie limitée à l'intérêt, soit {xaf(abs(attendu_nostro))}. Il est en "
-            f"réalité une ENTRÉE NETTE de {xaf(nostro)} : la banque a encaissé 90 milliards "
-            "qu'elle n'a jamais rendus dans ses livres. Le compte de liaison porte la "
-            f"contrepartie exacte de cette anomalie, {xaf(float(pire.solde))}.\n"
+            f"CE QUE PORTE CELLE-CI. Un seul. Le règlement du tirage a été déversé ; CELUI DU "
+            "REMBOURSEMENT NE L'A JAMAIS ÉTÉ. Tout le reste du remboursement est là — la dette "
+            "est éteinte, l'intérêt est constaté en charge, les titres sont libérés — mais "
+            "aucune écriture ne sort l'argent du compte de règlement auprès de la banque "
+            "centrale.\n"
+            "\n"
+            f"ELLE EST LA SEULE. Des {nb(nb_repos)} pensions, {nb(nb_deux)} portent leurs deux "
+            f"règlements. {nb(nb_vivantes)} n'en "
+            + ("porte qu'un" if nb_vivantes < 2 else "portent qu'un")
+            + " pour une raison légitime : "
+            + ("elle était encore vivante" if nb_vivantes < 2 else "elles étaient encore vivantes")
+            + " à la date d'extraction, et "
+            + ("son" if nb_vivantes < 2 else "leur")
+            + " compte de liaison est à zéro. Il reste "
+            + (f"UNE SEULE pension arrivée à échéance dont le règlement de remboursement n'a "
+               "jamais été déversé : celle-ci." if nb_un == 1 else
+               f"{nb(nb_un)} pensions arrivées à échéance dont le règlement de remboursement "
+               "n'a jamais été déversé, dont celle-ci.") + "\n"
+            "\n"
+            "L'ABSENCE EST ÉTABLIE SUR UNE SOURCE COMPLÈTE. Le compte de liaison a été extrait "
+            "intégralement et séparément ; la recherche du montant manquant dans l'ensemble "
+            "des écritures reçues, tous comptes et toutes dates confondus, ne renvoie rien. Il "
+            "ne s'agit donc pas d'une lacune d'extraction.\n"
+            "\n"
+            "L'ANOMALIE N'EST PAS LA MÊME AUX DEUX ARRÊTÉS — ET C'EST LE POINT ESSENTIEL.\n"
+            "\n"
+            "› AU 31 DÉCEMBRE 2025, la trésorerie n'est PAS fausse de 90 milliards. À cette "
+            "date, seul le tirage est comptabilisé, et il l'est correctement : le compte de "
+            "liaison est à ZÉRO. Ce qui est faux, c'est le CUT-OFF. La pension est arrivée à "
+            "échéance le 26 décembre ; au 31 décembre les livres la présentent encore comme "
+            f"vivante. Le bilan porte donc {xaf(abs(float(etapes[0][3]) if etapes else 0))} de "
+            "dette envers la banque centrale qui n'existe plus, le hors bilan porte des titres "
+            "présentés comme gagés alors qu'ils ont été libérés, et l'intérêt dû n'est pas "
+            "provisionné. AUCUN INDICATEUR NE SIGNALE LE PROBLÈME À CETTE DATE : c'est "
+            "précisément ce qui le rend dangereux.\n"
+            "\n"
+            "› AU 31 MARS 2026, le remboursement est enfin comptabilisé — amputé de sa jambe de "
+            "trésorerie. C'est CE JOUR-LÀ que naît l'erreur de trésorerie. L'effet net de "
+            "l'opération sur le compte de règlement devrait être une sortie limitée à "
+            f"l'intérêt, soit {xaf(abs(attendu_nostro))}. Il est une ENTRÉE NETTE de "
+            f"{xaf(nostro)}. Le compte de liaison bascule au même instant à "
+            f"{xaf(float(pire.solde))}, contrepartie exacte de l'anomalie.\n"
+            "\n"
+            f"› AU {ctx.config.fin}, RIEN N'A ÉTÉ CORRIGÉ. L'écart est toujours ouvert à la "
+            "clôture de la période auditée.\n"
             "\n"
             "LA PREUVE PAR LA COMPARAISON. Cette pension appartient à une chaîne de "
-            "refinancement roulée d'une semaine sur l'autre avec la même contrepartie. Les "
-            "opérations qui la précèdent et qui la suivent portent le MÊME montant, la même "
-            "mécanique et le même schéma comptable — et elles sont, elles, intégralement "
-            "déversées : leur compte de liaison revient à zéro et leur effet net sur la "
-            "trésorerie se limite à l'intérêt. L'anomalie n'est donc ni un effet de "
-            "paramétrage ni une particularité du produit : c'est un déversement manqué.\n"
+            "refinancement roulée d'une semaine sur l'autre avec la même contrepartie, sur le "
+            "même montant. Les opérations qui la précèdent et qui la suivent sont "
+            "intégralement déversées, en un seul lot à l'échéance : leur compte de liaison "
+            "revient à zéro et leur effet net sur la trésorerie se limite à l'intérêt. "
+            "L'anomalie n'est donc ni un effet de paramétrage ni une particularité du produit : "
+            "c'est un déversement manqué.\n"
+            "\n"
+            "ET ELLE N'EST PAS DE MÊME NATURE QUE LES AUTRES RÉSIDUS. Le tableau de taxonomie "
+            "ci-dessous recense toutes les pensions dont le compte de liaison ne revient pas à "
+            "zéro. Les autres relèvent d'une jambe déversée DEUX FOIS — un excès, que le "
+            "contrôle 6.7 documente. Celle-ci est la seule où une jambe MANQUE. Une écriture "
+            "en double se voit et se corrige ; une écriture absente ne laisse aucune trace de "
+            "son absence.\n"
             "\n"
             "UN EFFET CONNEXE. Les titres donnés en garantie sont restés inscrits au hors bilan "
             f"jusqu'à la comptabilisation du remboursement, soit {jours_gage} jours après "
@@ -810,11 +903,18 @@ def _c118_cas_le_plus_lourd(ctx) -> Constat:
             ("Titres donnés en garantie",
              f"{len(collateral)} lignes — {xaf(float(collateral.LCY_AMOUNT.sum()))}"),
             ("Jours de gage au-delà de l'échéance contractuelle", f"{jours_gage} jours"),
+            ("Règlements en trésorerie attendus", "2 — tirage et remboursement"),
+            ("Règlements effectivement déversés", "1 — celui du tirage"),
+            (f"Pensions de la période portant leurs deux règlements", f"{nb(nb_deux)} sur {nb(nb_repos)}"),
             ("Effet ATTENDU sur le compte de règlement",
              f"sortie de {xaf(abs(attendu_nostro))} (l'intérêt)"),
             ("Effet CONSTATÉ sur le compte de règlement", f"entrée de {xaf(nostro)}"),
-            ("ERREUR SUR LA TRÉSORERIE", xaf(nostro - attendu_nostro)),
+            ("ERREUR SUR LA TRÉSORERIE, à compter du 2026-03-31", xaf(nostro - attendu_nostro)),
             ("Résidu porté par le compte de liaison", xaf(float(pire.solde))),
+            ("Erreur sur la trésorerie au 2025-12-31", xaf(0)),
+            ("Nature de l'anomalie au 2025-12-31",
+             "cut-off — pension échue présentée comme vivante"),
+            ("Corrigée à la clôture de la période", "NON"),
         ],
         tableaux=[
             Tableau(["Date", "Événement", "Compte", "Libellé", "Sens", "Mouvements", "Montant XAF"],
@@ -830,12 +930,37 @@ def _c118_cas_le_plus_lourd(ctx) -> Constat:
                     voisins,
                     note=("La même chaîne de refinancement, avant et après. Les opérations "
                           "voisines sont complètes : seul le deal examiné ne l'est pas.")),
+            Tableau(["Date d'arrêté", "Compte de règlement", "Compte de liaison",
+                     "Dette au passif", "Titres gagés (hors bilan)"],
+                    etapes,
+                    note=("Ce que l'opération pèse sur chaque compte, aux deux dates de "
+                          "comptabilisation et à chaque date d'arrêté. Au 31 décembre 2025 le "
+                          "compte de liaison est à zéro : l'anomalie de trésorerie n'existe "
+                          "pas encore, celle de cut-off si. Elle naît le 31 mars 2026.")),
+            Tableau(["Deal", "Résidu du pont XAF", "Règlements", "Cause lue sur les mouvements"],
+                    taxonomie, max_lignes=12,
+                    note=("Toutes les pensions dont le compte de liaison ne revient pas à "
+                          "zéro. Une seule souffre d'une jambe MANQUANTE ; les autres d'une "
+                          "jambe déversée deux fois.")),
         ],
         recommandation=(
-            "Rapprocher cette opération du relevé de la banque centrale pour établir la date "
-            "réelle du décaissement, puis passer l'écriture manquante et corriger le solde du "
-            "compte de règlement à la date d'arrêté. Étendre le rapprochement à l'ensemble des "
-            "deals recensés au contrôle 11.6. Instaurer le contrôle quotidien du solde des "
-            "comptes de liaison par deal, qui aurait détecté cette anomalie le jour même."
+            "1. Rapprocher cette opération du relevé de la banque centrale pour établir la "
+            "date réelle du décaissement, passer l'écriture manquante, et corriger le solde du "
+            f"compte de règlement — l'écart de {xaf(nostro - attendu_nostro)} est encore "
+            f"ouvert au {ctx.config.fin}.\n"
+            "2. Chiffrer l'effet sur les états arrêtés au 31 décembre 2025, qui n'est PAS le "
+            "même : à cette date une pension échue depuis cinq jours est présentée comme "
+            "vivante, avec sa dette au passif, ses titres gagés au hors bilan et son intérêt "
+            "non provisionné. Le corriger suppose un retraitement de cut-off, non une écriture "
+            "de trésorerie.\n"
+            "3. Ne pas se contenter du contrôle quotidien du solde des comptes de liaison : il "
+            "N'AURAIT PAS détecté cette anomalie au 31 décembre 2025, le pont étant alors à "
+            "zéro. Le contrôle qui l'aurait détectée est le rapprochement, à chaque arrêté, "
+            "des pensions ÉCHUES avec celles encore portées au bilan.\n"
+            "4. Ajouter un contrôle de complétude structurelle : toute pension arrivée à "
+            "échéance doit porter DEUX règlements en trésorerie. Ce seul test isole le cas en "
+            "une requête.\n"
+            "5. Étendre le rapprochement à l'ensemble des deals recensés au contrôle 11.6, en "
+            "distinguant les jambes manquantes des jambes déversées en double."
         ),
     )

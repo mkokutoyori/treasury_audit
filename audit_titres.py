@@ -30,12 +30,12 @@ LIMITES = [
     "Une extraction filtrée par module peut faire apparaître une anomalie inexistante. Tous les "
     "contrôles portant sur le solde d'un compte sont établis sur une extraction tous modules "
     "confondus.",
-    "Une deuxième vague d'extractions a couvert les comptes qui bordent le circuit des titres "
-    "sans figurer dans la liste initiale des 41 comptes clés : elle fonde la section 12 et "
-    "permet de clore le contrôle 5.3. Trois comptes que les libellés désignent restent "
-    "toutefois à extraire — 511800101 « créances rattachées — manuelles », 511801100 et "
-    "601200100 : tant qu'ils ne le sont pas, l'analyse des courus et de la charge de "
-    "refinancement repose sur une vue partielle (contrôle 12.6).",
+    "Deux vagues d'extractions complémentaires ont couvert les comptes qui bordent le circuit "
+    "des titres sans figurer dans la liste initiale des 41 comptes clés : elles fondent la "
+    "section 12 et permettent de clore le contrôle 5.3. L'extraction séparée des comptes de "
+    "liaison Calypso a par ailleurs confirmé, ligne à ligne, que la source employée aux "
+    "contrôles 6.4, 6.7, 11.6 et 11.8 était complète. Le compte 511801100 reste à extraire "
+    "(contrôle 12.6).",
 ]
 
 

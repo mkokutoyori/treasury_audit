@@ -64,6 +64,10 @@ CPT_NANTISSEMENT = ["265110100", "265210100"]
 CPT_CONVERSION = ["454000101", "454000106"]
 # Comptes de résultat de change, extraits pour la phase ultérieure consacrée au change.
 CPT_CHANGE_RESULTAT = ["623300100", "723300100"]
+# Second compte de créances rattachées, réservé aux écritures MANUELLES, qui vit en parallèle
+# de 511800100. Les libellés du compte d'attente 466000107 le désignent nommément.
+CPT_COURUS_MANUELS = "511800101"
+CPT_INTERET_BEAC = "601200100"
 
 # Comptes que le PCEC destine à l'enregistrement d'une PENSION LIVRÉE : la dette au passif,
 # les dettes rattachées, la charge d'intérêt et la commission. Aucun ne doit rester vide si
@@ -83,7 +87,8 @@ CPT_HORS_BILAN_TITRES = ["951100100", "953000100", "954000100", "955000100"]
 CPT_VAGUE2_DEMANDES = (
     CPT_PENSION_PCEC + CPT_PROVISIONS_TITRES + CPT_HORS_BILAN_TITRES
     + CPT_NANTISSEMENT + CPT_CONVERSION + CPT_ATTENTE + CPT_CHANGE_RESULTAT
-    + ["511200100", "511420100", "511700100", "512420100", "467000187"]
+    + ["511200100", "511420100", "511700100", "512420100", "467000187",
+       CPT_COURUS_MANUELS, CPT_INTERET_BEAC]
 )
 
 # Nature attendue du solde de chaque compte du périmètre, au sens du PCEC.
@@ -443,6 +448,7 @@ class Contexte:
             self._lire("099ACO00001.csv", encodage="cp1252", date_fmt="%d-%b-%y"),
             self._lire("32_accounts.csv", encodage="cp1252", date_fmt="%d-%b-%y"),
             self._lire("additional key account.csv", encodage="cp1252", date_fmt="%d-%b-%y"),
+            self._lire("other extraction.csv", encodage="cp1252", date_fmt="%d-%b-%y"),
         ]
         morceaux = [df for df in morceaux if not df.empty]
         if not morceaux:

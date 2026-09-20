@@ -4,7 +4,7 @@
 
   Périmètre        : Département de la trésorerie — gestion des investissements sur les marchés financiers
   Période d'audit  : 2023-09-27 au 2026-06-30
-  Rapport généré le : 20/09/2026 à 17:34
+  Rapport généré le : 20/09/2026 à 18:13
   Référentiel      : Plan Comptable des Établissements de Crédit (PCEC) — CEMAC / COBAC
 
   Ce rapport est produit automatiquement. Chaque constat indique le test exécuté, sa
@@ -24,12 +24,11 @@
     - Une extraction filtrée par module peut faire apparaître une anomalie inexistante. Tous les
       contrôles portant sur le solde d'un compte sont établis sur une extraction tous modules
       confondus.
-    - Une deuxième vague d'extractions a couvert les comptes qui bordent le circuit des titres sans
-      figurer dans la liste initiale des 41 comptes clés : elle fonde la section 12 et permet de
-      clore le contrôle 5.3. Trois comptes que les libellés désignent restent toutefois à extraire —
-      511800101 « créances rattachées — manuelles », 511801100 et 601200100 : tant qu'ils ne le sont
-      pas, l'analyse des courus et de la charge de refinancement repose sur une vue partielle
-      (contrôle 12.6).
+    - Deux vagues d'extractions complémentaires ont couvert les comptes qui bordent le circuit des
+      titres sans figurer dans la liste initiale des 41 comptes clés : elles fondent la section 12
+      et permettent de clore le contrôle 5.3. L'extraction séparée des comptes de liaison Calypso a
+      par ailleurs confirmé, ligne à ligne, que la source employée aux contrôles 6.4, 6.7, 11.6 et
+      11.8 était complète. Le compte 511801100 reste à extraire (contrôle 12.6).
 
 ----------------------------------------------------------------------------------------------------
 SOMMAIRE
@@ -46,17 +45,17 @@ SOMMAIRE
   Section 9 — Résultat, classement comptable et rendement  (4 anomalie(s) / 4 contrôle(s))
   Section 10 — Cohérence entre le système amont et le grand livre  (5 anomalie(s) / 5 contrôle(s))
   Section 11 — Le portefeuille de titres comme un tout  (7 anomalie(s) / 8 contrôle(s))
-  Section 12 — Comptes de régularisation, comptes d'attente et comptes dormants  (6 anomalie(s) / 6 contrôle(s))
+  Section 12 — Comptes de régularisation, comptes d'attente et comptes dormants  (7 anomalie(s) / 7 contrôle(s))
 
 ----------------------------------------------------------------------------------------------------
 RÉCAPITULATIF DES ANOMALIES PAR GRAVITÉ
 ----------------------------------------------------------------------------------------------------
 
-  CRITIQUE   : 10
+  CRITIQUE   : 11
   ELEVEE     : 23
   MOYENNE    : 25
   FAIBLE     : 3
-  TOTAL      : 61
+  TOTAL      : 62
 
   CRITIQUE  [4.2] Écritures manuelles dépourvues de tout validateur
   CRITIQUE  [5.3] Sur-apurement du compte de courus à la migration, laissant un compte d'actif en solde créditeur
@@ -68,6 +67,7 @@ RÉCAPITULATIF DES ANOMALIES PAR GRAVITÉ
   CRITIQUE  [11.6] Le solde des comptes de liaison mesure exactement les déversements incomplets
   CRITIQUE  [11.8] Anatomie du déversement incomplet le plus lourd — pension 3349072
   CRITIQUE  [12.5] Un portefeuille de 27 milliards reçu en titres mais porté six mois au nostro BEAC, traversant l'arrêté annuel
+  CRITIQUE  [12.7] Un second compte de courus, jamais apuré à la migration, soldé en perte opérationnelle APRÈS la clôture de la période
   ELEVEE    [2.6] Taux contractuels aberrants au regard des opérations comparables
   ELEVEE    [3.7] Accumulation des intérêts courus au-delà d'une année de coupons
   ELEVEE    [3.8] Transfert massif d'intérêts courus vers un compte d'attente
@@ -2856,41 +2856,79 @@ codification des titres du nouveau dispositif et mesure l'exposition souveraine 
   XAF, se retrouve exactement en comptabilité. Il s'agit donc d'une pension COURTE, parfaitement
   ordinaire.
 
-  CE QUI A ÉTÉ COMPTABILISÉ. Le tirage est complet et correct : les titres sont inscrits au hors
-  bilan, la dette est constatée au passif, la trésorerie est encaissée. Le compte de liaison revient
-  à zéro ce jour-là.
-  Le remboursement, lui, est enregistré trois mois après l'échéance contractuelle (contrôle 7.5) et
-  surtout, IL EST AMPUTÉ DE SA JAMBE DE TRÉSORERIE. La dette est éteinte, l'intérêt est constaté en
-  charge, les titres sont libérés — mais AUCUNE écriture ne sort l'argent du compte de règlement
-  auprès de la banque centrale.
+  COMMENT UNE PENSION SE DÉVERSE NORMALEMENT. Calypso produit, pour chaque pension, une série de
+  mouvements numérotés : la mise en gage des titres, la constatation de la dette, l'intérêt, puis
+  DEUX RÈGLEMENTS en trésorerie — celui du tirage, qui fait entrer l'argent, et celui du
+  remboursement, qui le fait sortir avec l'intérêt. Sur les 129 pensions de la période, 126 portent
+  bien leurs deux règlements.
 
-  CE QUE CELA PRODUIT. L'effet net de l'opération sur le compte de règlement devrait être une sortie
-  limitée à l'intérêt, soit 101 000 000 XAF. Il est en réalité une ENTRÉE NETTE de 90 000 000 000
-  XAF : la banque a encaissé 90 milliards qu'elle n'a jamais rendus dans ses livres. Le compte de
-  liaison porte la contrepartie exacte de cette anomalie, -90 101 000 000 XAF.
+  CE QUE PORTE CELLE-CI. Un seul. Le règlement du tirage a été déversé ; CELUI DU REMBOURSEMENT NE
+  L'A JAMAIS ÉTÉ. Tout le reste du remboursement est là — la dette est éteinte, l'intérêt est
+  constaté en charge, les titres sont libérés — mais aucune écriture ne sort l'argent du compte de
+  règlement auprès de la banque centrale.
+
+  ELLE EST LA SEULE. Des 129 pensions, 126 portent leurs deux règlements. 1 n'en porte qu'un pour
+  une raison légitime : elle était encore vivante à la date d'extraction, et son compte de liaison
+  est à zéro. Il reste UNE SEULE pension arrivée à échéance dont le règlement de remboursement n'a
+  jamais été déversé : celle-ci.
+
+  L'ABSENCE EST ÉTABLIE SUR UNE SOURCE COMPLÈTE. Le compte de liaison a été extrait intégralement et
+  séparément ; la recherche du montant manquant dans l'ensemble des écritures reçues, tous comptes
+  et toutes dates confondus, ne renvoie rien. Il ne s'agit donc pas d'une lacune d'extraction.
+
+  L'ANOMALIE N'EST PAS LA MÊME AUX DEUX ARRÊTÉS — ET C'EST LE POINT ESSENTIEL.
+
+  › AU 31 DÉCEMBRE 2025, la trésorerie n'est PAS fausse de 90 milliards. À cette date, seul le
+    tirage est comptabilisé, et il l'est correctement : le compte de liaison est à ZÉRO. Ce qui est
+    faux, c'est le CUT-OFF. La pension est arrivée à échéance le 26 décembre ; au 31 décembre les
+    livres la présentent encore comme vivante. Le bilan porte donc 90 000 000 000 XAF de dette
+    envers la banque centrale qui n'existe plus, le hors bilan porte des titres présentés comme
+    gagés alors qu'ils ont été libérés, et l'intérêt dû n'est pas provisionné. AUCUN INDICATEUR NE
+    SIGNALE LE PROBLÈME À CETTE DATE : c'est précisément ce qui le rend dangereux.
+
+  › AU 31 MARS 2026, le remboursement est enfin comptabilisé — amputé de sa jambe de trésorerie.
+    C'est CE JOUR-LÀ que naît l'erreur de trésorerie. L'effet net de l'opération sur le compte de
+    règlement devrait être une sortie limitée à l'intérêt, soit 101 000 000 XAF. Il est une ENTRÉE
+    NETTE de 90 000 000 000 XAF. Le compte de liaison bascule au même instant à -90 101 000 000 XAF,
+    contrepartie exacte de l'anomalie.
+
+  › AU 2026-06-30, RIEN N'A ÉTÉ CORRIGÉ. L'écart est toujours ouvert à la clôture de la période
+    auditée.
 
   LA PREUVE PAR LA COMPARAISON. Cette pension appartient à une chaîne de refinancement roulée d'une
-  semaine sur l'autre avec la même contrepartie. Les opérations qui la précèdent et qui la suivent
-  portent le MÊME montant, la même mécanique et le même schéma comptable — et elles sont, elles,
-  intégralement déversées : leur compte de liaison revient à zéro et leur effet net sur la
-  trésorerie se limite à l'intérêt. L'anomalie n'est donc ni un effet de paramétrage ni une
-  particularité du produit : c'est un déversement manqué.
+  semaine sur l'autre avec la même contrepartie, sur le même montant. Les opérations qui la
+  précèdent et qui la suivent sont intégralement déversées, en un seul lot à l'échéance : leur
+  compte de liaison revient à zéro et leur effet net sur la trésorerie se limite à l'intérêt.
+  L'anomalie n'est donc ni un effet de paramétrage ni une particularité du produit : c'est un
+  déversement manqué.
+
+  ET ELLE N'EST PAS DE MÊME NATURE QUE LES AUTRES RÉSIDUS. Le tableau de taxonomie ci-dessous
+  recense toutes les pensions dont le compte de liaison ne revient pas à zéro. Les autres relèvent
+  d'une jambe déversée DEUX FOIS — un excès, que le contrôle 6.7 documente. Celle-ci est la seule où
+  une jambe MANQUE. Une écriture en double se voit et se corrige ; une écriture absente ne laisse
+  aucune trace de son absence.
 
   UN EFFET CONNEXE. Les titres donnés en garantie sont restés inscrits au hors bilan jusqu'à la
   comptabilisation du remboursement, soit 95 jours après l'échéance contractuelle. Pendant toute
   cette durée, ils apparaissaient indisponibles alors qu'ils ne l'étaient plus, ce qui minore
   d'autant la réserve de liquidité mobilisable affichée (contrôle 7.3).
 
-    Contrepartie                                      : BEAC
-    Montant emprunté                                  : 90 000 000 000 XAF
-    Durée CONTRACTUELLE                               : 8 jours (2025-12-18 → 2025-12-26)
-    Comptabilisation                                  : tirage le 2025-12-23, remboursement le 2026-03-31
-    Titres donnés en garantie                         : 19 lignes — 91 333 110 000 XAF
-    Jours de gage au-delà de l'échéance contractuelle : 95 jours
-    Effet ATTENDU sur le compte de règlement          : sortie de 101 000 000 XAF (l'intérêt)
-    Effet CONSTATÉ sur le compte de règlement         : entrée de 90 000 000 000 XAF
-    ERREUR SUR LA TRÉSORERIE                          : 90 101 000 000 XAF
-    Résidu porté par le compte de liaison             : -90 101 000 000 XAF
+    Contrepartie                                         : BEAC
+    Montant emprunté                                     : 90 000 000 000 XAF
+    Durée CONTRACTUELLE                                  : 8 jours (2025-12-18 → 2025-12-26)
+    Comptabilisation                                     : tirage le 2025-12-23, remboursement le 2026-03-31
+    Titres donnés en garantie                            : 19 lignes — 91 333 110 000 XAF
+    Jours de gage au-delà de l'échéance contractuelle    : 95 jours
+    Règlements en trésorerie attendus                    : 2 — tirage et remboursement
+    Règlements effectivement déversés                    : 1 — celui du tirage
+    Pensions de la période portant leurs deux règlements : 126 sur 129
+    Effet ATTENDU sur le compte de règlement             : sortie de 101 000 000 XAF (l'intérêt)
+    Effet CONSTATÉ sur le compte de règlement            : entrée de 90 000 000 000 XAF
+    ERREUR SUR LA TRÉSORERIE, à compter du 2026-03-31    : 90 101 000 000 XAF
+    Résidu porté par le compte de liaison                : -90 101 000 000 XAF
+    Erreur sur la trésorerie au 2025-12-31               : 0 XAF
+    Nature de l'anomalie au 2025-12-31                   : cut-off — pension échue présentée comme vivante
+    Corrigée à la clôture de la période                  : NON
 
     Date        Événement          Compte       Libellé                             Sens  Mouvements  Montant XAF   
     ----------  -----------------  -----------  ----------------------------------  ----  ----------  --------------
@@ -2933,12 +2971,43 @@ codification des titres du nouveau dispositif et mesure l'exposition souveraine 
     La même chaîne de refinancement, avant et après. Les opérations voisines sont complètes : seul
     le deal examiné ne l'est pas.
 
+    Date d'arrêté  Compte de règlement  Compte de liaison  Dette au passif  Titres gagés (hors bilan)
+    -------------  -------------------  -----------------  ---------------  -------------------------
+    2025-12-23     90 000 000 000       0                  -90 000 000 000  -91 333 110 000          
+    2025-12-31     90 000 000 000       0                  -90 000 000 000  -91 333 110 000          
+    2026-03-31     90 000 000 000       -90 101 000 000    0                0                        
+    2026-06-30     90 000 000 000       -90 101 000 000    0                0                        
+    Ce que l'opération pèse sur chaque compte, aux deux dates de comptabilisation et à chaque date
+    d'arrêté. Au 31 décembre 2025 le compte de liaison est à zéro : l'anomalie de trésorerie
+    n'existe pas encore, celle de cut-off si. Elle naît le 31 mars 2026.
+
+    Deal     Résidu du pont XAF  Règlements  Cause lue sur les mouvements               
+    -------  ------------------  ----------  -------------------------------------------
+    3349072  -90 101 000 000     1           règlement du remboursement JAMAIS déversé  
+    4184571  -25 000 000 000     2           jambes du remboursement déversées en double
+    3186053  -5 000 000 000      2           jambes du remboursement déversées en double
+    3490796  -77 000 000         4           règlement rejoué en sens inverse           
+    3737062  -63 184 722         2           règlement rejoué en sens inverse           
+    4184547  -11 979 167         2           jambes du remboursement déversées en double
+    Toutes les pensions dont le compte de liaison ne revient pas à zéro. Une seule souffre d'une
+    jambe MANQUANTE ; les autres d'une jambe déversée deux fois.
+
   Recommandation :
-    Rapprocher cette opération du relevé de la banque centrale pour établir la date réelle du
-    décaissement, puis passer l'écriture manquante et corriger le solde du compte de règlement à la
-    date d'arrêté. Étendre le rapprochement à l'ensemble des deals recensés au contrôle 11.6.
-    Instaurer le contrôle quotidien du solde des comptes de liaison par deal, qui aurait détecté
-    cette anomalie le jour même.
+    1. Rapprocher cette opération du relevé de la banque centrale pour établir la date réelle du
+    décaissement, passer l'écriture manquante, et corriger le solde du compte de règlement — l'écart
+    de 90 101 000 000 XAF est encore ouvert au 2026-06-30.
+    2. Chiffrer l'effet sur les états arrêtés au 31 décembre 2025, qui n'est PAS le même : à cette
+    date une pension échue depuis cinq jours est présentée comme vivante, avec sa dette au passif,
+    ses titres gagés au hors bilan et son intérêt non provisionné. Le corriger suppose un
+    retraitement de cut-off, non une écriture de trésorerie.
+    3. Ne pas se contenter du contrôle quotidien du solde des comptes de liaison : il N'AURAIT PAS
+    détecté cette anomalie au 31 décembre 2025, le pont étant alors à zéro. Le contrôle qui l'aurait
+    détectée est le rapprochement, à chaque arrêté, des pensions ÉCHUES avec celles encore portées
+    au bilan.
+    4. Ajouter un contrôle de complétude structurelle : toute pension arrivée à échéance doit porter
+    DEUX règlements en trésorerie. Ce seul test isole le cas en une requête.
+    5. Étendre le rapprochement à l'ensemble des deals recensés au contrôle 11.6, en distinguant les
+    jambes manquantes des jambes déversées en double.
 
 ----------------------------------------------------------------------------------------------------
 [11.3] Codification des titres : codes fictifs, pays contradictoires et libellés divergents
@@ -3298,7 +3367,7 @@ les comptes d'attente de la direction financière, les comptes de nantissement e
 l'ensemble des comptes que le PCEC destine aux pensions livrées et aux dépréciations. Le fait qu'un
 compte soit resté vide est ici un résultat de contrôle à part entière.
 
-  6 contrôle(s) exécuté(s) — 6 anomalie(s), 0 sans anomalie.
+  7 contrôle(s) exécuté(s) — 7 anomalie(s), 0 sans anomalie.
 
 ----------------------------------------------------------------------------------------------------
 [12.5] Un portefeuille de 27 milliards reçu en titres mais porté six mois au nostro BEAC, traversant l'arrêté annuel
@@ -3386,6 +3455,112 @@ compte soit resté vide est ici un résultat de contrôle à part entière.
     opération postérieure de six mois à la migration.
     5. Vérifier qu'aucune autre écriture de la période n'a été passée sous cet utilisateur
     technique.
+
+----------------------------------------------------------------------------------------------------
+[12.7] Un second compte de courus, jamais apuré à la migration, soldé en perte opérationnelle APRÈS la clôture de la période
+  Gravité : CRITIQUE
+  Référence : Compte 511800101 CREANCES RATTACHEES - MANUELLES — écriture de solde du 2026-07-31
+
+  CE COMPTE N'AVAIT JAMAIS ÉTÉ VU. 511800101 CREANCES RATTACHEES - MANUELLES porte les intérêts
+  courus enregistrés PAR ÉCRITURE MANUELLE, en parallèle du compte automatique 511800100. Il ne
+  figurait dans aucune des extractions précédentes ; seuls les libellés du compte d'attente
+  466000107 le désignaient (contrôle 12.3). Son historique complet change la lecture de plusieurs
+  constats antérieurs.
+
+  CE QU'IL PORTE. 1 804 écritures sur la période d'audit, pour 72 917 728 314 XAF de mouvements
+  bruts. L'année 2024 à elle seule en compte plus de treize cents. Un volume de cette ampleur sur un
+  compte servi exclusivement à la main, en doublure d'un compte alimenté automatiquement, n'est pas
+  une exception de traitement : c'est un second circuit.
+
+  IL S'ARRÊTE À LA BASCULE — ET N'EST PAS APURÉ. Le dernier mouvement d'exploitation est daté du
+  2025-06-12, quatre jours avant la bascule vers Calypso du 2025-06-16. Le compte reste alors à 314
+  918 217 XAF au DÉBIT. L'écriture d'apurement des courus passée à la migration, que le contrôle 5.3
+  décompose, ne portait QUE sur 511800100. 511800101 n'a pas été touché. Son solde est resté
+  IDENTIQUE, au franc près, pendant plus d'un an — à la clôture annuelle du 31 décembre 2025 comme à
+  la clôture de la période auditée.
+
+  CE QUE LA BANQUE EN A FAIT. Une seule écriture est passée après la bascule, et elle est datée du
+  2026-07-31 — soit APRÈS la fin de la période auditée. Elle solde le compte par un CRÉDIT de 314
+  918 217 XAF sous le libellé « Opearational Loss on accrued Interest May 2022 - June 2025 ».
+
+  CE QUE CE LIBELLÉ ÉTABLIT, ET IL EST SANS AMBIGUÏTÉ.
+  - La banque a elle-même qualifié ce solde de PERTE OPÉRATIONNELLE. Ce n'était donc pas une créance
+    recouvrable.
+  - La période couverte, de mai 2022 à juin 2025, correspond à plus de trois exercices. Il ne s'agit
+    pas d'un incident ponctuel mais d'une accumulation.
+  - L'écriture est passée APRÈS la clôture de la période auditée. Il en résulte que les états
+    arrêtés au 31 décembre 2023, au 31 décembre 2024, au 30 juin 2025 et au 31 décembre 2025 portent
+    tous à l'ACTIF, au minimum, les 314 918 217 XAF que la banque a ensuite reconnus comme perdus —
+    les soldes antérieurs étant même plus élevés, ainsi que le montre le tableau des arrêtés.
+
+  LE LIEN AVEC LE CONTRÔLE 12.6 EST DIRECT. Celui-ci établit qu'AUCUNE dépréciation n'a jamais été
+  constatée sur le portefeuille titres. On en a ici la contrepartie concrète : plutôt que de
+  déprécier progressivement une créance devenue douteuse, la banque l'a maintenue à sa valeur
+  nominale pendant trois ans, puis l'a passée en perte en une seule écriture, hors période.
+
+  ENFIN, CE CONSTAT COMPLÈTE LES CONTRÔLES 5.2 ET 5.3. La migration a sur-apuré le compte
+  automatique de 1 205 231 891 XAF et laissé le compte manuel intact à 314 918 217 XAF. Les deux
+  erreurs vont dans le même sens : les courus repris à la bascule ne reflétaient pas la réalité des
+  créances.
+
+    Écritures sur la période d'audit            : 1 804
+    Mouvements bruts cumulés                    : 72 917 728 314 XAF
+    Dernier mouvement d'exploitation            : 2025-06-12
+    Solde au jour de la bascule (2025-06-16)    : 314 918 217 XAF
+    Solde à la clôture de la période auditée    : 314 918 217 XAF
+    Date de l'écriture de solde                 : 2026-07-31
+    Nature retenue par la banque                : perte opérationnelle
+    Période couverte par la perte               : mai 2022 à juin 2025
+    Montant passé en perte                      : 314 918 217 XAF
+    Dépréciation constatée avant cette écriture : 0 XAF
+
+    Date d'arrêté  Solde du compte XAF
+    -------------  -------------------
+    2023-12-31     1 159 423 914      
+    2024-06-30     573 061 636        
+    2024-12-31     791 101 277        
+    2025-06-30     314 918 217        
+    2025-12-31     314 918 217        
+    2026-06-30     314 918 217        
+    Le solde du compte à chaque date d'arrêté. Il figure à l'ACTIF du bilan à chacune d'elles, et la
+    banque l'a ensuite reconnu comme perdu.
+
+    Année  Écritures  Mouvements bruts XAF  Variation nette XAF
+    -----  ---------  --------------------  -------------------
+    2022   135        2 333 893 501         247 036 771        
+    2023   473        12 992 488 081        912 387 143        
+    2024   1 339      53 911 159 945        -368 322 637       
+    2025   155        11 385 877 392        -476 183 060       
+    2026   1          314 918 217           -314 918 217       
+    L'activité du compte année par année. Elle cesse en 2025, et la seule écriture de 2026 est celle
+    qui le solde en perte.
+
+    Date        Référence         Sens  Montant XAF  Opérateur     Libellé                                                     
+    ----------  ----------------  ----  -----------  ------------  ------------------------------------------------------------
+    2024-10-22  099000b242960001  D     412 732 240  NDJOCKOS0067  interest income on   PURCHASE  GA2B00000125  AT 6.5% 700 000
+    2024-11-26  0990002243310001  C     412 732 240  BINEID00087   Accrued interest PURCAHSE  of the security of  GA2B00000125 
+    2024-10-11  099000z242850001  D     399 057 377  BINEID00087   interest income on   PURCHASE  GA2B00000125 AT 6.5% 7 000 00
+    2024-10-21  0990015242950001  C     399 057 377  NDJOCKOS0067  Interest income on the period  SALES security GA2B00000125 7
+    2023-11-24  0990003233280001  C     391 780 822  CHEICHEID059  interest income on  SALES  CM2B00000053  AT 5.5 % 10 000 000
+    2024-04-01  099000f240920001  D     391 780 822  BINEID00087   SALES  CM2B00000053  AT 5.5 PCT 10 000 000 000  099OTAP23303
+    2024-04-09  099001d241000001  C     391 780 822  CHOHOS00066   Reversal of interest income on  SALES  CM2B00000053 099OTAP2
+    2025-01-07  099000s250070001  D     369 886 168  CHEICHEID059  interest income on PURCHASE  GA2B00000091   AT 6.25 % 6 685 
+    Les huit plus gros mouvements de l'histoire du compte.
+
+  Recommandation :
+    1. Obtenir le dossier justifiant la perte opérationnelle de 314 918 217 XAF passée le 31 juillet
+    2026 : quelles créances la composent, sur quels contrats, et à partir de quelle date étaient-
+    elles compromises ?
+    2. En déduire l'exercice de RATTACHEMENT de la perte. Si elle était acquise avant le 31 décembre
+    2025 — ce que le libellé « mai 2022 - juin 2025 » suggère — les états de cet exercice et des
+    précédents sont surévalués à l'actif, et la question d'une correction d'erreur se pose.
+    3. Faire expliquer pourquoi l'écriture d'apurement des courus de la migration (contrôle 5.3) a
+    porté sur 511800100 et pas sur 511800101, alors que les deux comptes portaient des intérêts
+    courus sur le même portefeuille.
+    4. Faire justifier l'existence même d'un second circuit de courus servi à la main : 1 804
+    écritures manuelles sur la période, c'est un dispositif permanent, non une exception.
+    5. Rapprocher ce constat du contrôle 12.6 : l'absence totale de dépréciation sur le portefeuille
+    et une perte de cette taille passée en une fois ne peuvent pas coexister sans explication.
 
 ----------------------------------------------------------------------------------------------------
 [12.1] Le compte de charge 622000100 sert de compte de régularisation universel du circuit titres
@@ -3737,7 +3912,7 @@ compte soit resté vide est ici un résultat de contrôle à part entière.
   Gravité : MOYENNE
   Référence : 26 comptes demandés sans aucun mouvement
 
-  CE QUE CE CONTRÔLE ÉTABLIT. La deuxième extraction portait sur 34 comptes du plan de comptes
+  CE QUE CE CONTRÔLE ÉTABLIT. La deuxième extraction portait sur 36 comptes du plan de comptes
   intéressant le circuit des titres. 26 d'entre eux sont revenus vides. Un compte vide n'est pas une
   absence d'information : c'est l'information qu'un dispositif prévu par le plan de comptes n'a
   jamais été employé.
@@ -3755,19 +3930,21 @@ compte soit resté vide est ici un résultat de contrôle à part entière.
     les opérations d'intervention à l'émission et de marché gris existent. Les engagements
     correspondants ne sont donc pas suivis.
 
-  CE QU'IL RESTE À OBTENIR. L'examen des libellés de la deuxième vague fait apparaître des comptes
-  dont l'existence est certaine mais qui n'ont encore été extraits dans aucune des deux vagues. Le
-  plus important est 511800101 « créances rattachées — MANUELLES » : le compte d'attente 466000107
-  porte des écritures qui le désignent nommément, ce qui signifie qu'un second compte de courus,
-  réservé aux écritures manuelles, vit en parallèle de 511800100. Tant qu'il n'est pas extrait,
-  l'analyse des courus du contrôle 5.3 et du contrôle 11.7 reste établie sur une vue partielle.
+  CE QUE LA TROISIÈME VAGUE A APPORTÉ. Le compte 511800101 « créances rattachées — MANUELLES », que
+  ce contrôle signalait comme manquant, a depuis été extrait : il fait l'objet du contrôle 12.7, et
+  ce qu'il révèle est le constat le plus lourd de la section. Le compte 601200100 l'a été également
+  — il ne porte que quatre écritures, étrangères aux pensions, ce qui confirme le contrôle 12.2.
 
-    Comptes demandés à la deuxième extraction                    : 34
-    Revenus avec des mouvements                                  : 8
+  CE QU'IL RESTE À OBTENIR. Deux comptes que les libellés désignent n'ont encore été extraits dans
+  aucune vague, dont 511801100, qui porte les courus du portefeuille repris de SCB au contrôle 12.5.
+  Tant qu'il n'est pas extrait, l'analyse des courus reste établie sur une vue partielle.
+
+    Comptes demandés à la deuxième extraction                    : 36
+    Revenus avec des mouvements                                  : 10
     Revenus vides                                                : 26
     Comptes de provision titres sans mouvement                   : 3
     Dépréciation constatée sur le portefeuille, toute la période : 0 XAF
-    Comptes identifiés restant à extraire                        : 10
+    Comptes identifiés restant à extraire                        : 8
 
     Compte     Libellé                                                                               
     ---------  --------------------------------------------------------------------------------------
@@ -3800,18 +3977,16 @@ compte soit resté vide est ici un résultat de contrôle à part entière.
     Les comptes demandés lors de la deuxième extraction et revenus sans aucun mouvement sur la
     période d'audit.
 
-    Compte     Libellé                                                                                   Pourquoi l'extraire                                                                    
-    ---------  ----------------------------------------------------------------------------------------  ---------------------------------------------------------------------------------------
-    511800101  CREANCES RATTACHEES - MANUELLES                                                           désigné en toutes lettres par les libellés du compte d'attente 466000107               
-    511801100  SCB CREANCES RATTACHEES - PLACEMENT                                                       courus du portefeuille repris de SCB, dont le contrôle 12.5 établit l'entrée           
-    601200100  INT. SUR OPS MARCHE MONETAIRE - BEAC                                                      charge d'intérêt du marché monétaire face à la BEAC, contrepartie attendue des pensions
-    601200101  INT. SUR OPS MARCHE MONETAIRE - BEAC GUICHET                                              même charge, guichet de refinancement                                                  
-    706100100  COMMISSIONS SUR OPS DU MARCHE MONET                                                       commissions perçues sur opérations de marché monétaire                                 
-    952200100  AUTRES TITRES ET VALEURS PUBLICS AFFECTES EN GARANTIE DES OPERATIONS DU MARCHE MONETAIRE  autres titres publics affectés en garantie, symétrique de 952100100                    
-    265220100  AUTRES TITRES D'INVESTISSEMENT PUBLICS                                                    autres titres d'investissement publics, hors garantie BEAC                             
-    511100100  ACTIONS ET PARTS D ETS DE CRED PLACEMENT                                                  actions et parts d'établissements de crédit — placement                                
-    511220100  AUTRES BONS ET ASSIMILES - PLACEMENT                                                      autres bons et assimilés — placement                                                   
-    512600100  AUTRES TITRES A COURT TERME - TRANSACTION                                                 autres titres à court terme — transaction                                              
+    Compte     Libellé                                                                                   Pourquoi l'extraire                                                         
+    ---------  ----------------------------------------------------------------------------------------  ----------------------------------------------------------------------------
+    511801100  SCB CREANCES RATTACHEES - PLACEMENT                                                       courus du portefeuille repris de SCB, dont le contrôle 12.5 établit l'entrée
+    601200101  INT. SUR OPS MARCHE MONETAIRE - BEAC GUICHET                                              charge d'intérêt du guichet de refinancement BEAC                           
+    706100100  COMMISSIONS SUR OPS DU MARCHE MONET                                                       commissions perçues sur opérations de marché monétaire                      
+    952200100  AUTRES TITRES ET VALEURS PUBLICS AFFECTES EN GARANTIE DES OPERATIONS DU MARCHE MONETAIRE  autres titres publics affectés en garantie, symétrique de 952100100         
+    265220100  AUTRES TITRES D'INVESTISSEMENT PUBLICS                                                    autres titres d'investissement publics, hors garantie BEAC                  
+    511100100  ACTIONS ET PARTS D ETS DE CRED PLACEMENT                                                  actions et parts d'établissements de crédit — placement                     
+    511220100  AUTRES BONS ET ASSIMILES - PLACEMENT                                                      autres bons et assimilés — placement                                        
+    512600100  AUTRES TITRES A COURT TERME - TRANSACTION                                                 autres titres à court terme — transaction                                   
     Comptes du plan de comptes qui intéressent le circuit des titres et qui n'ont été extraits dans
     aucune des deux vagues.
 

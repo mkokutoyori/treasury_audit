@@ -2157,3 +2157,120 @@ couvre :
 
 **61 anomalies — 10 critiques, 23 élevées, 25 moyennes, 3 faibles — sur 12 sections et
 75 contrôles.**
+
+---
+
+# Session 23 — Revue manuelle du 11.8, et troisième vague d'extractions
+
+## 23.1 Ce que j'ai cherché à vérifier sur le 11.8
+
+Quatre questions, dans l'ordre :
+
+1. La jambe de règlement manquante est-elle vraiment absente, ou logée ailleurs ?
+2. Le schéma que je qualifie de « normal » l'est-il vraiment ?
+3. L'erreur de 90 101 000 000 XAF existe-t-elle **à toutes les dates**, ou naît-elle à une date précise ?
+4. Les autres résidus du 11.6 sont-ils de même nature ?
+
+## 23.2 La preuve par la numérotation des mouvements
+
+Calypso numérote les mouvements d'un deal en série. En comparant 3349072 à ses voisins
+de la même chaîne :
+
+| Deal | Bloc de mouvements | Règlements (CST_S_SETTLED) |
+|---|---|---|
+| 3339125 | 23941079-23941111 | **2** — 23941153 + 23941154 |
+| **3349072** | 23941112-23941152 | **1** — 23941156 seulement |
+| 3368198 | 23999482-23999522 | **2** — 23999526 + 23999527 |
+
+Généralisé aux 129 pensions de la période : **126 portent deux règlements**, 1 n'en porte
+qu'un légitimement (encore vivante, pont à zéro), et **une seule** est arrivée à échéance
+avec un règlement manquant. C'est celle-ci.
+
+Recherche du montant 90 101 000 000 dans **toutes** les écritures reçues, tous comptes et
+toutes dates : **zéro occurrence**. L'absence n'est pas une lacune d'extraction.
+
+## 23.3 Ce que j'avais manqué : l'anomalie n'est pas la même aux deux arrêtés
+
+C'est la correction principale de cette revue.
+
+| Date | Nostro | Pont | Dette | Titres gagés |
+|---|---|---|---|---|
+| 2025-12-23 | +90 Md | **0** | −90 Md | −91,3 Md |
+| **2025-12-31** | +90 Md | **0** | −90 Md | −91,3 Md |
+| 2026-03-31 | +90 Md | **−90 101 000 000** | 0 | 0 |
+| 2026-06-30 | +90 Md | −90 101 000 000 | 0 | 0 |
+
+**Au 31/12/2025, l'erreur de trésorerie n'existe pas encore.** Seul le tirage est
+comptabilisé, et il l'est correctement — le pont est à **zéro**. Ce qui est faux à cette
+date, c'est le **cut-off** : une pension échue le 26 décembre est présentée comme vivante
+au 31, avec sa dette au passif, ses titres gagés et son intérêt non provisionné.
+
+L'erreur de 90 101 000 000 **naît le 31/03/2026**, quand le remboursement est comptabilisé
+sans sa jambe de trésorerie.
+
+**Conséquence sur ma recommandation** : le contrôle quotidien du solde des comptes de
+liaison que je préconisais **n'aurait rien détecté au 31/12/2025**. Le contrôle qui aurait
+fonctionné est le rapprochement, à chaque arrêté, des pensions échues avec celles encore
+portées au bilan — et le test de complétude structurelle : *toute pension échue doit porter
+deux règlements*.
+
+**Règle retenue** : *une erreur a une date de naissance. Chiffrer un écart sans dire quand
+il apparaît, c'est laisser croire qu'il pesait sur tous les arrêtés.*
+
+## 23.4 Taxonomie des six résidus — ils ne sont pas de même nature
+
+| Deal | Résidu | Cause lue sur les mouvements |
+|---|---|---|
+| **3349072** | −90 101 000 000 | **jambe MANQUANTE** |
+| 4184571 | −25 000 000 000 | jambes du remboursement déversées **en double** |
+| 3186053 | −5 000 000 000 | idem |
+| 3490796 | −77 000 000 | règlement rejoué en sens inverse le 24/03/2026 |
+| 3737062 | −63 184 722 | règlement déversé deux fois, en sens opposé |
+| 4184547 | −11 979 167 | toutes les jambes du remboursement en double |
+
+Cinq excès, **une seule absence**. Une écriture en double se voit ; une écriture absente ne
+laisse aucune trace de son absence.
+
+## 23.5 Troisième vague d'extractions
+
+| Fichier | Lignes | Lignes nouvelles |
+|---|---|---|
+| `CALYPSO ACCOUNTS.csv` | 5 072 | **0** |
+| `other extraction.csv` | 2 107 | 2 107 |
+
+`CALYPSO ACCOUNTS.csv` n'apporte rien — et c'est un **résultat** : il confirme ligne à ligne
+que les comptes de liaison Calypso employés aux contrôles 6.4, 6.7, 11.6 et 11.8 étaient
+déjà extraits intégralement.
+
+## 23.6 Le 511800101 — le constat le plus lourd de la section 12
+
+Le compte que je réclamais au 12.6 est arrivé. **CREANCES RATTACHEES - MANUELLES**, 2 103
+écritures, un second circuit de courus servi entièrement à la main en doublure du compte
+automatique 511800100.
+
+- **1 804 écritures sur la période**, 72,9 Md de mouvements bruts, dont 1 339 pour la seule
+  année 2024.
+- Dernier mouvement d'exploitation : **12/06/2025**, quatre jours avant la bascule.
+- **Il n'a PAS été apuré à la migration** — l'écriture du 5.3 ne portait que sur 511800100.
+  Son solde reste figé à **314 918 217 XAF** au franc près pendant plus d'un an.
+- Une seule écriture après la bascule, datée du **31/07/2026 — après la fin de la période
+  auditée** : un crédit de 314 918 217 XAF libellé
+  ***« Opearational Loss on accrued Interest May 2022 - June 2025 »***.
+
+La banque a donc **elle-même qualifié ce solde de perte opérationnelle**, sur une période de
+trois exercices, et l'a passé en une seule fois **hors période**. Les états arrêtés au
+31/12/2023 (1 159 423 914), au 31/12/2024 (791 101 277), au 30/06/2025 et au 31/12/2025
+(314 918 217) portent tous à l'actif, au minimum, le montant ensuite reconnu perdu.
+
+Cela donne sa contrepartie concrète au 12.6 : **aucune dépréciation n'a jamais été
+constatée**. Plutôt que de déprécier progressivement, la banque a maintenu la créance à sa
+valeur nominale pendant trois ans puis l'a effacée d'un coup.
+
+Le `601200100` est arrivé aussi : **4 écritures**, des « PAIEMENT SYGARO », étrangères aux
+pensions. Cela **confirme le 12.2** — la charge de refinancement BEAC est bien prise sur
+601100100.
+
+## 23.7 État
+
+**62 anomalies — 11 critiques, 23 élevées, 25 moyennes, 3 faibles — sur 12 sections et
+76 contrôles.**
