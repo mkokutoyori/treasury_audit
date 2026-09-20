@@ -6,6 +6,8 @@ zones que l'audit ne peut plus couvrir depuis Flexcube.
 """
 from __future__ import annotations
 
+import pandas as pd
+
 from ..core import Constat, Gravite, Section, Tableau, xaf, pct, nb, fois
 from ..data import CPT_LIAISON, DATE_BASCULE
 
@@ -159,6 +161,11 @@ def _c64_comptes_liaison(ctx) -> Constat:
     serie = gl[gl.AC_NO == principal].sort_values(["TRN_DT", "STMT_DT"]).set_index("TRN_DT_d").SIGNE.cumsum()
     traj = serie.resample("QE").last().ffill()
     gravite = Gravite.CRITIQUE if abs(total_periode) > cfg.seuil_significatif * 10 else Gravite.ELEVEE
+    # Durée écoulée entre l'ouverture des comptes et la clôture, exprimée en mois entiers :
+    # écrire « quinze mois » en dur reviendrait à décrire une extraction et non la période.
+    ouverture = min(l[2] for l in lignes)
+    mois = ((pd.Timestamp(cfg.fin).year - pd.Timestamp(ouverture).year) * 12
+            + pd.Timestamp(cfg.fin).month - pd.Timestamp(ouverture).month)
     return Constat(
         code="6.4",
         titre="Comptes de liaison Calypso non apurés, en dérive continue",
@@ -172,7 +179,8 @@ def _c64_comptes_liaison(ctx) -> Constat:
             "dénouement, et doit revenir à zéro. Un solde qui ne fait que croître établit que le "
             "dénouement ne suit pas l'initiation.\n"
             "Le solde cumulé atteint à la fin de la période d'audit un montant considérable, sans "
-            "qu'aucun apurement ne soit constaté sur quinze mois."
+            f"qu'aucun retour à zéro ne soit constaté depuis l'ouverture de ces comptes, soit "
+            f"{mois} mois."
         ),
         chiffres=[
             ("SOLDE CUMULÉ À LA FIN DE LA PÉRIODE D'AUDIT", xaf(total_periode)),
@@ -247,7 +255,12 @@ def _c65_cancel_rebook(ctx) -> Constat:
             ("Effet net réel sur le résultat", xaf(net)),
             ("Facteur de surévaluation", fois(brut / abs(net)) if abs(net) > 1 else "non calculable"),
         ],
-        tableaux=[Tableau(["Événement", "Nb débits", "Nb crédits", "Total débits", "Total crédits", "Net"], lignes)],
+        tableaux=[Tableau(["Événement", "Nb débits", "Nb crédits", "Total débits",
+                           "Total crédits", "Net"], lignes,
+                          note=("Totaux calculés sur TOUTES les jambes de ces événements, tous "
+                                "comptes confondus : ils s'annulent par construction, ce qui est "
+                                "précisément la raison pour laquelle la mesure de l'écart se fait "
+                                "sur le compte témoin et non sur ces totaux."))],
         recommandation=(
             "Documenter cette convention dans les procédures d'analyse et ne publier aucune "
             "statistique de volume issue de ce flux sans retraitement."
@@ -308,6 +321,11 @@ def _c67_doublons_interface(ctx) -> Constat:
             code="6.7", titre="Idempotence de l'interface Calypso", gravite=Gravite.CONFORME,
             constat="Aucun mouvement Calypso n'apparaît plusieurs fois dans le grand livre.",
         )
+    # Les doublons débordent la période d'audit : on distingue ce qui la concerne de ce qui
+    # relève des événements postérieurs, faute de quoi le chiffre annoncé serait dominé par
+    # des mois hors périmètre.
+    dans_periode = doublons[(doublons.date >= ctx.config.debut) & (doublons.date <= ctx.config.fin)]
+    hors_periode = doublons[doublons.date > ctx.config.fin]
     par_compte = (doublons.groupby(["compte", "libelle"])
                   .agg(mouvements=("montant", "size"), impact=("impact", "sum"))
                   .sort_values("impact", key=abs, ascending=False))
@@ -329,14 +347,23 @@ def _c67_doublons_interface(ctx) -> Constat:
             "parmi eux, ce qui signifie que le nostro et la valeur du portefeuille présentés au "
             "bilan sont affectés. Le phénomène se produit sur toute la période et n'est corrigé "
             "par aucune écriture d'annulation.\n"
+            "PÉRIMÈTRE. Le défaut est apparu pendant la période d'audit et se poursuit au-delà. "
+            "Les deux volets sont chiffrés séparément : le premier affecte les comptes arrêtés au "
+            "30/06/2026, le second relève des événements postérieurs à la clôture et signale que "
+            "l'anomalie n'est toujours pas corrigée.\n"
             "Il constitue par ailleurs une CAUSE RACINE d'autres constats du présent rapport, au "
             "premier rang desquels la dérive des comptes de liaison (contrôle 6.4) et le solde "
             "anormal du compte d'emprunt (contrôle 9.4)."
         ),
         chiffres=[
-            ("Mouvements déversés en double", str(len(doublons))),
-            ("Montant total dupliqué", xaf(float(doublons.montant.sum()))),
-            ("Période", f"{doublons.date.min()} → {doublons.date.max()}"),
+            ("Mouvements déversés en double — PÉRIODE D'AUDIT", str(len(dans_periode))),
+            ("Montant dupliqué sur la période d'audit",
+             xaf(float(dans_periode.montant.sum()))),
+            ("Mouvements déversés en double après la clôture", str(len(hors_periode))),
+            ("Montant dupliqué après la clôture", xaf(float(hors_periode.montant.sum()))),
+            ("Total sur l'extraction", f"{len(doublons)} mouvements, "
+                                       f"{xaf(float(doublons.montant.sum()))}"),
+            ("Période couverte", f"{doublons.date.min()} → {doublons.date.max()}"),
             ("Comptes touchés", str(doublons.compte.nunique())),
             ("Dont comptes à impact significatif", str(len(materiels))),
         ],
@@ -345,14 +372,16 @@ def _c67_doublons_interface(ctx) -> Constat:
                     [[i[0], i[1][:38], int(r.mouvements), float(r.impact)]
                      for i, r in par_compte.iterrows()],
                     max_lignes=18,
-                    note="Impact = montant dont le solde du compte est faussé par les doublons."),
+                    note=("Impact = montant dont le solde du compte est faussé par les doublons, "
+                          "sur la totalité de l'extraction. Pour un arrêté au 30/06/2026, seule "
+                          "la fraction antérieure à cette date est à retenir.")),
             Tableau(["Mois", "Mouvements", "Montant dupliqué XAF"],
                     [[i, int(r.mouvements), float(r.montant)] for i, r in par_mois.iterrows()],
                     max_lignes=18),
             Tableau(["Deal", "Mouvement", "Date", "Compte", "Sens", "Montant XAF"],
                     [[r.deal, r.mouvement, r.date, r.compte, r.sens, float(r.montant)]
                      for _, r in doublons.sort_values("montant", ascending=False).head(12).iterrows()],
-                    note="Les douze doublons les plus importants."),
+                    note="Les douze doublons les plus importants, toutes périodes confondues."),
         ],
         recommandation=(
             "Faire corriger l'interface pour qu'elle rejette tout mouvement déjà déversé, en "

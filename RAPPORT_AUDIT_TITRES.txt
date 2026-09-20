@@ -4,7 +4,7 @@
 
   Périmètre        : Département de la trésorerie — gestion des investissements sur les marchés financiers
   Période d'audit  : 2023-09-27 au 2026-06-30
-  Rapport généré le : 20/09/2026 à 09:26
+  Rapport généré le : 20/09/2026 à 09:33
   Référentiel      : Plan Comptable des Établissements de Crédit (PCEC) — CEMAC / COBAC
 
   Ce rapport est produit automatiquement. Chaque constat indique le test exécuté, sa
@@ -45,8 +45,8 @@ RÉCAPITULATIF DES ANOMALIES PAR GRAVITÉ
 ----------------------------------------------------------------------------------------------------
 
   CRITIQUE   : 7
-  ELEVEE     : 18
-  MOYENNE    : 19
+  ELEVEE     : 17
+  MOYENNE    : 20
   FAIBLE     : 2
   TOTAL      : 46
 
@@ -66,7 +66,6 @@ RÉCAPITULATIF DES ANOMALIES PAR GRAVITÉ
   ELEVEE    [6.3] Perte de l'information comptable structurée dans les écritures
   ELEVEE    [6.6] L'intention économique des opérations n'est tracée que par un commentaire libre
   ELEVEE    [7.1] Pensions de plusieurs semaines comptabilisées dans un compte d'emprunt au jour le jour
-  ELEVEE    [7.2] Charges d'intérêt non rattachées à la période pour les pensions de longue durée
   ELEVEE    [8.1] L'identification des cessions-rétrocessions par le commentaire est incomplète
   ELEVEE    [8.3] Le portefeuille dédié aux cessions-rétrocessions existe mais n'est pas utilisé
   ELEVEE    [8.4] Titres recyclés à répétition avec la même contrepartie : un financement roulé
@@ -88,6 +87,7 @@ RÉCAPITULATIF DES ANOMALIES PAR GRAVITÉ
   MOYENNE   [4.4] Saisies nocturnes sur les comptes de titres
   MOYENNE   [5.2] Écart entre les intérêts courus repris et le solde du compte d'origine
   MOYENNE   [6.5] Contre-passation quotidienne intégrale : les volumes Calypso ne sont pas exploitables bruts
+  MOYENNE   [7.2] Charges d'intérêt non rattachées à la période pour les pensions de longue durée
   MOYENNE   [7.3] Titres restés affectés en garantie au-delà de l'encours emprunté
   MOYENNE   [7.4] Opérations de pension non dénouées à la fin de l'extraction
   MOYENNE   [9.1] Progression du résultat de l'activité de titres
@@ -1228,7 +1228,7 @@ suspens.
   sens à l'initiation de l'opération et dans l'autre à son dénouement, et doit revenir à zéro. Un
   solde qui ne fait que croître établit que le dénouement ne suit pas l'initiation.
   Le solde cumulé atteint à la fin de la période d'audit un montant considérable, sans qu'aucun
-  apurement ne soit constaté sur quinze mois.
+  retour à zéro ne soit constaté depuis l'ouverture de ces comptes, soit 12 mois.
 
     SOLDE CUMULÉ À LA FIN DE LA PÉRIODE D'AUDIT : -133 405 764 689 XAF
     Solde à la fin de l'extraction              : -139 764 171 448 XAF
@@ -1267,15 +1267,21 @@ suspens.
   règlement de la banque centrale et le compte de portefeuille figurent parmi eux, ce qui signifie
   que le nostro et la valeur du portefeuille présentés au bilan sont affectés. Le phénomène se
   produit sur toute la période et n'est corrigé par aucune écriture d'annulation.
+  PÉRIMÈTRE. Le défaut est apparu pendant la période d'audit et se poursuit au-delà. Les deux volets
+  sont chiffrés séparément : le premier affecte les comptes arrêtés au 30/06/2026, le second relève
+  des événements postérieurs à la clôture et signale que l'anomalie n'est toujours pas corrigée.
   Il constitue par ailleurs une CAUSE RACINE d'autres constats du présent rapport, au premier rang
   desquels la dérive des comptes de liaison (contrôle 6.4) et le solde anormal du compte d'emprunt
   (contrôle 9.4).
 
-    Mouvements déversés en double      : 178
-    Montant total dupliqué             : 289 631 995 600 XAF
-    Période                            : 2025-09-29 → 2026-09-15
-    Comptes touchés                    : 35
-    Dont comptes à impact significatif : 22
+    Mouvements déversés en double — PÉRIODE D'AUDIT : 124
+    Montant dupliqué sur la période d'audit         : 76 666 209 826 XAF
+    Mouvements déversés en double après la clôture  : 54
+    Montant dupliqué après la clôture               : 212 965 785 774 XAF
+    Total sur l'extraction                          : 178 mouvements, 289 631 995 600 XAF
+    Période couverte                                : 2025-09-29 → 2026-09-15
+    Comptes touchés                                 : 35
+    Dont comptes à impact significatif              : 22
 
     Compte       Libellé                                 Mouvements  Impact sur le solde XAF
     -----------  --------------------------------------  ----------  -----------------------
@@ -1298,7 +1304,9 @@ suspens.
     476000160    CPTE DE CONT VAL POS CHGE CALYPSO       4           -1 170 369 512         
     475000102    EUR COMPTE POSITION DE CHANGE           8           1 003 729 509          
     ... et 17 autre(s) ligne(s)
-    Impact = montant dont le solde du compte est faussé par les doublons.
+    Impact = montant dont le solde du compte est faussé par les doublons, sur la totalité de
+    l'extraction. Pour un arrêté au 30/06/2026, seule la fraction antérieure à cette date est à
+    retenir.
 
     Mois     Mouvements  Montant dupliqué XAF
     -------  ----------  --------------------
@@ -1330,7 +1338,7 @@ suspens.
     4024895  25229148   2026-06-25  995000100    D     10 000 000 000
     4148007  25497875   2026-07-27  995000100    D     6 000 000 000 
     4148007  25497875   2026-07-27  952100100    C     6 000 000 000 
-    Les douze doublons les plus importants.
+    Les douze doublons les plus importants, toutes périodes confondues.
 
   Recommandation :
     Faire corriger l'interface pour qu'elle rejette tout mouvement déjà déversé, en s'appuyant sur
@@ -1442,6 +1450,9 @@ suspens.
     ---------------  ---------  ----------  -----------------  -----------------  ----
     ACCRUAL          40 108     40 108      1 908 276 309 368  1 908 276 309 368  0,00
     PREM_DISC_YIELD  39 945     39 945      26 128 430 378     26 128 430 378     0,00
+    Totaux calculés sur TOUTES les jambes de ces événements, tous comptes confondus : ils s'annulent
+    par construction, ce qui est précisément la raison pour laquelle la mesure de l'écart se fait
+    sur le compte témoin et non sur ces totaux.
 
   Recommandation :
     Documenter cette convention dans les procédures d'analyse et ne publier aucune statistique de
@@ -1487,38 +1498,64 @@ rattachement des charges d'intérêt, le niveau de collatéralisation et le dén
     3602585  2026-02-27  2026-03-05     6          75 000 000 000  BEAC        
     3658647  2026-03-13  2026-03-19     6          72 000 000 000  BEAC        
 
+    Durée (jours)  Opérations  Montant tiré XAF 
+    -------------  ----------  -----------------
+    0              99          3 783 000 000 000
+    1              11          394 000 000 000  
+    2              3           185 000 000 000  
+    3              4           237 000 000 000  
+    6              9           682 000 000 000  
+    7              1           60 000 000 000   
+    98             1           90 000 000 000   
+    Distribution des durées. La durée nulle — tirage et remboursement comptabilisés le même jour —
+    est le cas dominant et correspond bien à un financement au jour le jour ; ce sont les durées
+    supérieures à quatre jours qui ne relèvent pas du compte utilisé.
+
   Recommandation :
     Obtenir les conventions de pension livrée et leur durée contractuelle. Faire reclasser les
     opérations à terme dans le compte d'emprunt correspondant et corriger l'échéancier de liquidité.
 
 ----------------------------------------------------------------------------------------------------
 [7.2] Charges d'intérêt non rattachées à la période pour les pensions de longue durée
-  Gravité : ELEVEE
+  Gravité : MOYENNE
 
-  Pour les opérations dont la durée dépasse quelques jours, la charge d'intérêt n'est courue qu'une
-  seule fois, le jour du tirage, puis contre-passée le lendemain. Aucun couru n'est ensuite constaté
-  jusqu'au dénouement, où l'intérêt est réglé en une fois.
+  Le compte de charge d'intérêt sur pensions ne porte AUCUNE écriture de couru : il n'enregistre que
+  des règlements. L'intérêt est donc constaté en une seule fois, au dénouement de l'opération,
+  quelle qu'en soit la durée.
   Il en résulte une SOUS-ÉVALUATION DE LA CHARGE D'INTÉRÊT à toute date d'arrêté comprise entre le
   tirage et le dénouement, en contradiction avec le principe de rattachement des charges à
-  l'exercice.
+  l'exercice. L'opération de 98 jours à cheval sur le 31/12/2025 en est l'illustration la plus
+  nette.
+  L'INCIDENCE CHIFFRÉE reste limitée sur la période revue, une seule opération étant à cheval sur
+  une date d'arrêté. Le constat porte donc sur le dispositif plus que sur son effet du moment :
+  aucun mécanisme de couru n'existe pour ces opérations, de sorte qu'une pension de plusieurs mois
+  en cours à une clôture future produirait une sous-évaluation proportionnelle à son encours.
 
-    Opérations de plus de 4 jours            : 11
-    Dont moins de 3 jours de couru constatés : 11
-    Montant tiré concerné                    : 832 000 000 000 XAF
+    Opérations de plus de 4 jours             : 11
+    Dont aucun couru constaté                 : 11
+    Montant tiré concerné                     : 832 000 000 000 XAF
+    Opérations à cheval sur une date d'arrêté : 1
+    CHARGE NON RATTACHÉE À L'ARRÊTÉ           : 8 244 898 XAF
 
     Deal     Tirage      Remboursement  Durée (j)  Jours de couru  Montant         Intérêt réglé
     -------  ----------  -------------  ---------  --------------  --------------  -------------
-    3349072  2025-12-23  2026-03-31     98         0               90 000 000 000  50 500 000   
-    3831830  2026-04-30  2026-05-07     7          0               60 000 000 000  28 933 333,50
-    3270201  2025-11-28  2025-12-04     6          0               65 000 000 000  30 333 333,50
-    3410714  2026-01-09  2026-01-15     6          0               80 000 000 000  38 500 000   
-    3440496  2026-01-16  2026-01-22     6          0               80 000 000 000  38 500 000   
-    3461387  2026-01-23  2026-01-29     6          0               80 000 000 000  38 500 000   
-    3490796  2026-01-30  2026-02-05     6          0               80 000 000 000  38 500 000   
-    3524796  2026-02-06  2026-02-12     6          0               75 000 000 000  36 093 750   
-    3573017  2026-02-20  2026-02-26     6          0               75 000 000 000  36 093 750   
-    3602585  2026-02-27  2026-03-05     6          0               75 000 000 000  35 364 583,50
-    3658647  2026-03-13  2026-03-19     6          0               72 000 000 000  33 600 000   
+    3349072  2025-12-23  2026-03-31     98         0               90 000 000 000  101 000 000  
+    3831830  2026-04-30  2026-05-07     7          0               60 000 000 000  57 866 667   
+    3270201  2025-11-28  2025-12-04     6          0               65 000 000 000  60 666 667   
+    3410714  2026-01-09  2026-01-15     6          0               80 000 000 000  77 000 000   
+    3440496  2026-01-16  2026-01-22     6          0               80 000 000 000  77 000 000   
+    3461387  2026-01-23  2026-01-29     6          0               80 000 000 000  77 000 000   
+    3490796  2026-01-30  2026-02-05     6          0               80 000 000 000  77 000 000   
+    3524796  2026-02-06  2026-02-12     6          0               75 000 000 000  72 187 500   
+    3573017  2026-02-20  2026-02-26     6          0               75 000 000 000  72 187 500   
+    3602585  2026-02-27  2026-03-05     6          0               75 000 000 000  70 729 167   
+    3658647  2026-03-13  2026-03-19     6          0               72 000 000 000  67 200 000   
+
+    Deal     Date d'arrêté  Jours écoulés  Durée totale (j)  Charge à rattacher XAF
+    -------  -------------  -------------  ----------------  ----------------------
+    3349072  2025-12-31     8              98                8 244 897,96          
+    Intérêt qui aurait dû être couru à la date d'arrêté, calculé au prorata des jours écoulés sur
+    l'intérêt total effectivement réglé.
 
   Recommandation :
     Recalculer la charge d'intérêt courue à chaque date d'arrêté traversée par une opération non
@@ -1533,11 +1570,16 @@ rattachement des charges d'intérêt, le niveau de collatéralisation et le dén
   l'opération qu'ils garantissaient.
   Dans ce second cas, des titres seraient indisponibles sans contrepartie, ce qui réduit d'autant la
   réserve de liquidité mobilisable de l'établissement.
+  Les deux soldes sont arrêtés à la date de clôture et corrigés des mouvements déversés en double
+  par l'interface (contrôle 6.7), qui affectent aussi bien le compte d'emprunt que le compte de
+  titres affectés. L'encours ainsi corrigé correspond exactement à l'unique opération restée non
+  dénouée à la clôture, relevée au contrôle 7.4 : les deux contrôles convergent.
 
-    Collatéral net mobilisé : 71 847 170 000 XAF
-    Encours emprunté        : 45 000 000 000 XAF
-    Sur-collatéralisation   : 26 847 170 000 XAF
-    Taux de couverture      : 160 %
+    Date d'arrêté retenue   : 2026-06-30
+    Collatéral net mobilisé : 61 847 170 000 XAF
+    Encours emprunté        : 50 000 000 000 XAF
+    Sur-collatéralisation   : 11 847 170 000 XAF
+    Taux de couverture      : 124 %
 
   Recommandation :
     Rapprocher des états de collatéral de la banque centrale et obtenir l'exigence de marge
