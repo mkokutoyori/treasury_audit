@@ -2397,3 +2397,75 @@ annulent d'elles-mêmes.
 une par couple (compte, deal), avec le portefeuille, le titre, les dates, les événements
 déversés et la cause. La somme de la colonne `solde` par compte reconstitue exactement les
 trois soldes.
+
+---
+
+# Session 24 — Test de l'explication de la direction sur les titres tchadiens et centrafricains
+
+## 24.1 L'explication reçue
+
+> « Ce sont des titres qui ont été achetés pour le compte de nos clients, ainsi ils n'entrent
+> pas vraiment dans la catégorie concernée par les limites. »
+
+Recevable dans son principe : un titre acheté pour être immédiatement replacé auprès d'un
+client ne fait pas porter à la banque le risque de crédit de l'émetteur. **Mais cela se
+teste.**
+
+## 24.2 Comment j'ai testé
+
+Le référentiel `extraction_from_calypso.csv` porte, pour chaque deal, le **portefeuille**,
+la **contrepartie** et le **prix**. Deux signatures s'opposent :
+
+- **placement clientèle** → le titre entre au livre propre, en sort vers un CLIENT
+  (`RETLCUSTCM`), et le client le détient à l'arrivée (jambes clientèle nettes vendeuses) ;
+- **compte propre** → les deux contreparties externes sont des **établissements de crédit**,
+  et c'est la banque qui encaisse ou subit l'écart de prix.
+
+Piège à éviter : `ACCESS CAMEROON` comme contrepartie désigne **la banque elle-même** — ce
+sont ses transferts entre ses propres livres, pas des opérations de marché. Il faut les
+écarter avant de lire les contreparties.
+
+## 24.3 Résultat
+
+| Titre | Nominal | Acheté à | Cédé à | Prix | Verdict |
+|---|---|---|---|---|---|
+| CF2A00000074 | 22 900 000 | BICECCM 92,00 | clientèle 92,00 | 0 marge | **confirmé** |
+| CF2J00000158 | 11 300 000 | BICECCM 91,00 | clientèle 92,00 | +1 pt | **confirmé** |
+| **TD2A00000735** | **3 000 000 000** | **SGCM 99,00** | **UBCM 97,64** | **−1,36 pt** | **INFIRMÉ** |
+
+**L'explication tient pour les deux titres centrafricains** — 34,2 M, achetés à la BICEC et
+replacés le jour même auprès de clients retail. Vraie intermédiation.
+
+**Elle ne tient pas pour le titre tchadien**, qui porte **98,9 % du montant en jeu** :
+
+- achat à **SGCM** le 26/09/2025 à 99,00, dans le livre **`ABCM_FVOCI.Bond`** — le livre propre ;
+- revente à **UBCM** le 30/09/2025 à **97,64** ;
+- **deux établissements de crédit, aucun client** ;
+- les jambes `RETLCUSTCM` existent mais **se soldent à zéro** : le client a acheté puis rendu
+  le titre, il ne le détient pas à l'arrivée ;
+- 4 jours au livre propre, réglés par le nostro BEAC (3 042 994 521 décaissés) ;
+- **perte réalisée de 10 800 000 XAF** au débit de `734400100`.
+
+Une opération d'achat-revente entre deux banques, portée quatre jours au bilan et soldée en
+perte, est exactement ce qu'une politique d'exclusion souveraine a pour objet d'empêcher.
+
+## 24.4 Une correction que je me dois
+
+Le rapport affirmait que ces titres « ont figuré AU BILAN À UNE DATE D'ARRÊTÉ ». C'est
+exact au sens comptable mais **trompeur au sens économique** : les 11 300 000 présents au
+31/12/2025 viennent de `CF2J00000158`, dont la jambe de sortie du livre propre avait été
+**saisie dans Calypso dès octobre 2025 mais déversée dans le core banking seulement le
+01/04/2026** (deal 3098462 annulé, rebooké en 3729018). C'est un effet du déversement
+tardif de la section 6, **pas une exposition supplémentaire**. Le rapport le dit maintenant.
+
+## 24.5 Ce que devient le constat
+
+Gravité maintenue à **ELEVEE**, mais le constat est **recentré** :
+
+- la part confirmée devient une **question de doctrine** — la politique couvre-t-elle
+  l'activité de placement ? — et non un dépassement ;
+- la part infirmée devient un **constat de prise de position non autorisée**, chiffré,
+  daté, avec ses deux contreparties bancaires nommées et sa perte.
+
+**Règle retenue** : *une explication de la direction ne s'accepte ni ne se rejette en bloc.
+On la retient pour ce qu'elle explique, et l'on isole ce qu'elle n'explique pas.*

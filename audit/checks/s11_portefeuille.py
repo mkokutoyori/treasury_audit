@@ -24,8 +24,8 @@ import pandas as pd
 
 from ..core import Constat, Gravite, Section, Tableau, xaf, pct, nb, fois
 from ..data import (BOOK_CLIENTELE, CPT_CLIENTELE, CPT_LIAISON, CPT_MIROIR,
-                    CPT_PORTEFEUILLE_CALYPSO, CPT_PORTEFEUILLE_MM, CPT_REGULARISATION,
-                    DATE_BASCULE, PAYS_CEMAC, PAYS_EXCLUS)
+                    CPT_PORTEFEUILLE_CALYPSO, CPT_PORTEFEUILLE_MM, CPT_PRODUITS,
+                    CPT_REGULARISATION, DATE_BASCULE, PAYS_CEMAC, PAYS_EXCLUS)
 
 SECTION = (11, "Le portefeuille de titres comme un tout")
 
@@ -323,11 +323,102 @@ def _c113_codification(ctx) -> Constat:
 
 # --- 11.4 ---------------------------------------------------------------------------------
 
+def _test_explication_clientele(ctx, titre: str) -> dict:
+    """Le titre a-t-il été acquis pour un client, ou pour le compte propre de la banque ?
+
+    La direction explique les titres de souverains exclus par le placement auprès de la
+    clientèle. L'explication se teste : le référentiel Calypso porte, pour chaque deal, le
+    PORTEFEUILLE, la CONTREPARTIE et le PRIX. Un placement clientèle se reconnaît à ce que la
+    contrepartie sortante est un client et à ce que la position ne reste pas au livre propre.
+    Une opération pour compte propre se reconnaît à ce que les deux contreparties sont des
+    établissements de crédit et à ce que la banque encaisse — ou subit — l'écart de prix.
+    """
+    vide = {"verdict": "non concluant", "achete_a": "", "vendu_a": "", "prix_achat": None,
+            "prix_vente": None, "client_final": False, "resultat": 0.0, "jours": 0,
+            "nominal": 0.0}
+    deals = ctx.deals_calypso
+    if deals.empty or "Product Description" not in deals.columns:
+        return vide
+    m = deals[deals["Product Description"].fillna("").str.contains(titre, regex=False)
+              & (deals.TradeStatus != "CANCELED")].copy()
+    if m.empty:
+        return vide
+    m["q"] = pd.to_numeric(m.Quantity, errors="coerce")
+    m["p"] = pd.to_numeric(m["Trade Price"], errors="coerce")
+    # ACCESS CAMEROON désigne la banque elle-même : ce sont les transferts entre ses propres
+    # livres, non des opérations de marché. On ne retient que les contreparties externes.
+    propre = m[(m.Book == "ABCM_FVOCI.Bond") & (m.CounterParty != "ACCESS CAMEROON")]
+    entrees = propre[propre.q > 0]
+    sorties = propre[propre.q < 0]
+    achete_a = ", ".join(sorted(set(entrees.CounterParty.dropna())))
+    vendu_a = ", ".join(sorted(set(sorties.CounterParty.dropna())))
+    # Le client détient-il le titre à l'arrivée ? Ses jambes doivent se solder à l'ACHAT.
+    clientele = m[(m.Book == "ABCM_FI.Sales") & (m.CounterParty == "RETLCUSTCM")]
+    net_client = float(clientele.q.sum()) if not clientele.empty else 0.0
+    # Prix auquel le client a effectivement acheté : la jambe clientèle vendeuse.
+    vente_client = clientele[clientele.q < 0]
+    prix_client = float(vente_client.p.mean()) if not vente_client.empty else None
+    client_final = net_client < 0  # le client a acheté net : il détient
+    contreparties_bancaires = {cp for cp in set(propre.CounterParty.dropna())
+                               if cp != "RETLCUSTCM"}
+    sortie_bancaire = bool({cp for cp in set(sorties.CounterParty.dropna())} - {"RETLCUSTCM"})
+
+    c = ctx.calypso_enrichi
+    mouv = c[(c.TITRE == titre) & (c.BOOK == "ABCM_FVOCI.Bond")]
+    resultat = float(mouv[mouv.AC_NO.isin(CPT_PRODUITS)].SIGNE.sum())
+    nominal = float(mouv[mouv.AC_NO.isin(CPT_PORTEFEUILLE_CALYPSO)].LCY_AMOUNT.max() or 0)
+    jours = 0
+    if not entrees.empty and not sorties.empty:
+        jours = int((sorties["Trade Date_d"].max() - entrees["Trade Date_d"].min()).days)
+
+    if sortie_bancaire and not client_final:
+        verdict = "COMPTE PROPRE — sortie vers un établissement de crédit, aucun client final"
+    elif client_final and not sortie_bancaire:
+        verdict = "placement clientèle confirmé"
+    elif client_final and sortie_bancaire:
+        verdict = "mixte — une part placée, une part cédée à un confrère"
+    else:
+        verdict = "non concluant"
+    return {"verdict": verdict, "achete_a": achete_a, "vendu_a": vendu_a,
+            "prix_achat": float(entrees.p.mean()) if not entrees.empty else None,
+            "prix_vente": (float(sorties.p.mean()) if not sorties.empty else prix_client),
+            "client_final": client_final, "resultat": resultat, "jours": jours,
+            "nominal": nominal, "contreparties": sorted(contreparties_bancaires)}
+
+
+def _prix(valeur) -> str:
+    """Un prix de marché, en écriture française, sans contaminer la phrase qui l'entoure."""
+    return "" if valeur is None else f"{valeur:.2f}".replace(".", ",")
+
+
+def _ligne_test(titre: str, r: dict) -> str:
+    """Une ligne de synthèse du test, pour un titre."""
+    achat = f" à {_prix(r['prix_achat'])}" if r["prix_achat"] else ""
+    vente = f" à {_prix(r['prix_vente'])}" if r["prix_vente"] else ""
+    sortie = r["vendu_a"] or "la clientèle (RETLCUSTCM), via le livre de placement"
+    return (f"- {titre} — {r['verdict'].upper()}. Acheté à {r['achete_a'] or 'n/d'}{achat}, "
+            f"cédé à {sortie}{vente}, nominal {xaf(r['nominal'])}.\n")
+
+
+def _paragraphe_infirme(titre: str, r: dict) -> str:
+    """Le développement, pour un titre dont l'explication clientèle ne se vérifie pas."""
+    return (f"Sur {titre}, la banque a ACHETÉ à {r['achete_a']} puis REVENDU à "
+            f"{r['vendu_a']} : deux établissements de crédit, aucun client. Les jambes "
+            "clientèle existent bien dans le système, mais elles se soldent à zéro — le client "
+            "a acheté puis rendu le titre, il ne le détient pas à l'arrivée. La position est "
+            f"restée {nb(r['jours'])} jours au livre propre de la banque, et le prix de vente "
+            f"({_prix(r['prix_vente'])}) est INFÉRIEUR au prix d'achat "
+            f"({_prix(r['prix_achat'])}). La banque a donc supporté le risque, et elle a PERDU "
+            f"de l'argent dessus : {xaf(abs(r['resultat']))} comptabilisés en perte.\n")
+
+
 def _c114_exposition(ctx) -> Constat:
     """La politique d'exclusion du Tchad et de la Centrafrique est-elle tenue ?
 
     Le contrôle 2.8 ne l'établit que pour le référentiel Flexcube. Depuis la bascule, ce
     référentiel ne reçoit plus rien : la question doit être reposée sur le flux Calypso.
+    La direction explique ces titres par le placement auprès de la clientèle. Le contrôle
+    teste cette explication titre par titre, au lieu de l'accepter ou de l'écarter en bloc.
     """
     titres = ctx.titres_calypso
     if titres.empty:
@@ -360,49 +451,109 @@ def _c114_exposition(ctx) -> Constat:
     mouvements = c[c.TITRE.isin(interdits.TITRE)]
     acquisitions = float(mouvements[mouvements.AC_NO.isin(CPT_PORTEFEUILLE_CALYPSO)
                                     & (mouvements.DRCR_IND == "D")].LCY_AMOUNT.sum())
+
+    # TEST DE L'EXPLICATION FOURNIE, TITRE PAR TITRE.
+    tests, confirmes, infirmes = [], [], []
+    for _, t in interdits.iterrows():
+        r = _test_explication_clientele(ctx, t.TITRE)
+        tests.append([t.TITRE, PAYS_CEMAC.get(t.pays_code, t.pays_code), r["nominal"],
+                      r["achete_a"] or "n/d",
+                      r["vendu_a"] or "clientèle (RETLCUSTCM)",
+                      _prix(r["prix_achat"]), _prix(r["prix_vente"]),
+                      r["jours"], r["verdict"]])
+        (confirmes if r["verdict"].startswith("placement") else infirmes).append(
+            (t.TITRE, r))
+    montant_infirme = sum(r["nominal"] for _, r in infirmes)
+    montant_confirme = sum(r["nominal"] for _, r in confirmes)
+    perte = sum(r["resultat"] for _, r in infirmes)
+
     # Encours de ces titres à chaque date d'arrêté
     aux_arretes = []
     for a in ctx.arretes:
         v = float(porte[porte.TITRE.isin(interdits.TITRE) & (porte.TRN_DT <= a)].SIGNE.sum())
         aux_arretes.append([a, v])
     detenus_a_un_arrete = [l for l in aux_arretes if abs(l[1]) > 1]
+
+    grave = Gravite.ELEVEE if infirmes else Gravite.MOYENNE
     return Constat(
         code="11.4",
-        titre="Titres de souverains exclus par la politique de risque dans le nouveau dispositif",
-        gravite=Gravite.ELEVEE,
+        titre=("Titres de souverains exclus : l'explication par le placement clientèle ne "
+               "couvre pas la position la plus lourde"),
+        gravite=grave,
+        reference="Politique de risque — exclusion du Tchad et de la République Centrafricaine",
         constat=(
-            "La banque a restreint son univers d'investissement à quatre des six souverains de "
-            "la CEMAC, en écartant délibérément le Tchad et la République Centrafricaine en "
-            "raison de leur profil de risque. Le contrôle 2.8 vérifie le respect de cette "
-            "politique — mais sur le seul référentiel Flexcube, qui ne reçoit plus rien depuis "
-            "la bascule. La question devait donc être reposée sur le flux Calypso.\n"
-            f"ELLE N'EST PAS TENUE. {len(interdits)} titres émis par les souverains exclus ont "
-            f"été traités, pour {xaf(acquisitions)} d'acquisitions cumulées. La conclusion du "
-            "contrôle 2.8 ne vaut donc que pour la période antérieure à la bascule et ne peut "
-            "être étendue à l'ensemble de la période d'audit.\n"
-            + ("Ces titres ont par ailleurs figuré AU BILAN À UNE DATE D'ARRÊTÉ : l'exposition "
-               "n'est pas seulement intrajournalière, elle est arrêtée."
-               if detenus_a_un_arrete else
-               "Ces positions sont toutes soldées aux dates d'arrêté : l'exposition a existé en "
-               "cours de période sans figurer aux états arrêtés, ce qui la rend invisible aux "
-               "états réglementaires tout en étant réelle.")
+            "LE POINT DE DÉPART. La banque a restreint son univers d'investissement à quatre "
+            "des six souverains de la CEMAC, en écartant délibérément le Tchad et la "
+            "République Centrafricaine en raison de leur profil de risque. Le contrôle 2.8 "
+            "vérifie le respect de cette politique — mais sur le seul référentiel Flexcube, "
+            "qui ne reçoit plus rien depuis la bascule. La question devait donc être reposée "
+            f"sur le flux Calypso, et {len(interdits)} titres de ces souverains y apparaissent, "
+            f"pour {xaf(acquisitions)} d'acquisitions cumulées.\n"
+            "\n"
+            "L'EXPLICATION FOURNIE. La direction indique que ces titres ont été acquis POUR LE "
+            "COMPTE DE CLIENTS, et qu'ils n'entrent donc pas dans le champ des limites. "
+            "L'explication est recevable dans son principe : un titre acheté pour être "
+            "immédiatement replacé auprès d'un client ne fait pas porter à la banque le risque "
+            "de crédit de l'émetteur. Encore faut-il qu'elle se vérifie.\n"
+            "\n"
+            "COMMENT ELLE SE TESTE. Le référentiel Calypso porte, pour chaque opération, le "
+            "PORTEFEUILLE, la CONTREPARTIE et le PRIX. Un placement clientèle a une signature "
+            "précise : le titre entre au livre propre, en sort vers un CLIENT, et le client le "
+            "détient à l'arrivée. Une opération pour compte propre en a une autre : les deux "
+            "contreparties sont des ÉTABLISSEMENTS DE CRÉDIT, et c'est la banque qui encaisse "
+            "ou subit l'écart entre le prix d'achat et le prix de vente.\n"
+            "\n"
+            "CE QUE LE TEST DONNE, TITRE PAR TITRE.\n"
+            + "".join(_ligne_test(t, r) for t, r in confirmes + infirmes)
             + "\n"
-            "Une partie de ces opérations relève du placement auprès de la clientèle plutôt que "
-            "de l'investissement pour compte propre. La distinction atténue le risque de crédit "
-            "porté mais ne l'annule pas : le titre transite par le bilan de la banque, et la "
-            "politique de risque ne distingue pas les deux usages."
+            + (f"L'EXPLICATION EST CONFIRMÉE POUR {nb(len(confirmes))} titres sur "
+               f"{nb(len(interdits))}, soit {xaf(montant_confirme)}. Ces opérations sont de "
+               "véritables intermédiations : le titre est acheté à un confrère et replacé le "
+               "jour même auprès d'un client, qui le détient à l'arrivée. Le constat les "
+               "concernant se limite à une question de doctrine — la politique de risque "
+               "couvre-t-elle ou non l'activité de placement ? — et non à un dépassement.\n"
+               if confirmes else "")
+            + "\n"
+            + (f"ELLE NE L'EST PAS POUR {nb(len(infirmes))} titre, QUI PORTE "
+               f"{xaf(montant_infirme)} — soit {pct(montant_infirme / max(montant_infirme + montant_confirme, 1) * 100, 1)} "
+               "du total en jeu. "
+               + "".join(_paragraphe_infirme(t, r) for t, r in infirmes)
+               if infirmes else "")
+            + "\n"
+            "CE QUE CELA CHANGE AU CONSTAT. L'explication de la direction est retenue pour ce "
+            "qu'elle explique, et le constat est réduit d'autant. Elle ne peut pas l'être pour "
+            "l'opération la plus lourde, où la mécanique observée est celle d'une prise de "
+            "position, non d'une intermédiation. Une opération d'achat-revente entre deux "
+            "banques, portée quelques jours au bilan et soldée en perte, est exactement ce "
+            "qu'une politique d'exclusion souveraine a pour objet d'empêcher.\n"
+            "\n"
+            + ("UN POINT DE LECTURE SUR L'ENCOURS ARRÊTÉ. Un résidu figure au bilan au "
+               "31 décembre 2025. Il ne traduit pas une détention réelle à cette date : la "
+               "jambe de sortie du livre propre avait été saisie dans Calypso dès octobre, "
+               "mais elle n'a été déversée dans le core banking que le 1er avril 2026. "
+               "C'est un effet du déversement tardif traité en section 6, non une exposition "
+               "supplémentaire.\n" if detenus_a_un_arrete else "")
         ),
         chiffres=[
             ("Souverains exclus par la politique", ", ".join(
                 PAYS_CEMAC.get(p, p) for p in PAYS_EXCLUS)),
-            ("Titres de ces souverains traités depuis la bascule", str(len(interdits))),
-            ("Deals concernés", str(mouvements.DEAL.nunique())),
+            ("Titres de ces souverains traités depuis la bascule", nb(len(interdits))),
+            ("Deals concernés", nb(mouvements.DEAL.nunique())),
             ("Acquisitions cumulées", xaf(acquisitions)),
-            ("Portefeuilles utilisés", ", ".join(sorted(set(
-                b for x in interdits.books for b in str(x).split(", ") if b)))),
-            ("Arrêtés où ces titres figurent au bilan", str(len(detenus_a_un_arrete))),
+            ("Explication clientèle CONFIRMÉE", f"{nb(len(confirmes))} titres — {xaf(montant_confirme)}"),
+            ("Explication clientèle INFIRMÉE", f"{nb(len(infirmes))} titre — {xaf(montant_infirme)}"),
+            ("Résultat réalisé sur la part infirmée", xaf(perte) + " (perte)" if perte > 0 else xaf(perte)),
+            ("Arrêtés où ces titres figurent au bilan", nb(len(detenus_a_un_arrete))),
         ],
         tableaux=[
+            Tableau(["Titre", "Souverain", "Nominal XAF", "Acheté à", "Vendu à",
+                     "Prix achat", "Prix vente", "Jours au livre propre", "Verdict du test"],
+                    tests, max_lignes=10,
+                    note=("Test de l'explication fournie, titre par titre, à partir du "
+                          "référentiel Calypso : portefeuille, contrepartie et prix. "
+                          "« ACCESS CAMEROON » désigne la banque elle-même — ses transferts "
+                          "entre livres sont écartés, seules les contreparties externes sont "
+                          "retenues.")),
             Tableau(["Souverain", "Code", "Titres", "Deals", "Acquisitions XAF",
                      "Encours à fin d'extraction XAF", "Statut"], lignes,
                     note=("Exposition souveraine du nouveau dispositif, reconstituée depuis le "
@@ -414,10 +565,22 @@ def _c114_exposition(ctx) -> Constat:
             Tableau(["Date d'arrêté", "Encours des souverains exclus XAF"], aux_arretes),
         ],
         recommandation=(
-            "Faire confirmer si la politique d'exclusion couvre les titres acquis pour être "
-            "placés auprès de la clientèle. Obtenir le contrôle de premier niveau qui doit "
-            "bloquer la saisie d'un titre hors univers autorisé dans le système amont, et "
-            "expliquer pourquoi il n'a pas joué."
+            "1. Faire trancher la question de doctrine par le comité des risques : la politique "
+            "d'exclusion souveraine couvre-t-elle l'activité de placement auprès de la "
+            "clientèle ? Si oui, elle est enfreinte dans tous les cas ; si non, la réponse "
+            "fournie vaut pour les opérations d'intermédiation avérées, et pour elles seules.\n"
+            + ("".join(
+                f"2. Faire justifier séparément l'opération sur {t} : l'achat à "
+                f"{r['achete_a']} et la revente à {r['vendu_a']} ne font intervenir aucun "
+                "client. Obtenir la décision d'investissement, son niveau d'approbation, et "
+                f"l'explication de la perte de {xaf(abs(r['resultat']))}.\n"
+                for t, r in infirmes) if infirmes else "")
+            + "3. Obtenir le contrôle de premier niveau qui doit bloquer la saisie d'un titre "
+            "hors univers autorisé dans le système amont, et expliquer pourquoi il n'a pas "
+            "joué — y compris pour les opérations de placement, où le titre transite par le "
+            "bilan.\n"
+            "4. Vérifier que le suivi des limites souveraines est établi sur le flux Calypso "
+            "et non sur le référentiel Flexcube, qui ne reçoit plus rien depuis la bascule."
         ),
     )
 

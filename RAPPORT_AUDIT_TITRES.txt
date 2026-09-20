@@ -4,7 +4,7 @@
 
   Périmètre        : Département de la trésorerie — gestion des investissements sur les marchés financiers
   Période d'audit  : 2023-09-27 au 2026-06-30
-  Rapport généré le : 20/09/2026 à 20:50
+  Rapport généré le : 20/09/2026 à 21:01
   Référentiel      : Plan Comptable des Établissements de Crédit (PCEC) — CEMAC / COBAC
 
   Ce rapport est produit automatiquement. Chaque constat indique le test exécuté, sa
@@ -86,7 +86,7 @@ RÉCAPITULATIF DES ANOMALIES PAR GRAVITÉ
   ELEVEE    [10.2] Deals annulés, en attente ou hypothétiques ayant produit de la comptabilité
   ELEVEE    [10.4] Saisie des deals par des comptes génériques dans le système amont
   ELEVEE    [11.3] Codification des titres : codes fictifs, pays contradictoires et libellés divergents
-  ELEVEE    [11.4] Titres de souverains exclus par la politique de risque dans le nouveau dispositif
+  ELEVEE    [11.4] Titres de souverains exclus : l'explication par le placement clientèle ne couvre pas la position la plus lourde
   ELEVEE    [11.5] Le portefeuille est comptabilisé au pair : la prime et la décote sont portées à part
   ELEVEE    [12.1] Le compte de charge 622000100 sert de compte de régularisation universel du circuit titres
   ELEVEE    [12.2] Les pensions livrées sont comptabilisées en emprunts au jour le jour : aucun des comptes que le PCEC leur réserve n'est servi
@@ -3181,29 +3181,77 @@ codification des titres du nouveau dispositif et mesure l'exposition souveraine 
     date unique et non ambigu — la norme ISO — pour le libellé des titres.
 
 ----------------------------------------------------------------------------------------------------
-[11.4] Titres de souverains exclus par la politique de risque dans le nouveau dispositif
+[11.4] Titres de souverains exclus : l'explication par le placement clientèle ne couvre pas la position la plus lourde
   Gravité : ELEVEE
+  Référence : Politique de risque — exclusion du Tchad et de la République Centrafricaine
 
-  La banque a restreint son univers d'investissement à quatre des six souverains de la CEMAC, en
-  écartant délibérément le Tchad et la République Centrafricaine en raison de leur profil de risque.
-  Le contrôle 2.8 vérifie le respect de cette politique — mais sur le seul référentiel Flexcube, qui
-  ne reçoit plus rien depuis la bascule. La question devait donc être reposée sur le flux Calypso.
-  ELLE N'EST PAS TENUE. 3 titres émis par les souverains exclus ont été traités, pour 9 056 800 000
-  XAF d'acquisitions cumulées. La conclusion du contrôle 2.8 ne vaut donc que pour la période
-  antérieure à la bascule et ne peut être étendue à l'ensemble de la période d'audit.
-  Ces titres ont par ailleurs figuré AU BILAN À UNE DATE D'ARRÊTÉ : l'exposition n'est pas seulement
-  intrajournalière, elle est arrêtée.
-  Une partie de ces opérations relève du placement auprès de la clientèle plutôt que de
-  l'investissement pour compte propre. La distinction atténue le risque de crédit porté mais ne
-  l'annule pas : le titre transite par le bilan de la banque, et la politique de risque ne distingue
-  pas les deux usages.
+  LE POINT DE DÉPART. La banque a restreint son univers d'investissement à quatre des six souverains
+  de la CEMAC, en écartant délibérément le Tchad et la République Centrafricaine en raison de leur
+  profil de risque. Le contrôle 2.8 vérifie le respect de cette politique — mais sur le seul
+  référentiel Flexcube, qui ne reçoit plus rien depuis la bascule. La question devait donc être
+  reposée sur le flux Calypso, et 3 titres de ces souverains y apparaissent, pour 9 056 800 000 XAF
+  d'acquisitions cumulées.
+
+  L'EXPLICATION FOURNIE. La direction indique que ces titres ont été acquis POUR LE COMPTE DE
+  CLIENTS, et qu'ils n'entrent donc pas dans le champ des limites. L'explication est recevable dans
+  son principe : un titre acheté pour être immédiatement replacé auprès d'un client ne fait pas
+  porter à la banque le risque de crédit de l'émetteur. Encore faut-il qu'elle se vérifie.
+
+  COMMENT ELLE SE TESTE. Le référentiel Calypso porte, pour chaque opération, le PORTEFEUILLE, la
+  CONTREPARTIE et le PRIX. Un placement clientèle a une signature précise : le titre entre au livre
+  propre, en sort vers un CLIENT, et le client le détient à l'arrivée. Une opération pour compte
+  propre en a une autre : les deux contreparties sont des ÉTABLISSEMENTS DE CRÉDIT, et c'est la
+  banque qui encaisse ou subit l'écart entre le prix d'achat et le prix de vente.
+
+  CE QUE LE TEST DONNE, TITRE PAR TITRE.
+  - CF2A00000074 — PLACEMENT CLIENTÈLE CONFIRMÉ. Acheté à BICECCM à 92,00, cédé à la clientèle
+    (RETLCUSTCM), via le livre de placement à 92,00, nominal 22 900 000 XAF.
+  - CF2J00000158 — PLACEMENT CLIENTÈLE CONFIRMÉ. Acheté à BICECCM à 91,00, cédé à la clientèle
+    (RETLCUSTCM), via le livre de placement à 92,00, nominal 11 300 000 XAF.
+  - TD2A00000735 — COMPTE PROPRE — SORTIE VERS UN ÉTABLISSEMENT DE CRÉDIT, AUCUN CLIENT FINAL.
+    Acheté à SGCM à 99,00, cédé à UBCM à 97,64, nominal 3 000 000 000 XAF.
+
+  L'EXPLICATION EST CONFIRMÉE POUR 2 titres sur 3, soit 34 200 000 XAF. Ces opérations sont de
+  véritables intermédiations : le titre est acheté à un confrère et replacé le jour même auprès d'un
+  client, qui le détient à l'arrivée. Le constat les concernant se limite à une question de doctrine
+  — la politique de risque couvre-t-elle ou non l'activité de placement ? — et non à un dépassement.
+
+  ELLE NE L'EST PAS POUR 1 titre, QUI PORTE 3 000 000 000 XAF — soit 98,9 % du total en jeu. Sur
+  TD2A00000735, la banque a ACHETÉ à SGCM puis REVENDU à UBCM : deux établissements de crédit, aucun
+  client. Les jambes clientèle existent bien dans le système, mais elles se soldent à zéro — le
+  client a acheté puis rendu le titre, il ne le détient pas à l'arrivée. La position est restée 4
+  jours au livre propre de la banque, et le prix de vente (97,64) est INFÉRIEUR au prix d'achat
+  (99,00). La banque a donc supporté le risque, et elle a PERDU de l'argent dessus : 10 800 000 XAF
+  comptabilisés en perte.
+
+  CE QUE CELA CHANGE AU CONSTAT. L'explication de la direction est retenue pour ce qu'elle explique,
+  et le constat est réduit d'autant. Elle ne peut pas l'être pour l'opération la plus lourde, où la
+  mécanique observée est celle d'une prise de position, non d'une intermédiation. Une opération
+  d'achat-revente entre deux banques, portée quelques jours au bilan et soldée en perte, est
+  exactement ce qu'une politique d'exclusion souveraine a pour objet d'empêcher.
+
+  UN POINT DE LECTURE SUR L'ENCOURS ARRÊTÉ. Un résidu figure au bilan au 31 décembre 2025. Il ne
+  traduit pas une détention réelle à cette date : la jambe de sortie du livre propre avait été
+  saisie dans Calypso dès octobre, mais elle n'a été déversée dans le core banking que le 1er avril
+  2026. C'est un effet du déversement tardif traité en section 6, non une exposition supplémentaire.
 
     Souverains exclus par la politique                 : TCHAD, REPUBLIQUE CENTRAFRICAINE
     Titres de ces souverains traités depuis la bascule : 3
     Deals concernés                                    : 19
     Acquisitions cumulées                              : 9 056 800 000 XAF
-    Portefeuilles utilisés                             : ABCM_FI.Sales, ABCM_FVOCI.Bond
+    Explication clientèle CONFIRMÉE                    : 2 titres — 34 200 000 XAF
+    Explication clientèle INFIRMÉE                     : 1 titre — 3 000 000 000 XAF
+    Résultat réalisé sur la part infirmée              : 10 800 000 XAF (perte)
     Arrêtés où ces titres figurent au bilan            : 1
+
+    Titre         Souverain                  Nominal XAF    Acheté à  Vendu à                 Prix achat  Prix vente  Jours au livre propre  Verdict du test                                                           
+    ------------  -------------------------  -------------  --------  ----------------------  ----------  ----------  ---------------------  --------------------------------------------------------------------------
+    CF2A00000074  REPUBLIQUE CENTRAFRICAINE  22 900 000     BICECCM   clientèle (RETLCUSTCM)  92,00       92,00       0                      placement clientèle confirmé                                              
+    CF2J00000158  REPUBLIQUE CENTRAFRICAINE  11 300 000     BICECCM   clientèle (RETLCUSTCM)  91,00       92,00       0                      placement clientèle confirmé                                              
+    TD2A00000735  TCHAD                      3 000 000 000  SGCM      UBCM                    99,00       97,64       4                      COMPTE PROPRE — sortie vers un établissement de crédit, aucun client final
+    Test de l'explication fournie, titre par titre, à partir du référentiel Calypso : portefeuille,
+    contrepartie et prix. « ACCESS CAMEROON » désigne la banque elle-même — ses transferts entre
+    livres sont écartés, seules les contreparties externes sont retenues.
 
     Souverain                  Code  Titres  Deals  Acquisitions XAF  Encours à fin d'extraction XAF  Statut                
     -------------------------  ----  ------  -----  ----------------  ------------------------------  ----------------------
@@ -3232,9 +3280,18 @@ codification des titres du nouveau dispositif et mesure l'exposition souveraine 
     2026-06-30     0                                
 
   Recommandation :
-    Faire confirmer si la politique d'exclusion couvre les titres acquis pour être placés auprès de
-    la clientèle. Obtenir le contrôle de premier niveau qui doit bloquer la saisie d'un titre hors
-    univers autorisé dans le système amont, et expliquer pourquoi il n'a pas joué.
+    1. Faire trancher la question de doctrine par le comité des risques : la politique d'exclusion
+    souveraine couvre-t-elle l'activité de placement auprès de la clientèle ? Si oui, elle est
+    enfreinte dans tous les cas ; si non, la réponse fournie vaut pour les opérations
+    d'intermédiation avérées, et pour elles seules.
+    2. Faire justifier séparément l'opération sur TD2A00000735 : l'achat à SGCM et la revente à UBCM
+    ne font intervenir aucun client. Obtenir la décision d'investissement, son niveau d'approbation,
+    et l'explication de la perte de 10 800 000 XAF.
+    3. Obtenir le contrôle de premier niveau qui doit bloquer la saisie d'un titre hors univers
+    autorisé dans le système amont, et expliquer pourquoi il n'a pas joué — y compris pour les
+    opérations de placement, où le titre transite par le bilan.
+    4. Vérifier que le suivi des limites souveraines est établi sur le flux Calypso et non sur le
+    référentiel Flexcube, qui ne reçoit plus rien depuis la bascule.
 
 ----------------------------------------------------------------------------------------------------
 [11.5] Le portefeuille est comptabilisé au pair : la prime et la décote sont portées à part
