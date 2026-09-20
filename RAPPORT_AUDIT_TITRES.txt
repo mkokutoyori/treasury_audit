@@ -4,7 +4,7 @@
 
   Périmètre        : Département de la trésorerie — gestion des investissements sur les marchés financiers
   Période d'audit  : 2023-09-27 au 2026-06-30
-  Rapport généré le : 20/09/2026 à 12:18
+  Rapport généré le : 20/09/2026 à 12:40
   Référentiel      : Plan Comptable des Établissements de Crédit (PCEC) — CEMAC / COBAC
 
   Ce rapport est produit automatiquement. Chaque constat indique le test exécuté, sa
@@ -46,8 +46,8 @@ RÉCAPITULATIF DES ANOMALIES PAR GRAVITÉ
 ----------------------------------------------------------------------------------------------------
 
   CRITIQUE   : 9
-  ELEVEE     : 20
-  MOYENNE    : 23
+  ELEVEE     : 19
+  MOYENNE    : 24
   FAIBLE     : 3
   TOTAL      : 55
 
@@ -61,7 +61,6 @@ RÉCAPITULATIF DES ANOMALIES PAR GRAVITÉ
   CRITIQUE  [11.6] Le solde des comptes de liaison mesure exactement les déversements incomplets
   CRITIQUE  [11.8] Anatomie du déversement incomplet le plus lourd — pension 3349072
   ELEVEE    [2.6] Taux contractuels aberrants au regard des opérations comparables
-  ELEVEE    [3.4] L'annulation d'un contrat ne contre-passe pas les intérêts courus déjà enregistrés
   ELEVEE    [3.7] Accumulation des intérêts courus au-delà d'une année de coupons
   ELEVEE    [3.8] Transfert massif d'intérêts courus vers un compte d'attente
   ELEVEE    [5.5] Changement de catégorie comptable opéré à la migration
@@ -85,8 +84,9 @@ RÉCAPITULATIF DES ANOMALIES PAR GRAVITÉ
   MOYENNE   [1.5] Deux conventions de contre-passation opposées entre les deux systèmes
   MOYENNE   [2.1] Références de contrat en doublon dans le référentiel
   MOYENNE   [3.1] Titres dénoués après leur échéance contractuelle
-  MOYENNE   [3.2] Contrats comptabilisés puis annulés dans la même journée
+  MOYENNE   [3.2] Contrats comptabilisés et liquidés le même jour : annulations et cessions tardives
   MOYENNE   [3.3] Contrats liquidés puis réouverts le jour même : les volumes bruts ne sont pas des flux
+  MOYENNE   [3.4] Traitement hétérogène des intérêts courus lors de la cession d'un titre
   MOYENNE   [3.5] Écarts sur le recalcul des intérêts courus, classés par cause
   MOYENNE   [4.1] Contrôle des quatre yeux neutralisé pour les flux automatiques
   MOYENNE   [4.3] Poids des comptes techniques dans la comptabilisation
@@ -451,51 +451,6 @@ des actifs, cédés au nominal.
   8 contrôle(s) exécuté(s) — 7 anomalie(s), 1 sans anomalie.
 
 ----------------------------------------------------------------------------------------------------
-[3.4] L'annulation d'un contrat ne contre-passe pas les intérêts courus déjà enregistrés
-  Gravité : ELEVEE
-
-  Lorsqu'un contrat est annulé le jour de sa comptabilisation, la liquidation solde le principal
-  mais NE CONTRE-PASSE PAS les intérêts courus déjà enregistrés : aucune écriture de sens inverse
-  n'est passée dans le module sur le compte de créances rattachées.
-  Le couru d'un contrat annulé — donc d'une opération qui n'a jamais existé — reste ainsi à l'actif,
-  et le produit correspondant au compte de résultat. Son sort dépend ensuite d'écritures manuelles,
-  dont le contrôle 3.8 montre qu'elles sont de natures diverses et ne constituent pas toutes un
-  apurement.
-  Le montant unitaire est faible, mais le principe ne l'est pas : une opération annulée ne doit
-  laisser aucune trace au compte de résultat.
-
-    Contrats annulés le jour même           : 29
-    Dont portant des intérêts courus        : 21
-    Courus enregistrés sur contrats annulés : 16 406 021 XAF
-    CONTRE-PASSATIONS PAR LA LIQUIDATION    : 0
-
-    Contrat annulé    Date        Écritures de couru  Couru enregistré XAF
-    ----------------  ----------  ------------------  --------------------
-    099OTAP232820001  2023-10-09  1                   7 479 452           
-    099OTAP240650003  2024-03-05  1                   2 213 115           
-    099OTAP241710004  2024-06-19  1                   897 586             
-    099OTAP240640005  2024-03-04  2                   819 672             
-    099OTAP242550002  2024-09-11  1                   525 956             
-    099OTAP240950002  2024-04-04  1                   512 295             
-    099OTAP241710002  2024-06-19  1                   491 803             
-    099OTAP242070003  2024-07-25  2                   450 820             
-    099OTAP242490001  2024-09-05  1                   450 820             
-    099OTAP242490002  2024-09-05  1                   430 328             
-    099OTAP233030010  2023-10-30  2                   376 712             
-    099OTAP233030004  2023-10-30  2                   315 068             
-    099OTAP233630003  2023-12-29  1                   246 575             
-    099OTAP233620005  2023-12-28  2                   236 301             
-    099OTAP241710001  2024-06-19  1                   191 257             
-    099OTAP241710003  2024-06-19  1                   170 765             
-    099OTAP241920003  2024-07-10  2                   157 104             
-    099OTAP241920006  2024-07-10  2                   150 273             
-    ... et 3 autre(s) ligne(s)
-
-  Recommandation :
-    Faire paramétrer la contre-passation automatique des intérêts courus lors de l'annulation d'un
-    contrat, afin que l'opération ne laisse aucun résidu.
-
-----------------------------------------------------------------------------------------------------
 [3.7] Accumulation des intérêts courus au-delà d'une année de coupons
   Gravité : ELEVEE
 
@@ -603,55 +558,81 @@ des actifs, cédés au nominal.
     que la créance n'aurait pas dû être dépréciée.
 
 ----------------------------------------------------------------------------------------------------
-[3.2] Contrats comptabilisés puis annulés dans la même journée
+[3.2] Contrats comptabilisés et liquidés le même jour : annulations et cessions tardives
   Gravité : MOYENNE
 
-  Des contrats sont enregistrés puis intégralement liquidés le jour même. Le contrôle distingue deux
-  situations :
-  - 29 ANNULATIONS PURES : le contrat ne porte plus aucune écriture par la suite. Il s'agit de
-    corrections de saisie ;
-  - 0 contrats connaissant une vie ultérieure, traités au contrôle 3.3.
-  Le procédé appelle deux remarques. D'abord, Flexcube ne dispose apparemment pas de fonction
-  d'annulation tracée : la correction passe par une liquidation forcée, qui est comptablement
-  indistinguable d'un dénouement réel. Ensuite, le volume d'erreurs de saisie ainsi corrigées mesure
-  le taux d'erreur du service et mérite un suivi.
-  Ces écritures gonflent par ailleurs artificiellement les volumes du module.
+  29 contrats sont comptabilisés et liquidés dans la même journée. La lecture immédiate — ce
+  seraient autant d'annulations — est FAUSSE : la date de comptabilisation n'ouvre pas la détention,
+  c'est la date de NÉGOCIATION qui le fait. Le contrôle croise donc les deux.
 
-    Contrats concernés      : 29
-    Dont annulations pures  : 29
-    Dont contrats réouverts : 0
-    Montant cumulé          : 83 662 200 000 XAF
-    Dont auto-validés       : 0
+  CESSIONS APRÈS DÉTENTION RÉELLE — 21 contrats. Le titre a été négocié avant sa comptabilisation,
+  détenu, puis cédé le jour où il est enfin enregistré. La détention effective va jusqu'à 13 jours,
+  pour 47 708 100 000 XAF de nominal. Ce ne sont pas des erreurs de saisie mais des opérations
+  réelles, dont le couru est légitimement dû. Le retard de comptabilisation relève du contrôle 2.4.
 
-    Opérateur     Contrats  Montant XAF   
-    ------------  --------  --------------
-    BINEID00087   16        51 554 100 000
-    NDJOCKOS0067  6         19 954 100 000
-    CHEICHEID059  7         12 154 000 000
+  ANNULATIONS DE SAISIE — 8 contrats. Négociés, comptabilisés et liquidés le même jour, ils ne
+  portent AUCUN intérêt couru et ne laissent aucune trace au résultat. Ils représentent 35 954 100
+  000 XAF de nominal fictif, qui gonfle d'autant les volumes du module sans correspondre à aucun
+  flux.
 
-    Référence         Date        Montant        Écritures ultérieures  Saisie        Validation  
-    ----------------  ----------  -------------  ---------------------  ------------  ------------
-    099OTAP240460003  2024-02-15  9 000 000 000  0                      BINEID00087   MBATOHID0012
-    099OTAP241710004  2024-06-19  5 054 100 000  0                      BINEID00087   MBATOHID0012
-    099OTAP251610002  2025-06-10  5 004 100 000  0                      NDJOCKOS0067  MBATOHID0012
-    099OTAP240230001  2024-01-23  5 000 000 000  0                      BINEID00087   YAMKAMID0043
-    099OTAP240640005  2024-03-04  5 000 000 000  0                      BINEID00087   MBATOHID0012
-    099OTAP250800001  2025-03-21  5 000 000 000  0                      CHEICHEID059  MBATOHID0012
-    099OTAP251610004  2025-06-10  4 950 000 000  0                      NDJOCKOS0067  MBATOHID0012
-    099OTAP242550002  2024-09-11  3 500 000 000  0                      BINEID00087   MBATOHID0012
-    099OTAP232820001  2023-10-09  3 000 000 000  0                      BINEID00087   CELESID0018 
-    099OTAP240650003  2024-03-05  3 000 000 000  0                      BINEID00087   MBATOHID0012
-    099OTAP240950002  2024-04-04  3 000 000 000  0                      BINEID00087   MBATOHID0012
-    099OTAP241060002  2024-04-15  3 000 000 000  0                      BINEID00087   MBATOHID0012
-    099OTAP241080001  2024-04-17  3 000 000 000  0                      BINEID00087   MBATOHID0012
-    099OTAP241710002  2024-06-19  3 000 000 000  0                      BINEID00087   MBATOHID0012
-    099OTAP242070003  2024-07-25  3 000 000 000  0                      NDJOCKOS0067  MBATOHID0012
-    ... et 14 autre(s) ligne(s)
+  CE QUE CELA APPELLE. Flexcube ne dispose pas de fonction d'annulation tracée : la correction passe
+  par une liquidation forcée, comptablement indistinguable d'un dénouement réel. Le volume d'erreurs
+  ainsi corrigées mesure le taux d'erreur de saisie du service et mérite un suivi.
+
+    Contrats comptabilisés et liquidés le même jour : 29
+    Dont CESSIONS après détention réelle            : 21
+    Détention maximale de ces cessions              : 13 jours
+    Dont ANNULATIONS de saisie (détention nulle)    : 8
+    Nominal fictif porté par les annulations        : 35 954 100 000 XAF
+    Couru laissé par les annulations                : 0 XAF
+    Annulations auto-validées                       : 0
+
+    Opérateur     Annulations  Nominal XAF   
+    ------------  -----------  --------------
+    BINEID00087   5            21 000 000 000
+    NDJOCKOS0067  2            9 954 100 000 
+    CHEICHEID059  1            5 000 000 000 
+    Répartition des annulations de saisie par opérateur.
+
+    Référence         Négociation  Comptabilisation  Détention (j)  Nominal XAF    Couru      Nature                   Saisie        Validation  
+    ----------------  -----------  ----------------  -------------  -------------  ---------  -----------------------  ------------  ------------
+    099OTAP232820001  2023-09-26   2023-10-09        13             3 000 000 000  7 479 452  cession après détention  BINEID00087   CELESID0018 
+    099OTAP240640005  2024-02-28   2024-03-04        5              5 000 000 000  819 672    cession après détention  BINEID00087   MBATOHID0012
+    099OTAP240650003  2024-02-29   2024-03-05        5              3 000 000 000  2 213 115  cession après détention  BINEID00087   MBATOHID0012
+    099OTAP233040001  2023-10-26   2023-10-31        5              554 000 000    92 586     cession après détention  CHEICHEID059  CELESID0018 
+    099OTAP233030010  2023-10-26   2023-10-30        4              2 500 000 000  376 712    cession après détention  CHEICHEID059  CELESID0018 
+    099OTAP233030004  2023-10-26   2023-10-30        4              2 000 000 000  315 068    cession après détention  CHEICHEID059  CELESID0018 
+    099OTAP232890001  2023-10-13   2023-10-16        3              100 000 000    47 260     cession après détention  CHEICHEID059  CELESID0018 
+    099OTAP242070003  2024-07-23   2024-07-25        2              3 000 000 000  450 820    cession après détention  NDJOCKOS0067  MBATOHID0012
+    099OTAP233620005  2023-12-26   2023-12-28        2              1 500 000 000  236 301    cession après détention  BINEID00087   MBOGID000083
+    099OTAP241920003  2024-07-08   2024-07-10        2              1 000 000 000  157 104    cession après détention  CHEICHEID059  MBATOHID0012
+    099OTAP241920006  2024-07-08   2024-07-10        2              1 000 000 000  150 273    cession après détention  CHEICHEID059  MBATOHID0012
+    099OTAP242070004  2024-07-23   2024-07-25        2              1 000 000 000  150 273    cession après détention  NDJOCKOS0067  MBATOHID0012
+    099OTAP241710004  2024-06-18   2024-06-19        1              5 054 100 000  897 586    cession après détention  BINEID00087   MBATOHID0012
+    099OTAP242550002  2024-09-10   2024-09-11        1              3 500 000 000  525 956    cession après détention  BINEID00087   MBATOHID0012
+    099OTAP240950002  2024-04-03   2024-04-04        1              3 000 000 000  512 295    cession après détention  BINEID00087   MBATOHID0012
+    099OTAP241710002  2024-06-18   2024-06-19        1              3 000 000 000  491 803    cession après détention  BINEID00087   MBATOHID0012
+    099OTAP242490001  2024-09-04   2024-09-05        1              3 000 000 000  450 820    cession après détention  NDJOCKOS0067  MBATOHID0012
+    099OTAP242490002  2024-09-04   2024-09-05        1              3 000 000 000  430 328    cession après détention  NDJOCKOS0067  MBATOHID0012
+    099OTAP233630003  2023-12-28   2023-12-29        1              1 500 000 000  246 575    cession après détention  BINEID00087   MBOGID000083
+    099OTAP241710001  2024-06-18   2024-06-19        1              1 000 000 000  191 257    cession après détention  BINEID00087   MBATOHID0012
+    099OTAP241710003  2024-06-18   2024-06-19        1              1 000 000 000  170 765    cession après détention  BINEID00087   MBATOHID0012
+    099OTAP240460003  2024-02-15   2024-02-15        0              9 000 000 000  0,00       annulation de saisie     BINEID00087   MBATOHID0012
+    099OTAP251610002  2025-06-10   2025-06-10        0              5 004 100 000  0,00       annulation de saisie     NDJOCKOS0067  MBATOHID0012
+    099OTAP240230001  2024-01-23   2024-01-23        0              5 000 000 000  0,00       annulation de saisie     BINEID00087   YAMKAMID0043
+    099OTAP250800001  2025-03-21   2025-03-21        0              5 000 000 000  0,00       annulation de saisie     CHEICHEID059  MBATOHID0012
+    099OTAP251610004  2025-06-10   2025-06-10        0              4 950 000 000  0,00       annulation de saisie     NDJOCKOS0067  MBATOHID0012
+    099OTAP241060002  2024-04-15   2024-04-15        0              3 000 000 000  0,00       annulation de saisie     BINEID00087   MBATOHID0012
+    099OTAP241080001  2024-04-17   2024-04-17        0              3 000 000 000  0,00       annulation de saisie     BINEID00087   MBATOHID0012
+    099OTAP240460005  2024-02-15   2024-02-15        0              1 000 000 000  0,00       annulation de saisie     BINEID00087   MBATOHID0012
+    La colonne « détention » est comptée de la date de valeur à la liquidation : elle distingue une
+    cession d'une annulation.
 
   Recommandation :
     Demander si Flexcube offre une fonction d'annulation distincte de la liquidation. Mettre en
-    place un suivi du taux d'erreur de saisie du service. Vérifier l'incidence sur les intérêts
-    courus (contrôle 3.4).
+    place un suivi du taux d'erreur de saisie. Ne retenir comme annulations que les contrats à
+    détention nulle : les autres sont des cessions, et les inclure fausserait toute statistique
+    d'erreur.
 
 ----------------------------------------------------------------------------------------------------
 [3.3] Contrats liquidés puis réouverts le jour même : les volumes bruts ne sont pas des flux
@@ -699,6 +680,84 @@ des actifs, cédés au nominal.
   Recommandation :
     Ne retenir aucune statistique de volume issue du module MM sans retraitement. Demander si une
     évolution du paramétrage permettrait le remboursement partiel direct.
+
+----------------------------------------------------------------------------------------------------
+[3.4] Traitement hétérogène des intérêts courus lors de la cession d'un titre
+  Gravité : MOYENNE
+
+  CE QUE LE CONTRÔLE NE DIT PAS. Les annulations de saisie du contrôle 3.2 — les 8 contrats
+  négociés, comptabilisés et liquidés le même jour — ne portent AUCUN intérêt couru : 0 XAF. Elles
+  ne laissent donc aucun résidu à l'actif ni au résultat, et n'appellent aucune contre-passation. Le
+  sujet est ailleurs.
+
+  LA CONTRE-PASSATION EXISTE. Sur les cessions, Flexcube contre-passe le couru par un DÉBIT DE
+  MONTANT NÉGATIF, conformément à sa convention (contrôle 1.5), et non par une écriture de sens
+  inverse. 9 des 21 cessions portent une telle contre-passation, pour 6 869 149 XAF. Un test
+  cherchant un crédit ne les verrait pas.
+
+  LE CONSTAT EST L'HÉTÉROGÉNÉITÉ. Deux traitements coexistent sans règle apparente. Sur 12 cessions,
+  le couru conservé correspond à la durée de détention effective. Sur les 9 autres, il est ramené à
+  UN SEUL JOUR par contre-passation, quelle que soit la détention réelle.
+  Deux contrats de MÊME durée de détention peuvent ainsi recevoir des traitements opposés — le
+  tableau comparatif ci-dessous en donne les cas. Pour une même situation économique, le produit
+  constaté diffère.
+
+  CE QUI EST EN JEU. Lorsqu'un titre d'État est cédé au pair, l'acquéreur bénéficie du coupon couru
+  : le cédant ne l'encaisse pas et doit donc le reprendre. Contre-passer est alors la bonne
+  écriture. Mais si elle est due, elle doit l'être pour TOUTES les cessions et pour la TOTALITÉ du
+  couru — pas pour neuf contrats sur vingt-et-un, et pas en laissant un jour résiduel. À l'inverse,
+  si le couru est récupéré dans le prix, aucune contre-passation ne se justifie. Les deux pratiques
+  ne peuvent pas être correctes en même temps.
+
+    Contrats comptabilisés et liquidés le même jour  : 29
+    Dont annulations de saisie — couru porté         : 0 XAF
+    Dont cessions après détention réelle             : 21
+    Cessions AVEC contre-passation du couru          : 9
+    Montant contre-passé                             : 6 869 149 XAF
+    Cessions SANS contre-passation                   : 12
+    Couru conservé au total                          : 16 406 021 XAF
+    Cessions dont le couru correspond à la détention : 12
+    Cessions dont le couru est ramené à un jour      : 9
+
+    Référence         Contrepartie                Détention (j)  Couru brut  Contre-passé  Couru net  Jours conservés
+    ----------------  --------------------------  -------------  ----------  ------------  ---------  ---------------
+    099OTAP232820001  ETAT DE GUINEE EQUATORIALE  13             7 479 452   0,00          7 479 452  13             
+    099OTAP233040001  ETAT DU CONGO               5              462 932     -370 346      92 586     1              
+    099OTAP240650003  ETAT DU CONGO               5              2 213 115   0,00          2 213 115  5              
+    099OTAP240640005  ETAT DU CAMEROUN            5              4 098 361   -3 278 689    819 672    1              
+    099OTAP233030004  ETAT DU CONGO               4              1 260 274   -945 206      315 068    1              
+    099OTAP233030010  ETAT DU GABON               4              1 506 849   -1 130 137    376 712    1              
+    099OTAP232890001  ETAT DU GABON               3              47 260      0,00          47 260     3              
+    099OTAP233620005  ETAT DU CONGO               2              472 603     -236 302      236 301    1              
+    099OTAP241920003  ETAT DU GABON               2              314 208     -157 104      157 104    1              
+    099OTAP242070004  ETAT DU GABON               2              300 546     -150 273      150 273    1              
+    099OTAP242070003  ETAT DU GABON               2              901 639     -450 819      450 820    1              
+    099OTAP241920006  ETAT DU GABON               2              300 546     -150 273      150 273    1              
+    099OTAP233630003  ETAT DU CONGO               1              246 575     0,00          246 575    1              
+    099OTAP241710003  ETAT DU CAMEROUN            1              170 765     0,00          170 765    1              
+    099OTAP241710002  ETAT DU CAMEROUN            1              491 803     0,00          491 803    1              
+    099OTAP241710001  ETAT DU CAMEROUN            1              191 257     0,00          191 257    1              
+    099OTAP240950002  ETAT DU GABON               1              512 295     0,00          512 295    1              
+    099OTAP241710004  ETAT DU CAMEROUN            1              897 586     0,00          897 586    1              
+    099OTAP242490001  ETAT DU GABON               1              450 820     0,00          450 820    1              
+    099OTAP242490002  ETAT DU GABON               1              430 328     0,00          430 328    1              
+    099OTAP242550002  ETAT DU GABON               1              525 956     0,00          525 956    1              
+    Cessions après détention réelle. La dernière colonne convertit le couru conservé en jours
+    d'intérêt : elle se compare à la détention.
+
+    Détention (j)  Référence         Contrepartie      Nominal        Taux %  Couru brut  Contre-passé  Couru net  Jours conservés
+    -------------  ----------------  ----------------  -------------  ------  ----------  ------------  ---------  ---------------
+    5              099OTAP233040001  ETAT DU CONGO     554 000 000    6,10    462 932     -370 346      92 586     1              
+    5              099OTAP240640005  ETAT DU CAMEROUN  5 000 000 000  6,00    4 098 361   -3 278 689    819 672    1              
+    5              099OTAP240650003  ETAT DU CONGO     3 000 000 000  5,40    2 213 115   0,00          2 213 115  5              
+    Contrats de MÊME durée de détention recevant des traitements opposés : la preuve que la règle
+    n'est pas appliquée uniformément.
+
+  Recommandation :
+    Faire expliciter la règle de traitement du couru à la cession d'un titre, et vérifier qu'elle
+    est appliquée uniformément. Établir, pour les cessions sans contre-passation, que le couru a
+    bien été encaissé dans le prix. Pour celles qui conservent un jour résiduel, expliquer ce qu'il
+    représente.
 
 ----------------------------------------------------------------------------------------------------
 [3.5] Écarts sur le recalcul des intérêts courus, classés par cause
@@ -782,10 +841,17 @@ des actifs, cédés au nominal.
 CONTRÔLES SANS ANOMALIE
 
   [3.6] Apurement des créances rattachées par encaissement des coupons
-      Le compte est intégralement apuré : 32 136 débits pour 801 crédits, solde net nul. Les coupons
-      sont encaissés en trésorerie, l'apurement étant passé par écriture manuelle en module DE et
-      non par l'événement automatique du module MM. Le contrôle des quatre yeux est respecté (0
-      auto-validation, 0 sans validateur).
+      Le compte est intégralement apuré, solde net nul. Il se lit en TROIS populations et non deux :
+      31 892 écritures de couru, 244 CONTRE-PASSATIONS — des débits de montant négatif, selon la
+      convention Flexcube du contrôle 1.5 — pour 1 036 405 122 XAF, et 801 encaissements de coupon.
+      Les coupons sont encaissés en trésorerie, l'apurement étant passé par écriture manuelle en
+      module DE et non par l'événement automatique du module MM. Le contrôle des quatre yeux est
+      respecté (0 auto-validation, 0 sans validateur).
+
+        Écritures de couru                  : 31 892
+        Contre-passations (débits négatifs) : 244 — 1 036 405 122 XAF
+        Encaissements de coupon             : 801
+        Solde net                           : 0 XAF
 
         Module d'apurement  Écritures  Montant XAF   
         ------------------  ---------  --------------

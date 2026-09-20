@@ -1628,3 +1628,94 @@ ni un effet de paramétrage ni une particularité du produit.
 **Règle retenue** : *une durée ne se lit jamais sur les dates de comptabilisation.* Les 98 jours
 du rapport précédent étaient un délai de saisie pris pour un terme. Chercher la donnée
 contractuelle — ici, cachée dans le libellé — avant de conclure sur une durée.
+
+---
+
+# SESSION 17 — Revue manuelle des 29 contrats « annulés » : les deux constats étaient faux
+
+Demande : revoir manuellement chaque contrat qualifié de problématique, en tenant compte de la
+**date de négociation** — un contrat booké et liquidé le même jour n'a pas forcément été acheté
+ce jour-là — et regarder de près les transactions, parce que **pour certains contrats les
+intérêts ont bien été contre-passés**.
+
+Les deux remarques étaient fondées. Les contrôles 3.2 et 3.4 sont entièrement réécrits.
+
+## 17.1 ⚠ La date de négociation change la nature de 21 contrats sur 29
+
+Le test retenait `date de booking = date de liquidation` et concluait « annulation ». Or la
+détention court depuis la **date de valeur**, elle-même calée sur la négociation.
+
+| | Contrats | Nominal | Nature réelle |
+|---|---|---|---|
+| Négocié = booké = liquidé | **8** | 35 954 100 000 | vraies annulations de saisie |
+| Négocié AVANT le booking | **21** | 47 708 100 000 | **cessions après détention de 1 à 13 jours** |
+
+Exemple : `099OTAP232820001`, négocié le **26/09/2023**, booké et liquidé le **09/10/2023**.
+Détention réelle **13 jours**. Couru comptabilisé 7 479 452 XAF =
+3 000 000 000 × 7 % × 13/365 = **7 479 452 XAF exactement**. Ce couru que je qualifiais
+d'anomalie est parfaitement justifié.
+
+Ces 21 contrats ne sont pas des erreurs de saisie mais des opérations réelles comptabilisées en
+retard — ce que le contrôle 2.4 relevait déjà séparément, sans que je fasse le lien.
+
+## 17.2 ⚠ Les contre-passations existaient — en débits négatifs
+
+3.4 annonçait « CONTRE-PASSATIONS PAR LA LIQUIDATION : 0 ». Le test cherchait des **crédits** :
+
+```python
+contre_passe = lignes[(lignes.MODULE == "MM") & (lignes.DRCR_IND == "C")]
+```
+
+Or Flexcube contre-passe par un **débit de montant NÉGATIF** — ce que documente mon propre
+contrôle 1.5. Exemple `099OTAP240640005` :
+
+| Date | Module | Sens | Montant |
+|---|---|---|---|
+| 2024-03-04 | MM | D | **+4 098 361** |
+| 2024-03-04 | MM | D | **−3 278 689** |
+
+**9 des 21 cessions portent une contre-passation, pour 1 036 405 122 XAF sur l'ensemble du
+compte.** J'avais écrit le contrôle 1.5 puis violé sa conclusion trois contrôles plus loin.
+
+## 17.3 Le vrai constat : un traitement hétérogène
+
+Une fois les deux corrections faites, il reste une anomalie — plus petite mais réelle.
+
+| Détention | Contrats | Traitement du couru |
+|---|---|---|
+| 13, 5, 3 jours | 3 | couru intégral conservé |
+| 1 jour | 9 | 1 jour conservé (cohérent) |
+| 2 à 5 jours | 9 | **ramené à 1 jour** par contre-passation |
+
+La preuve par la paire, deux contrats bookés à un jour d'intervalle :
+
+| Contrat | Contrepartie | Détention | Couru brut | Contre-passé | Net |
+|---|---|---|---|---|---|
+| `099OTAP240650003` | CONGO | **5 j** | 2 213 115 | **0** | 2 213 115 (5 j) |
+| `099OTAP240640005` | CAMEROUN | **5 j** | 4 098 361 | **−3 278 689** | 819 672 (**1 j**) |
+
+Même durée de détention, traitements opposés. Comme le titre d'État est cédé au pair et que
+l'acquéreur garde le coupon couru, la contre-passation est la bonne écriture — mais alors elle
+est due pour **toutes** les cessions et pour la **totalité** du couru, pas pour 9 sur 21 en
+laissant un jour résiduel. Les deux pratiques ne peuvent pas être correctes ensemble.
+
+## 17.4 Le même angle mort corrigé en 3.6
+
+Le contrôle annonçait « 32 136 débits pour 801 crédits ». Les 32 136 mélangeaient 31 892 courus
+et **244 contre-passations** de 1 036 405 122 XAF. Le compte se lit désormais en trois
+populations.
+
+Balayage des autres contrôles : 3.5 classe déjà les négatifs, et les sections Calypso ne sont pas
+concernées — le contrôle 1.5 a établi que ce flux ne porte aucun montant négatif.
+
+## 17.5 État
+
+**55 anomalies** — 9 critiques, 19 élevées, 24 moyennes, 3 faibles — sur 11 sections et
+69 contrôles. 3.4 passe de ELEVEE à MOYENNE : le constat est réel mais dix fois plus petit que
+ce que j'annonçais.
+
+**Règle retenue** : *avant de qualifier une opération d'anormale, reconstituer sa chronologie
+réelle — négociation, valeur, comptabilisation, dénouement — et lire les écritures dans la
+convention du système qui les a produites.* Les deux erreurs viennent d'avoir pris une date de
+saisie pour une date d'opération, et d'avoir cherché une contre-passation dans la convention
+d'un autre système.

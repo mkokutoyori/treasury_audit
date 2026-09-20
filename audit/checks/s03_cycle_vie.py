@@ -125,66 +125,131 @@ def _c31_denouements(ctx, liq) -> Constat:
     )
 
 
-def _c32_annulations(ctx) -> Constat:
-    """Contrats comptabilisés puis annulés le jour même, sans vie ultérieure.
+def _classer_meme_jour(ctx) -> pd.DataFrame:
+    """Contrats comptabilisés et liquidés le même jour, replacés dans leur contexte.
 
-    Distinction demandée : un contrat booké et liquidé le même jour SANS écriture
-    postérieure est une ANNULATION PURE — une correction de saisie. S'il porte des
-    écritures ensuite, il s'agit d'une réouverture (contrôle 3.3).
+    Un contrat booké et liquidé le même jour n'est PAS nécessairement une annulation : le
+    titre a pu être négocié plusieurs jours plus tôt, comptabilisé tardivement, puis cédé le
+    jour de sa comptabilisation. Seule la DATE DE NÉGOCIATION permet de trancher — c'est elle
+    qui ouvre la détention, non la date de comptabilisation.
+
+    Le couru est lu sur l'historique complet du compte de créances rattachées, en tenant
+    compte de la convention Flexcube : une contre-passation est un débit de montant NÉGATIF
+    et non un crédit (voir contrôle 1.5).
     """
     mm = ctx.grand_livre[ctx.grand_livre.MODULE == "MM"]
     achat = mm[mm.AMOUNT_TAG == "PRINCIPAL"].groupby("TRN_REF_NO").agg(
         date=("TRN_DT", "min"), montant=("LCY_AMOUNT", "max"),
         saisie=("USER_ID", "first"), validation=("AUTH_ID", "first"))
-    liq = mm[mm.AMOUNT_TAG == "PRINCIPAL_LIQD"].groupby("TRN_REF_NO").agg(date_liq=("TRN_DT", "min"))
+    liq = mm[mm.AMOUNT_TAG == "PRINCIPAL_LIQD"].groupby("TRN_REF_NO").agg(
+        date_liq=("TRN_DT", "min"))
     j = achat.join(liq, how="inner")
     meme_jour = j[(j.date == j.date_liq)
                   & (j.date >= ctx.config.debut) & (j.date <= ctx.config.fin)]
     if meme_jour.empty:
+        return pd.DataFrame()
+    ref = ctx.contrats_uniques.set_index("CONTRACT_REF_NO")
+    d = meme_jour.join(ref[["TRADE_DATE_d", "VALUE_DATE_d", "AMOUNT", "MAIN_COMP_RATE",
+                            "FULL_NAME"]])
+    d["detention"] = (pd.to_datetime(d.date_liq) - d.VALUE_DATE_d).dt.days
+    d["retard_saisie"] = (pd.to_datetime(d.date) - d.TRADE_DATE_d).dt.days
+    courus = ctx.courus if not ctx.courus.empty else mm[mm.AC_NO == CPT_COURUS_MM]
+    brut, contre, posterieures = [], [], []
+    for contrat in d.index:
+        lignes = courus[courus.TRN_REF_NO == contrat]
+        brut.append(float(lignes[lignes.LCY_AMOUNT > 0].LCY_AMOUNT.sum()))
+        contre.append(float(lignes[lignes.LCY_AMOUNT < 0].LCY_AMOUNT.sum()))
+        posterieures.append(len(mm[(mm.TRN_REF_NO == contrat)
+                                   & (mm.TRN_DT > d.loc[contrat, "date"])]))
+    d["couru_brut"] = brut
+    d["contre_passe"] = contre
+    d["couru_net"] = d.couru_brut + d.contre_passe
+    d["ecritures_posterieures"] = posterieures
+    # Jours d'intérêt que représente le couru conservé, dans la convention du contrat.
+    base = d.VALUE_DATE_d.dt.year.map(lambda a: 366 if a % 4 == 0 else 365)
+    interet_journalier = d.AMOUNT * d.MAIN_COMP_RATE / 100 / base
+    d["jours_conserves"] = (d.couru_net / interet_journalier).round(0)
+    d["nature"] = [
+        "annulation de saisie" if r.detention == 0 else "cession après détention"
+        for _, r in d.iterrows()]
+    return d
+
+
+def _c32_annulations(ctx) -> Constat:
+    """Un contrat booké et liquidé le même jour est-il une annulation ?
+
+    Non, pas nécessairement : c'est la DATE DE NÉGOCIATION qui ouvre la détention. Un titre
+    négocié plusieurs jours plus tôt, comptabilisé tardivement puis cédé le jour de sa
+    comptabilisation est une CESSION, pas une annulation. La distinction commande tout le
+    contrôle 3.4.
+    """
+    d = _classer_meme_jour(ctx)
+    if d.empty:
         return Constat(code="3.2", titre="Contrats annulés le jour de leur comptabilisation",
                        gravite=Gravite.CONFORME,
                        constat="Aucun contrat n'est comptabilisé puis annulé dans la même journée.")
-    lignes, pures, reouverts = [], [], []
-    for ref, r in meme_jour.iterrows():
-        posterieures = len(mm[(mm.TRN_REF_NO == ref) & (mm.TRN_DT > r.date)])
-        (pures if posterieures == 0 else reouverts).append(ref)
-        lignes.append([ref, r.date, float(r.montant), posterieures, r.saisie, r.validation])
-    par_user = meme_jour.groupby("saisie").agg(n=("montant", "size"), montant=("montant", "sum"))
-    auto = int((meme_jour.saisie == meme_jour.validation).sum())
+    annulations = d[d.nature == "annulation de saisie"]
+    cessions = d[d.nature == "cession après détention"]
+    auto = int((annulations.saisie == annulations.validation).sum())
+    par_user = annulations.groupby("saisie").agg(n=("montant", "size"), montant=("montant", "sum"))
     return Constat(
         code="3.2",
-        titre="Contrats comptabilisés puis annulés dans la même journée",
-        gravite=Gravite.MOYENNE,
+        titre="Contrats comptabilisés et liquidés le même jour : annulations et cessions tardives",
+        gravite=Gravite.MOYENNE if len(annulations) else Gravite.CONFORME,
         constat=(
-            "Des contrats sont enregistrés puis intégralement liquidés le jour même. Le contrôle "
-            "distingue deux situations :\n"
-            f"- {len(pures)} ANNULATIONS PURES : le contrat ne porte plus aucune écriture par la "
-            "suite. Il s'agit de corrections de saisie ;\n"
-            f"- {len(reouverts)} contrats connaissant une vie ultérieure, traités au contrôle 3.3.\n"
-            "Le procédé appelle deux remarques. D'abord, Flexcube ne dispose apparemment pas de "
-            "fonction d'annulation tracée : la correction passe par une liquidation forcée, qui "
-            "est comptablement indistinguable d'un dénouement réel. Ensuite, le volume d'erreurs "
-            "de saisie ainsi corrigées mesure le taux d'erreur du service et mérite un suivi.\n"
-            "Ces écritures gonflent par ailleurs artificiellement les volumes du module."
+            f"{len(d)} contrats sont comptabilisés et liquidés dans la même journée. La lecture "
+            "immédiate — ce seraient autant d'annulations — est FAUSSE : la date de "
+            "comptabilisation n'ouvre pas la détention, c'est la date de NÉGOCIATION qui le "
+            "fait. Le contrôle croise donc les deux.\n"
+            "\n"
+            f"CESSIONS APRÈS DÉTENTION RÉELLE — {len(cessions)} contrats. Le titre a été négocié "
+            "avant sa comptabilisation, détenu, puis cédé le jour où il est enfin enregistré. La "
+            f"détention effective va jusqu'à {int(cessions.detention.max())} jours, pour "
+            f"{xaf(float(cessions.AMOUNT.sum()))} de nominal. Ce ne sont pas des erreurs de "
+            "saisie mais des opérations réelles, dont le couru est légitimement dû. Le retard de "
+            "comptabilisation relève du contrôle 2.4.\n"
+            "\n"
+            f"ANNULATIONS DE SAISIE — {len(annulations)} contrats. Négociés, comptabilisés et "
+            "liquidés le même jour, ils ne portent AUCUN intérêt couru et ne laissent aucune "
+            f"trace au résultat. Ils représentent {xaf(float(annulations.AMOUNT.sum()))} de "
+            "nominal fictif, qui gonfle d'autant les volumes du module sans correspondre à "
+            "aucun flux.\n"
+            "\n"
+            "CE QUE CELA APPELLE. Flexcube ne dispose pas de fonction d'annulation tracée : la "
+            "correction passe par une liquidation forcée, comptablement indistinguable d'un "
+            "dénouement réel. Le volume d'erreurs ainsi corrigées mesure le taux d'erreur de "
+            "saisie du service et mérite un suivi."
         ),
         chiffres=[
-            ("Contrats concernés", str(len(meme_jour))),
-            ("Dont annulations pures", str(len(pures))),
-            ("Dont contrats réouverts", str(len(reouverts))),
-            ("Montant cumulé", xaf(float(meme_jour.montant.sum()))),
-            ("Dont auto-validés", str(auto)),
+            ("Contrats comptabilisés et liquidés le même jour", str(len(d))),
+            ("Dont CESSIONS après détention réelle", str(len(cessions))),
+            ("Détention maximale de ces cessions",
+             f"{int(cessions.detention.max())} jours" if len(cessions) else "—"),
+            ("Dont ANNULATIONS de saisie (détention nulle)", str(len(annulations))),
+            ("Nominal fictif porté par les annulations", xaf(float(annulations.AMOUNT.sum()))),
+            ("Couru laissé par les annulations", xaf(float(annulations.couru_brut.sum()))),
+            ("Annulations auto-validées", str(auto)),
         ],
         tableaux=[
-            Tableau(["Opérateur", "Contrats", "Montant XAF"],
+            Tableau(["Opérateur", "Annulations", "Nominal XAF"],
                     [[i, int(r.n), float(r.montant)]
-                     for i, r in par_user.sort_values("montant", ascending=False).iterrows()]),
-            Tableau(["Référence", "Date", "Montant", "Écritures ultérieures", "Saisie", "Validation"],
-                    sorted(lignes, key=lambda l: -l[2]), max_lignes=15),
+                     for i, r in par_user.sort_values("montant", ascending=False).iterrows()],
+                    note="Répartition des annulations de saisie par opérateur."),
+            Tableau(["Référence", "Négociation", "Comptabilisation", "Détention (j)",
+                     "Nominal XAF", "Couru", "Nature", "Saisie", "Validation"],
+                    [[i, str(r.TRADE_DATE_d.date()), r.date, int(r.detention),
+                      float(r.AMOUNT), float(r.couru_net), r.nature, r.saisie, r.validation]
+                     for i, r in d.sort_values(["detention", "AMOUNT"],
+                                               ascending=[False, False]).iterrows()],
+                    max_lignes=29,
+                    note=("La colonne « détention » est comptée de la date de valeur à la "
+                          "liquidation : elle distingue une cession d'une annulation.")),
         ],
         recommandation=(
             "Demander si Flexcube offre une fonction d'annulation distincte de la liquidation. "
-            "Mettre en place un suivi du taux d'erreur de saisie du service. Vérifier l'incidence "
-            "sur les intérêts courus (contrôle 3.4)."
+            "Mettre en place un suivi du taux d'erreur de saisie. Ne retenir comme annulations "
+            "que les contrats à détention nulle : les autres sont des cessions, et les inclure "
+            "fausserait toute statistique d'erreur."
         ),
     )
 
@@ -278,64 +343,109 @@ def _c33_reouvertures(ctx) -> Constat:
 
 
 def _c34_courus_annulations(ctx) -> Constat:
-    """L'annulation d'un contrat contre-passe-t-elle les intérêts courus déjà enregistrés ?
+    """Le couru d'un titre cédé est-il traité de façon homogène d'un contrat à l'autre ?
 
-    Le test se limite au fait vérifiable : la liquidation d'annulation passe-t-elle une
-    écriture de sens inverse sur le compte de créances rattachées ? Le devenir ultérieur de
-    ces courus relève d'écritures manuelles de natures diverses, traitées au contrôle 3.8 :
-    les rattacher ici à un « apurement » conduirait à une interprétation erronée.
+    Trois vérifications préalables, dont l'absence faussait le constat précédent :
+      - une contre-passation Flexcube est un débit NÉGATIF, non un crédit (contrôle 1.5) ;
+      - un contrat booké et liquidé le même jour peut avoir été détenu plusieurs jours, la
+        détention courant depuis la NÉGOCIATION (contrôle 3.2) ;
+      - le couru dû se mesure donc sur la détention réelle, et non sur zéro.
     """
-    if ctx.courus.empty:
-        return Constat(code="3.4", titre="Intérêts courus des contrats annulés", gravite=Gravite.FAIBLE,
-                       constat="Historique du compte de créances rattachées indisponible.")
-    mm = ctx.grand_livre[ctx.grand_livre.MODULE == "MM"]
-    achat = mm[mm.AMOUNT_TAG == "PRINCIPAL"].groupby("TRN_REF_NO").TRN_DT.min()
-    liq = mm[mm.AMOUNT_TAG == "PRINCIPAL_LIQD"].groupby("TRN_REF_NO").TRN_DT.min()
-    j = pd.concat([achat.rename("ach"), liq.rename("liq")], axis=1).dropna()
-    # Même périmètre que le contrôle 3.2 : les annulations antérieures à la période d'audit
-    # relèvent d'exercices déjà revus.
-    annules = set(j[(j.ach == j.liq)
-                    & (j.ach >= ctx.config.debut) & (j.ach <= ctx.config.fin)].index)
-    if not annules:
-        return Constat(code="3.4", titre="Intérêts courus des contrats annulés", gravite=Gravite.CONFORME,
-                       constat="Aucun contrat annulé le jour de sa comptabilisation.")
-    lignes_annules = ctx.courus[ctx.courus.TRN_REF_NO.isin(annules)]
-    debits = lignes_annules[lignes_annules.DRCR_IND == "D"]
-    # Une contre-passation par la liquidation se traduirait par un crédit dans le module MM
-    contre_passe = lignes_annules[(lignes_annules.MODULE == "MM") & (lignes_annules.DRCR_IND == "C")]
-    par_contrat = debits.groupby("TRN_REF_NO").agg(
-        couru=("LCY_AMOUNT", "sum"), lignes=("LCY_AMOUNT", "size"), date=("TRN_DT", "min"))
+    d = _classer_meme_jour(ctx)
+    if d.empty:
+        return Constat(code="3.4", titre="Intérêts courus des contrats annulés",
+                       gravite=Gravite.CONFORME,
+                       constat="Aucun contrat comptabilisé et liquidé le même jour.")
+    annulations = d[d.nature == "annulation de saisie"]
+    cessions = d[d.nature == "cession après détention"].copy()
+    avec_cp = cessions[cessions.contre_passe < 0]
+    sans_cp = cessions[cessions.contre_passe == 0]
+    # Le couru conservé correspond-il à la détention, ou est-il ramené en deçà ?
+    conformes = cessions[cessions.jours_conserves >= cessions.detention]
+    reduits = cessions[cessions.jours_conserves < cessions.detention]
+    # Deux contrats de même détention traités différemment : la preuve de l'hétérogénéité
+    comparables = []
+    for duree in sorted(set(cessions.detention)):
+        groupe = cessions[cessions.detention == duree]
+        if groupe.jours_conserves.nunique() > 1:
+            for i, r in groupe.iterrows():
+                comparables.append([int(duree), i, r.FULL_NAME, float(r.AMOUNT),
+                                    float(r.MAIN_COMP_RATE), float(r.couru_brut),
+                                    float(r.contre_passe), float(r.couru_net),
+                                    int(r.jours_conserves)])
+    if reduits.empty and annulations.couru_brut.sum() == 0:
+        return Constat(
+            code="3.4",
+            titre="Traitement des intérêts courus à la cession",
+            gravite=Gravite.CONFORME,
+            constat=("Les annulations de saisie ne portent aucun couru, et le couru conservé "
+                     "sur les cessions correspond à la détention effective."),
+        )
     return Constat(
         code="3.4",
-        titre="L'annulation d'un contrat ne contre-passe pas les intérêts courus déjà enregistrés",
-        gravite=Gravite.ELEVEE,
+        titre="Traitement hétérogène des intérêts courus lors de la cession d'un titre",
+        gravite=Gravite.MOYENNE,
         constat=(
-            "Lorsqu'un contrat est annulé le jour de sa comptabilisation, la liquidation solde le "
-            "principal mais NE CONTRE-PASSE PAS les intérêts courus déjà enregistrés : aucune "
-            "écriture de sens inverse n'est passée dans le module sur le compte de créances "
-            "rattachées.\n"
-            "Le couru d'un contrat annulé — donc d'une opération qui n'a jamais existé — reste "
-            "ainsi à l'actif, et le produit correspondant au compte de résultat. Son sort dépend "
-            "ensuite d'écritures manuelles, dont le contrôle 3.8 montre qu'elles sont de natures "
-            "diverses et ne constituent pas toutes un apurement.\n"
-            "Le montant unitaire est faible, mais le principe ne l'est pas : une opération annulée "
-            "ne doit laisser aucune trace au compte de résultat."
+            "CE QUE LE CONTRÔLE NE DIT PAS. Les annulations de saisie du contrôle 3.2 — les "
+            f"{len(annulations)} contrats négociés, comptabilisés et liquidés le même jour — ne "
+            f"portent AUCUN intérêt couru : {xaf(float(annulations.couru_brut.sum()))}. Elles ne "
+            "laissent donc aucun résidu à l'actif ni au résultat, et n'appellent aucune "
+            "contre-passation. Le sujet est ailleurs.\n"
+            "\n"
+            "LA CONTRE-PASSATION EXISTE. Sur les cessions, Flexcube contre-passe le couru par un "
+            "DÉBIT DE MONTANT NÉGATIF, conformément à sa convention (contrôle 1.5), et non par "
+            f"une écriture de sens inverse. {len(avec_cp)} des {len(cessions)} cessions portent "
+            f"une telle contre-passation, pour {xaf(abs(float(avec_cp.contre_passe.sum())))}. "
+            "Un test cherchant un crédit ne les verrait pas.\n"
+            "\n"
+            "LE CONSTAT EST L'HÉTÉROGÉNÉITÉ. Deux traitements coexistent sans règle apparente. "
+            f"Sur {len(conformes)} cessions, le couru conservé correspond à la durée de "
+            f"détention effective. Sur les {len(reduits)} autres, il est ramené à UN SEUL JOUR "
+            "par contre-passation, quelle que soit la détention réelle.\n"
+            + ("Deux contrats de MÊME durée de détention peuvent ainsi recevoir des traitements "
+               "opposés — le tableau comparatif ci-dessous en donne les cas. Pour une même "
+               "situation économique, le produit constaté diffère.\n"
+               if comparables else "")
+            + "\n"
+            "CE QUI EST EN JEU. Lorsqu'un titre d'État est cédé au pair, l'acquéreur bénéficie "
+            "du coupon couru : le cédant ne l'encaisse pas et doit donc le reprendre. Contre-"
+            "passer est alors la bonne écriture. Mais si elle est due, elle doit l'être pour "
+            "TOUTES les cessions et pour la TOTALITÉ du couru — pas pour neuf contrats sur "
+            "vingt-et-un, et pas en laissant un jour résiduel. À l'inverse, si le couru est "
+            "récupéré dans le prix, aucune contre-passation ne se justifie. Les deux pratiques "
+            "ne peuvent pas être correctes en même temps."
         ),
         chiffres=[
-            ("Contrats annulés le jour même", str(len(annules))),
-            ("Dont portant des intérêts courus", str(len(par_contrat))),
-            ("Courus enregistrés sur contrats annulés", xaf(float(debits.LCY_AMOUNT.sum()))),
-            ("CONTRE-PASSATIONS PAR LA LIQUIDATION", str(len(contre_passe))),
+            ("Contrats comptabilisés et liquidés le même jour", str(len(d))),
+            ("Dont annulations de saisie — couru porté", xaf(float(annulations.couru_brut.sum()))),
+            ("Dont cessions après détention réelle", str(len(cessions))),
+            ("Cessions AVEC contre-passation du couru", str(len(avec_cp))),
+            ("Montant contre-passé", xaf(abs(float(avec_cp.contre_passe.sum())))),
+            ("Cessions SANS contre-passation", str(len(sans_cp))),
+            ("Couru conservé au total", xaf(float(cessions.couru_net.sum()))),
+            ("Cessions dont le couru correspond à la détention", str(len(conformes))),
+            ("Cessions dont le couru est ramené à un jour", str(len(reduits))),
         ],
         tableaux=[
-            Tableau(["Contrat annulé", "Date", "Écritures de couru", "Couru enregistré XAF"],
-                    [[i, r.date, int(r.lignes), float(r.couru)]
-                     for i, r in par_contrat.sort_values("couru", ascending=False).iterrows()],
-                    max_lignes=18)
+            Tableau(["Référence", "Contrepartie", "Détention (j)", "Couru brut",
+                     "Contre-passé", "Couru net", "Jours conservés"],
+                    [[i, r.FULL_NAME, int(r.detention), float(r.couru_brut),
+                      float(r.contre_passe), float(r.couru_net), int(r.jours_conserves)]
+                     for i, r in cessions.sort_values("detention", ascending=False).iterrows()],
+                    max_lignes=21,
+                    note=("Cessions après détention réelle. La dernière colonne convertit le "
+                          "couru conservé en jours d'intérêt : elle se compare à la détention.")),
+            Tableau(["Détention (j)", "Référence", "Contrepartie", "Nominal", "Taux %",
+                     "Couru brut", "Contre-passé", "Couru net", "Jours conservés"],
+                    comparables,
+                    note=("Contrats de MÊME durée de détention recevant des traitements "
+                          "opposés : la preuve que la règle n'est pas appliquée uniformément.")),
         ],
         recommandation=(
-            "Faire paramétrer la contre-passation automatique des intérêts courus lors de "
-            "l'annulation d'un contrat, afin que l'opération ne laisse aucun résidu."
+            "Faire expliciter la règle de traitement du couru à la cession d'un titre, et "
+            "vérifier qu'elle est appliquée uniformément. Établir, pour les cessions sans "
+            "contre-passation, que le couru a bien été encaissé dans le prix. Pour celles qui "
+            "conservent un jour résiduel, expliquer ce qu'il représente."
         ),
     )
 
@@ -583,7 +693,11 @@ def _c36_apurement_courus(ctx) -> Constat:
         return Constat(code="3.6", titre="Apurement des créances rattachées", gravite=Gravite.FAIBLE,
                        constat="Historique du compte indisponible.",
                        recommandation="Extraire l'historique du compte 511800100 tous modules confondus.")
-    debits, credits = courus[courus.DRCR_IND == "D"], courus[courus.DRCR_IND == "C"]
+    # Trois populations, et non deux : Flexcube contre-passe par un débit de montant
+    # NÉGATIF (contrôle 1.5). Les confondre avec les courus masquerait les corrections.
+    debits = courus[(courus.DRCR_IND == "D") & (courus.LCY_AMOUNT > 0)]
+    contre_passations = courus[(courus.DRCR_IND == "D") & (courus.LCY_AMOUNT < 0)]
+    credits = courus[courus.DRCR_IND == "C"]
     solde = float(courus.SIGNE.sum())
     par_module = credits.groupby("MODULE").agg(n=("LCY_AMOUNT", "size"), montant=("LCY_AMOUNT", "sum"))
     auto = int((credits.USER_ID == credits.AUTH_ID).sum())
@@ -593,12 +707,25 @@ def _c36_apurement_courus(ctx) -> Constat:
             code="3.6", titre="Apurement des créances rattachées par encaissement des coupons",
             gravite=Gravite.CONFORME,
             constat=(
-                f"Le compte est intégralement apuré : {nb(len(debits))} débits pour "
-                f"{nb(len(credits))} crédits, solde net nul. Les coupons sont encaissés en "
-                "trésorerie, l'apurement étant passé par écriture manuelle en module DE et non par "
-                "l'événement automatique du module MM. Le contrôle des quatre yeux est respecté "
-                f"({auto} auto-validation, {sans_valid} sans validateur)."
+                f"Le compte est intégralement apuré, solde net nul. Il se lit en TROIS "
+                f"populations et non deux : {nb(len(debits))} écritures de couru, "
+                f"{nb(len(contre_passations))} CONTRE-PASSATIONS — des débits de montant négatif, "
+                "selon la convention Flexcube du contrôle 1.5 — pour "
+                f"{xaf(abs(float(contre_passations.LCY_AMOUNT.sum())))}, et {nb(len(credits))} "
+                "encaissements de coupon.\n"
+                "Les coupons sont encaissés en trésorerie, l'apurement étant passé par écriture "
+                "manuelle en module DE et non par l'événement automatique du module MM. Le "
+                f"contrôle des quatre yeux est respecté ({auto} auto-validation, {sans_valid} "
+                "sans validateur)."
             ),
+            chiffres=[
+                ("Écritures de couru", nb(len(debits))),
+                ("Contre-passations (débits négatifs)",
+                 f"{nb(len(contre_passations))} — "
+                 f"{xaf(abs(float(contre_passations.LCY_AMOUNT.sum())))}"),
+                ("Encaissements de coupon", nb(len(credits))),
+                ("Solde net", xaf(solde)),
+            ],
             tableaux=[Tableau(["Module d'apurement", "Écritures", "Montant XAF"],
                               [[i, int(r.n), float(r.montant)] for i, r in par_module.iterrows()])],
         )
@@ -610,8 +737,9 @@ def _c36_apurement_courus(ctx) -> Constat:
             "persistant traduit des coupons non encaissés ou un défaut d'apurement, et surévalue "
             "simultanément l'actif et le produit."
         ),
-        chiffres=[("Débits", nb(len(debits))),
-                  ("Crédits", nb(len(credits))),
+        chiffres=[("Écritures de couru", nb(len(debits))),
+                  ("Contre-passations (débits négatifs)", nb(len(contre_passations))),
+                  ("Encaissements de coupon", nb(len(credits))),
                   ("Solde net", xaf(solde))],
         tableaux=[Tableau(["Module", "Écritures", "Montant XAF"],
                           [[i, int(r.n), float(r.montant)] for i, r in par_module.iterrows()])],
