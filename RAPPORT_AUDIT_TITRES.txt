@@ -4,7 +4,7 @@
 
   Périmètre        : Département de la trésorerie — gestion des investissements sur les marchés financiers
   Période d'audit  : 2023-09-27 au 2026-06-30
-  Rapport généré le : 20/09/2026 à 12:40
+  Rapport généré le : 20/09/2026 à 12:59
   Référentiel      : Plan Comptable des Établissements de Crédit (PCEC) — CEMAC / COBAC
 
   Ce rapport est produit automatiquement. Chaque constat indique le test exécuté, sa
@@ -1069,9 +1069,17 @@ classement comptable retenu.
   Gravité : CRITIQUE
   Référence : Écriture d'apurement 099001b251670001 — écriture de correction 099000b252120001
 
-  CE QUI DEVAIT SE PASSER. Au jour de la bascule, le compte de créances rattachées portait le solde
-  des intérêts courus non encore encaissés. Pour le solder, il fallait le créditer de CE SOLDE, ni
-  plus ni moins, la contrepartie étant l'encaissement correspondant sur le compte de règlement.
+  LES COMPTES EN CAUSE. Tout le constat se joue entre deux comptes, et deux seulement :
+  - 511800100 CREANCES RATTACHEES - PLACEMENT — compte d'ACTIF. Il porte les coupons acquis sur les
+    titres du portefeuille et non encore encaissés ;
+  - 099ACO00001 BANQUE DES ETATS DE LAFRIQUE CENTRA — le compte de règlement de la banque auprès de
+    la banque centrale, son NOSTRO, qui porte sa trésorerie.
+  Un troisième compte intervient à la correction, mais il ne figure dans aucune des extractions
+  fournies : il reste à identifier.
+
+  CE QUI DEVAIT SE PASSER. Au jour de la bascule, le compte 511800100 portait le solde des intérêts
+  courus non encore encaissés. Pour le solder, il fallait le CRÉDITER de CE SOLDE, ni plus ni moins,
+  en DÉBITANT le nostro 099ACO00001 de l'encaissement correspondant.
 
   CE QUI S'EST PASSÉ. L'écriture manuelle passée ce jour-là a crédité, pour chaque contrat, le CUMUL
   DES INTÉRÊTS COURUS DEPUIS L'ORIGINE DU CONTRAT — et non le solde restant. Or, pour une partie des
@@ -1084,12 +1092,14 @@ classement comptable retenu.
   réel », est le seul montant qu'il fallait créditer. La colonne « crédité » montre ce qui l'a
   effectivement été : le cumul complet. L'écart est le montant crédité en trop.
 
-  LES DEUX CONSÉQUENCES. Premièrement, le compte de créances rattachées — un compte d'ACTIF — s'est
-  retrouvé en SOLDE CRÉDITEUR, position impossible par construction : cela revient à dire que la
-  banque devait de l'argent au titre d'intérêts qu'elle devait recevoir. Deuxièmement, la
-  contrepartie de l'écriture étant un DÉBIT DU COMPTE DE RÈGLEMENT auprès de la banque centrale, la
-  banque a enregistré avoir encaissé plus de trésorerie qu'elle n'en a reçu : le nostro a été
-  surévalué du même montant.
+  LES DEUX CONSÉQUENCES, COMPTE PAR COMPTE.
+  - Sur 511800100 CREANCES RATTACHEES - PLACEMENT : ce compte d'ACTIF s'est retrouvé en SOLDE
+    CRÉDITEUR, position impossible par construction — cela revient à dire que la banque DEVAIT de
+    l'argent au titre d'intérêts qu'elle devait RECEVOIR.
+  - Sur 099ACO00001 BANQUE DES ETATS DE LAFRIQUE CENTRA : la contrepartie de l'écriture étant un
+    DÉBIT de ce compte, la banque a enregistré avoir encaissé plus de trésorerie qu'elle n'en a
+    reçu. Le nostro a été surévalué du même montant, et cette surévaluation a figuré aux états
+    arrêtés.
 
   LA DURÉE. L'anomalie n'a pas été corrigée immédiatement. Elle a persisté et a traversé une date
   d'arrêté, ce qui signifie que les états produits à cette date portent un compte d'actif créditeur
@@ -1097,29 +1107,48 @@ classement comptable retenu.
   aurait dû être détecté par le rapprochement bancaire mensuel.
 
   LA CORRECTION. Elle est intervenue par une écriture manuelle explicitement libellée comme se
-  rapportant à la mise en service du nouveau système. Ses deux jambes connues ne s'équilibrent pas
-  exactement : une troisième jambe existe, sur un compte non couvert par les extractions.
+  rapportant à la mise en service du nouveau système : un DÉBIT de 511800100 pour 1 205 231 891 XAF,
+  qui remet le compte de courus à zéro, contre un CRÉDIT de 099ACO00001 pour 1 207 226 407 XAF. Ces
+  deux jambes ne s'équilibrent pas : le crédit excède le débit de 1 994 516 XAF. Il manque donc un
+  DÉBIT de ce montant, sur une TROISIÈME JAMBE portée par un compte qui ne figure dans aucune des
+  extractions fournies. Ce compte reste à identifier : c'est lui qui a supporté le solde de la
+  correction.
 
-    1. Solde du compte la veille de la bascule   : 2 927 747 645 XAF
-    2. Courus du jour de la bascule              : 36 144 257 XAF
-    3. SOLDE RÉEL À APURER (1 + 2)               : 2 963 891 902 XAF
-    4. Montant effectivement crédité             : 4 169 123 793 XAF
-    5. SUR-APUREMENT (4 − 3)                     : 1 205 231 891 XAF
-    6. Contrats crédités                         : 55
-    7. Dont crédités en trop                     : 24
-    8. Écart cumulé au niveau contrat            : 1 444 094 752 XAF
-    9. Solde du compte après la bascule          : -1 205 231 891 XAF
-    10. Date de correction                       : 2025-07-31
-    11. Durée de l'anomalie                      : 45 jours
-    12. Dates d'arrêté traversées                : 2025-06-30
-    13. Jambe courus de la correction            : 1 205 231 891 XAF
-    14. Jambe trésorerie de la correction        : 1 207 226 407 XAF
-    15. TROISIÈME JAMBE NON IDENTIFIÉE (14 − 13) : 1 994 516 XAF
+    1. Solde de 511800100 la veille de la bascule              : 2 927 747 645 XAF
+    2. Courus du jour de la bascule, débités de 511800100      : 36 144 257 XAF
+    3. SOLDE RÉEL À APURER (1 + 2)                             : 2 963 891 902 XAF
+    4. Montant effectivement CRÉDITÉ à 511800100               : 4 169 123 793 XAF
+    5. SUR-APUREMENT (4 − 3)                                   : 1 205 231 891 XAF
+    6. Contrats crédités                                       : 55
+    7. Dont crédités en trop                                   : 24
+    8. Écart cumulé au niveau contrat                          : 1 444 094 752 XAF
+    9. Solde de 511800100 après la bascule — CRÉDITEUR         : -1 205 231 891 XAF
+    10. Date de correction                                     : 2025-07-31
+    11. Durée de l'anomalie                                    : 45 jours
+    12. Dates d'arrêté traversées                              : 2025-06-30
+    13. Correction — jambe DÉBIT sur 511800100                 : 1 205 231 891 XAF
+    14. Correction — jambe CRÉDIT sur 099ACO00001              : 1 207 226 407 XAF
+    15. TROISIÈME JAMBE, sur un compte NON IDENTIFIÉ (14 − 13) : 1 994 516 XAF
+
+    Étape                     Compte         Libellé                              Sens            Montant XAF    Lecture                                       
+    ------------------------  -------------  -----------------------------------  --------------  -------------  ----------------------------------------------
+    Ce qu'il fallait passer   511800100      CREANCES RATTACHEES - PLACEMENT      CRÉDIT          2 963 891 902  solder le compte pour son solde réel          
+    Ce qu'il fallait passer   099ACO00001    BANQUE DES ETATS DE LAFRIQUE CENTRA  DÉBIT           2 963 891 902  encaissement correspondant                    
+    Ce qui a été passé        511800100      CREANCES RATTACHEES - PLACEMENT      CRÉDIT          4 169 123 793  cumul des courus depuis l'origine des contrats
+    Ce qui a été passé        099ACO00001    BANQUE DES ETATS DE LAFRIQUE CENTRA  DÉBIT           4 169 123 793  encaissement surévalué du même montant        
+    ÉCART                     511800100      CREANCES RATTACHEES - PLACEMENT      CRÉDIT EN TROP  1 205 231 891  le compte d'actif devient créditeur           
+    ÉCART                     099ACO00001    BANQUE DES ETATS DE LAFRIQUE CENTRA  DÉBIT EN TROP   1 205 231 891  le nostro est surévalué                       
+    Correction du 2025-07-31  511800100      CREANCES RATTACHEES - PLACEMENT      DÉBIT           1 205 231 891  remet le compte de courus à zéro              
+    Correction du 2025-07-31  099ACO00001    BANQUE DES ETATS DE LAFRIQUE CENTRA  CRÉDIT          1 207 226 407  sort la trésorerie surévaluée                 
+    Correction du 2025-07-31  non identifié  compte absent des extractions        DÉBIT MANQUANT  1 994 516      ce qu'il faut pour que l'écriture s'équilibre 
+    Le schéma comptable de bout en bout : l'écriture attendue, celle qui a réellement été passée,
+    l'écart qui en résulte compte par compte, puis la correction.
 
     Compte       Libellé                              Sens  Lignes  Montant XAF  
     -----------  -----------------------------------  ----  ------  -------------
     099ACO00001  BANQUE DES ETATS DE LAFRIQUE CENTRA  D     55      4 169 123 793
-    Contrepartie de l'écriture d'apurement : la trésorerie enregistrée comme encaissée.
+    Contrepartie de l'écriture d'apurement sur 099ACO00001 BANQUE DES ETATS DE LAFRIQUE CENTRA : la
+    trésorerie enregistrée comme encaissée.
 
     Contrat           Cumul depuis l'origine  Déjà encaissé  Solde réel   Crédité      Crédité en trop
     ----------------  ----------------------  -------------  -----------  -----------  ---------------
@@ -1158,21 +1187,24 @@ classement comptable retenu.
     2025-06-30     -1 205 231 891           
     2025-12-31     0,00                     
     2026-06-30     0,00                     
-    Le solde du compte de courus à chaque arrêté : un compte d'actif ne peut être négatif.
+    Solde de 511800100 CREANCES RATTACHEES - PLACEMENT à chaque arrêté. Un montant négatif est un
+    solde CRÉDITEUR, impossible sur un compte d'actif.
 
     Date        Compte       Libellé                             Sens  Montant XAF    Saisie        Validation  
     ----------  -----------  ----------------------------------  ----  -------------  ------------  ------------
     2025-07-31  099ACO00001  BANQUE DES ETATS DE LAFRIQUE CENTR  C     1 207 226 407  NDJOCKOS0067  MBATOHID0012
-    Écriture de correction et sa contrepartie.
+    Écriture de correction 099000b252120001 et sa contrepartie. La jambe sur 511800100 n'y figure
+    pas : elle est décrite au point 13.
 
   Recommandation :
-    1. Obtenir les états financiers à la date d'arrêté traversée et vérifier si le solde créditeur
-    du compte d'actif et la surévaluation du nostro y figurent.
-    2. Obtenir le rapprochement bancaire du compte de règlement des mois concernés et comprendre
-    pourquoi un écart de cette ampleur n'a pas été détecté plus tôt.
+    1. Obtenir les états financiers au 2025-06-30 et vérifier si le solde créditeur de 511800100 et
+    la surévaluation de 099ACO00001 y figurent.
+    2. Obtenir le rapprochement bancaire de 099ACO00001 des mois concernés et comprendre pourquoi un
+    écart de cette ampleur n'a pas été détecté plus tôt.
     3. Faire expliquer le mode opératoire retenu pour calculer les courus à reprendre, fondé sur le
     cumul théorique par contrat et non sur le solde comptable.
-    4. Identifier la troisième jambe de l'écriture de correction.
+    4. Identifier le compte qui porte la troisième jambe de l'écriture de correction
+    099000b252120001, soit un débit de 1 994 516 XAF sur un compte absent des extractions.
     5. Vérifier qu'aucune autre écriture de migration n'a été construite sur le même mode
     opératoire.
 

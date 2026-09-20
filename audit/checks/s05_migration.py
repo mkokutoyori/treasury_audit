@@ -211,16 +211,64 @@ def _c53_sur_apurement(ctx) -> Constat:
     jambe_corr_tresorerie = float(corr_autres.LCY_AMOUNT.sum())
     troisieme_jambe = jambe_corr_tresorerie - jambe_corr_courus
 
+    # --- 5. Nommer les comptes en jeu : un constat comptable doit les désigner sans ambiguïté
+    cpt_courus = CPT_COURUS_MM
+    lib_courus = ctx.libelle_compte(cpt_courus) or "CREANCES RATTACHEES"
+    contreparties = cpt_contrepartie.reset_index()
+    cpt_regl = (contreparties.AC_NO.iloc[0] if len(contreparties) else CPT_BEAC)
+    lib_regl = ctx.libelle_compte(cpt_regl) or "COMPTE DE REGLEMENT"
+    nom_courus = f"{cpt_courus} {lib_courus}"
+    nom_regl = f"{cpt_regl} {lib_regl}"
+    # Schéma comptable : ce qui devait être passé, ce qui l'a été, et la correction
+    schema = [
+        ["Ce qu'il fallait passer", cpt_courus, lib_courus, "CRÉDIT", a_apurer,
+         "solder le compte pour son solde réel"],
+        ["Ce qu'il fallait passer", cpt_regl, lib_regl, "DÉBIT", a_apurer,
+         "encaissement correspondant"],
+        ["Ce qui a été passé", cpt_courus, lib_courus, "CRÉDIT", credit,
+         "cumul des courus depuis l'origine des contrats"],
+        ["Ce qui a été passé", cpt_regl, lib_regl, "DÉBIT", credit,
+         "encaissement surévalué du même montant"],
+        ["ÉCART", cpt_courus, lib_courus, "CRÉDIT EN TROP", sur,
+         "le compte d'actif devient créditeur"],
+        ["ÉCART", cpt_regl, lib_regl, "DÉBIT EN TROP", sur,
+         "le nostro est surévalué"],
+    ]
+    if not correction.empty:
+        schema += [
+            ["Correction du " + str(date_correction), cpt_courus, lib_courus, "DÉBIT",
+             jambe_corr_courus, "remet le compte de courus à zéro"],
+            ["Correction du " + str(date_correction), cpt_regl, lib_regl, "CRÉDIT",
+             jambe_corr_tresorerie, "sort la trésorerie surévaluée"],
+        ]
+        if abs(troisieme_jambe) > 1:
+            # L'écriture doit s'équilibrer : si le crédit excède le débit, la jambe
+            # manquante est un DÉBIT, et réciproquement.
+            sens_manquant = "DÉBIT" if troisieme_jambe > 0 else "CRÉDIT"
+            schema.append(["Correction du " + str(date_correction), "non identifié",
+                           "compte absent des extractions", sens_manquant + " MANQUANT",
+                           abs(troisieme_jambe),
+                           "ce qu'il faut pour que l'écriture s'équilibre"])
+
     return Constat(
         code="5.3",
         titre="Sur-apurement du compte de courus à la migration, laissant un compte d'actif en solde créditeur",
         gravite=Gravite.CRITIQUE,
         reference=f"Écriture d'apurement {reference} — écriture de correction {corr_ref}",
         constat=(
-            "CE QUI DEVAIT SE PASSER. Au jour de la bascule, le compte de créances rattachées "
-            "portait le solde des intérêts courus non encore encaissés. Pour le solder, il fallait "
-            "le créditer de CE SOLDE, ni plus ni moins, la contrepartie étant l'encaissement "
-            "correspondant sur le compte de règlement.\n"
+            "LES COMPTES EN CAUSE. Tout le constat se joue entre deux comptes, et deux "
+            "seulement :\n"
+            f"- {nom_courus} — compte d'ACTIF. Il porte les coupons acquis sur les titres du "
+            "portefeuille et non encore encaissés ;\n"
+            f"- {nom_regl} — le compte de règlement de la banque auprès de la banque centrale, "
+            "son NOSTRO, qui porte sa trésorerie.\n"
+            "Un troisième compte intervient à la correction, mais il ne figure dans aucune des "
+            "extractions fournies : il reste à identifier.\n"
+            "\n"
+            f"CE QUI DEVAIT SE PASSER. Au jour de la bascule, le compte {cpt_courus} portait le "
+            "solde des intérêts courus non encore encaissés. Pour le solder, il fallait le "
+            f"CRÉDITER de CE SOLDE, ni plus ni moins, en DÉBITANT le nostro {cpt_regl} de "
+            "l'encaissement correspondant.\n"
             "\n"
             "CE QUI S'EST PASSÉ. L'écriture manuelle passée ce jour-là a crédité, pour chaque "
             "contrat, le CUMUL DES INTÉRÊTS COURUS DEPUIS L'ORIGINE DU CONTRAT — et non le solde "
@@ -235,12 +283,14 @@ def _c53_sur_apurement(ctx) -> Constat:
             "fallait créditer. La colonne « crédité » montre ce qui l'a effectivement été : le "
             "cumul complet. L'écart est le montant crédité en trop.\n"
             "\n"
-            "LES DEUX CONSÉQUENCES. Premièrement, le compte de créances rattachées — un compte "
-            "d'ACTIF — s'est retrouvé en SOLDE CRÉDITEUR, position impossible par construction : "
-            "cela revient à dire que la banque devait de l'argent au titre d'intérêts qu'elle "
-            "devait recevoir. Deuxièmement, la contrepartie de l'écriture étant un DÉBIT DU COMPTE "
-            "DE RÈGLEMENT auprès de la banque centrale, la banque a enregistré avoir encaissé plus "
-            "de trésorerie qu'elle n'en a reçu : le nostro a été surévalué du même montant.\n"
+            "LES DEUX CONSÉQUENCES, COMPTE PAR COMPTE.\n"
+            f"- Sur {nom_courus} : ce compte d'ACTIF s'est retrouvé en SOLDE CRÉDITEUR, position "
+            "impossible par construction — cela revient à dire que la banque DEVAIT de l'argent "
+            "au titre d'intérêts qu'elle devait RECEVOIR.\n"
+            f"- Sur {nom_regl} : la contrepartie de l'écriture étant un DÉBIT de ce compte, la "
+            "banque a enregistré avoir encaissé plus de trésorerie qu'elle n'en a reçu. Le "
+            "nostro a été surévalué du même montant, et cette surévaluation a figuré aux états "
+            "arrêtés.\n"
             "\n"
             "LA DURÉE. L'anomalie n'a pas été corrigée immédiatement. Elle a persisté et a traversé "
             "une date d'arrêté, ce qui signifie que les états produits à cette date portent un "
@@ -249,32 +299,44 @@ def _c53_sur_apurement(ctx) -> Constat:
             "bancaire mensuel.\n"
             "\n"
             "LA CORRECTION. Elle est intervenue par une écriture manuelle explicitement libellée "
-            "comme se rapportant à la mise en service du nouveau système. Ses deux jambes connues "
-            "ne s'équilibrent pas exactement : une troisième jambe existe, sur un compte non "
-            "couvert par les extractions."
+            "comme se rapportant à la mise en service du nouveau système : un DÉBIT de "
+            f"{cpt_courus} pour {xaf(jambe_corr_courus)}, qui remet le compte de courus à zéro, "
+            f"contre un CRÉDIT de {cpt_regl} pour {xaf(jambe_corr_tresorerie)}. Ces deux jambes "
+            "ne s'équilibrent pas : le crédit excède le débit de "
+            f"{xaf(abs(troisieme_jambe))}. Il manque donc un DÉBIT de ce montant, sur une "
+            "TROISIÈME JAMBE portée par un compte qui ne figure dans aucune des extractions "
+            "fournies. Ce compte reste à identifier : c'est lui qui a supporté le solde de la "
+            "correction."
         ),
         chiffres=[
-            ("1. Solde du compte la veille de la bascule", xaf(solde_avant)),
-            ("2. Courus du jour de la bascule", xaf(debits_jour)),
+            (f"1. Solde de {cpt_courus} la veille de la bascule", xaf(solde_avant)),
+            (f"2. Courus du jour de la bascule, débités de {cpt_courus}", xaf(debits_jour)),
             ("3. SOLDE RÉEL À APURER (1 + 2)", xaf(a_apurer)),
-            ("4. Montant effectivement crédité", xaf(credit)),
+            (f"4. Montant effectivement CRÉDITÉ à {cpt_courus}", xaf(credit)),
             ("5. SUR-APUREMENT (4 − 3)", xaf(sur)),
             ("6. Contrats crédités", str(len(detail))),
             ("7. Dont crédités en trop", str(len(touches))),
             ("8. Écart cumulé au niveau contrat", xaf(ecart_contrats)),
-            ("9. Solde du compte après la bascule", xaf(ctx.solde(CPT_COURUS_MM, a_la_date=DATE_BASCULE, df=courus))),
+            (f"9. Solde de {cpt_courus} après la bascule — CRÉDITEUR",
+             xaf(ctx.solde(CPT_COURUS_MM, a_la_date=DATE_BASCULE, df=courus))),
             ("10. Date de correction", str(date_correction) if date_correction else "non corrigé"),
             ("11. Durée de l'anomalie", f"{jours} jours"),
             ("12. Dates d'arrêté traversées", ", ".join(arretes_traverses) if arretes_traverses else "aucune"),
-            ("13. Jambe courus de la correction", xaf(jambe_corr_courus)),
-            ("14. Jambe trésorerie de la correction", xaf(jambe_corr_tresorerie)),
-            ("15. TROISIÈME JAMBE NON IDENTIFIÉE (14 − 13)", xaf(troisieme_jambe)),
+            (f"13. Correction — jambe DÉBIT sur {cpt_courus}", xaf(jambe_corr_courus)),
+            (f"14. Correction — jambe CRÉDIT sur {cpt_regl}", xaf(jambe_corr_tresorerie)),
+            ("15. TROISIÈME JAMBE, sur un compte NON IDENTIFIÉ (14 − 13)", xaf(troisieme_jambe)),
         ],
         tableaux=[
+            Tableau(["Étape", "Compte", "Libellé", "Sens", "Montant XAF", "Lecture"],
+                    schema, max_lignes=12,
+                    note=("Le schéma comptable de bout en bout : l'écriture attendue, celle qui "
+                          "a réellement été passée, l'écart qui en résulte compte par compte, "
+                          "puis la correction.")),
             Tableau(["Compte", "Libellé", "Sens", "Lignes", "Montant XAF"],
                     [[i[0], i[1][:38], i[2], int(r.lignes), float(r.montant)]
                      for i, r in cpt_contrepartie.iterrows()],
-                    note="Contrepartie de l'écriture d'apurement : la trésorerie enregistrée comme encaissée."),
+                    note=(f"Contrepartie de l'écriture d'apurement sur {nom_regl} : la trésorerie "
+                          "enregistrée comme encaissée.")),
             Tableau(["Contrat", "Cumul depuis l'origine", "Déjà encaissé", "Solde réel",
                      "Crédité", "Crédité en trop"],
                     detail, max_lignes=20,
@@ -288,19 +350,24 @@ def _c53_sur_apurement(ctx) -> Constat:
                     )),
             Tableau(["Date d'arrêté", "Solde du compte de courus"],
                     soldes_arretes,
-                    note="Le solde du compte de courus à chaque arrêté : un compte d'actif ne peut être négatif."),
+                    note=(f"Solde de {nom_courus} à chaque arrêté. Un montant négatif est un solde "
+                          "CRÉDITEUR, impossible sur un compte d'actif.")),
             Tableau(["Date", "Compte", "Libellé", "Sens", "Montant XAF", "Saisie", "Validation"],
                     corr_detail,
-                    note="Écriture de correction et sa contrepartie."),
+                    note=(f"Écriture de correction {corr_ref} et sa contrepartie. La jambe sur "
+                          f"{cpt_courus} n'y figure pas : elle est décrite au point 13.")),
         ],
         recommandation=(
-            "1. Obtenir les états financiers à la date d'arrêté traversée et vérifier si le solde "
-            "créditeur du compte d'actif et la surévaluation du nostro y figurent.\n"
-            "2. Obtenir le rapprochement bancaire du compte de règlement des mois concernés et "
-            "comprendre pourquoi un écart de cette ampleur n'a pas été détecté plus tôt.\n"
+            f"1. Obtenir les états financiers au {arretes_traverses[0] if arretes_traverses else 'arrêté traversé'} "
+            f"et vérifier si le solde créditeur de {cpt_courus} et la surévaluation de {cpt_regl} "
+            "y figurent.\n"
+            f"2. Obtenir le rapprochement bancaire de {cpt_regl} des mois concernés et comprendre "
+            "pourquoi un écart de cette ampleur n'a pas été détecté plus tôt.\n"
             "3. Faire expliquer le mode opératoire retenu pour calculer les courus à reprendre, "
             "fondé sur le cumul théorique par contrat et non sur le solde comptable.\n"
-            "4. Identifier la troisième jambe de l'écriture de correction.\n"
+            f"4. Identifier le compte qui porte la troisième jambe de l'écriture de correction "
+            f"{corr_ref}, soit un débit de {xaf(abs(troisieme_jambe))} sur un compte absent des "
+            "extractions.\n"
             "5. Vérifier qu'aucune autre écriture de migration n'a été construite sur le même "
             "mode opératoire."
         ),

@@ -1719,3 +1719,54 @@ réelle — négociation, valeur, comptabilisation, dénouement — et lire les 
 convention du système qui les a produites.* Les deux erreurs viennent d'avoir pris une date de
 saisie pour une date d'opération, et d'avoir cherché une contre-passation dans la convention
 d'un autre système.
+
+---
+
+# SESSION 18 — Contrôle 5.3 : nommer les comptes
+
+Demande : rendre 5.3 plus explicite afin d'identifier clairement les comptes en cause.
+
+Le constat parlait du « compte de créances rattachées », du « compte de règlement » et d'une
+« troisième jambe » sans jamais donner de numéro. Un constat comptable doit désigner ses comptes.
+
+## 18.1 Les comptes sont désormais nommés partout
+
+Un paragraphe d'ouverture les pose d'emblée :
+
+- **511800100 CREANCES RATTACHEES - PLACEMENT** — compte d'ACTIF, porte les coupons acquis et
+  non encaissés
+- **099ACO00001 BANQUE DES ETATS DE L'AFRIQUE CENTRALE** — le NOSTRO, compte de règlement
+  auprès de la banque centrale
+- un **troisième compte**, intervenant à la correction, absent de toutes les extractions
+
+Les quinze lignes chiffrées, les quatre notes de tableau et les cinq recommandations portent
+désormais le numéro du compte concerné.
+
+## 18.2 Un tableau de schéma comptable
+
+Ajouté en tête des tableaux : l'écriture attendue, celle qui a été passée, l'écart compte par
+compte, puis la correction — chaque ligne avec compte, libellé, sens et montant.
+
+| Étape | Compte | Sens | Montant |
+|---|---|---|---|
+| Ce qu'il fallait passer | 511800100 | CRÉDIT | 2 963 891 902 |
+| Ce qu'il fallait passer | 099ACO00001 | DÉBIT | 2 963 891 902 |
+| Ce qui a été passé | 511800100 | CRÉDIT | 4 169 123 793 |
+| Ce qui a été passé | 099ACO00001 | DÉBIT | 4 169 123 793 |
+| **ÉCART** | 511800100 | **CRÉDIT EN TROP** | **1 205 231 891** |
+| **ÉCART** | 099ACO00001 | **DÉBIT EN TROP** | **1 205 231 891** |
+| Correction 31/07/2025 | 511800100 | DÉBIT | 1 205 231 891 |
+| Correction 31/07/2025 | 099ACO00001 | CRÉDIT | 1 207 226 407 |
+| Correction 31/07/2025 | non identifié | **DÉBIT MANQUANT** | **1 994 516** |
+
+## 18.3 ⚠ Une erreur corrigée au passage
+
+Le texte disait de la troisième jambe qu'« il manque 1 994 516 XAF », sans préciser le sens. En
+construisant le tableau, le sens s'impose : la correction porte un débit de 1 205 231 891 sur
+511800100 contre un crédit de 1 207 226 407 sur 099ACO00001. **Le crédit excède le débit**, la
+jambe manquante est donc un **DÉBIT**. Le sens est maintenant déduit du déséquilibre plutôt
+qu'énoncé au hasard, et la recommandation 4 demande d'identifier « le compte qui porte un débit
+de 1 994 516 XAF sur l'écriture 099000b252120001 ».
+
+**Règle retenue** : *un constat comptable nomme ses comptes et donne le sens de chaque jambe.*
+Construire le schéma en débit/crédit a suffi à faire apparaître le sens de la jambe manquante.
