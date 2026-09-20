@@ -47,6 +47,8 @@ def main(argv=None) -> int:
     parser.add_argument("--fin", default=Config.fin, help="fin de la période d'audit")
     parser.add_argument("--seuil", type=float, default=Config.seuil_materialite,
                         help="seuil de matérialité en XAF")
+    parser.add_argument("--annexe", default="ANNEXE_APUREMENT_COMPTES_LIAISON.csv",
+                        help="détail d'apurement des comptes de liaison, deal par deal")
     args = parser.parse_args(argv)
 
     config = Config(debut=args.debut, fin=args.fin, seuil_materialite=args.seuil)
@@ -69,6 +71,13 @@ def main(argv=None) -> int:
     texte = rapport.rendu()
     with open(args.sortie, "w", encoding="utf-8") as fichier:
         fichier.write(texte)
+
+    # Annexe : le détail d'apurement des comptes de liaison ne tient pas dans un tableau de
+    # rapport — 329 lignes — mais il est opposable ligne à ligne. On l'exporte à côté.
+    detail = contexte.apurement_pont_detaille
+    if not detail.empty:
+        detail.to_csv(args.annexe, index=False, encoding="utf-8-sig")
+        print(f"Annexe écrite dans {args.annexe} ({len(detail)} lignes)", file=sys.stderr)
 
     anomalies = rapport.toutes_anomalies
     print(f"\nRapport écrit dans {args.sortie}", file=sys.stderr)

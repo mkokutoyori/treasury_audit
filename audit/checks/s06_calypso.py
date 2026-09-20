@@ -204,6 +204,36 @@ def _c64_comptes_liaison(ctx) -> Constat:
              .set_index("TRN_DT_d").SIGNE.cumsum())
     traj = serie.resample("QE").last().ffill()
     gravite = Gravite.CRITIQUE if abs(total_periode) > cfg.seuil_significatif * 10 else Gravite.ELEVEE
+    # RÉCONCILIATION COMPLÈTE, COMPTE PAR COMPTE. Le solde d'un compte de liaison se
+    # reconstitue intégralement à partir des résidus de chaque deal : c'est ce qui permet de
+    # dire non seulement COMBIEN il est faux, mais À CAUSE DE QUOI.
+    detaille = ctx.apurement_pont_detaille
+    synthese, plus_lourds = [], []
+    # Un deal du circuit clientèle transite par DEUX comptes de liaison : son résidu se
+    # répartit entre eux et s'annule en cumulé. Lire le détail compte par compte sans cette
+    # clé conduirait à compter deux fois le même écart.
+    sans_hors = detaille[detaille.deal != "(hors interface)"] if not detaille.empty else detaille
+    deux_comptes = 0
+    deux_comptes_nuls = 0
+    if not sans_hors.empty:
+        n_comptes = sans_hors.groupby("deal").compte.nunique()
+        deux_comptes = int((n_comptes > 1).sum())
+        croises = sans_hors[sans_hors.deal.isin(n_comptes[n_comptes > 1].index)]
+        deux_comptes_nuls = int((croises.groupby("deal").solde.sum().abs() < 1).sum())
+    if not detaille.empty:
+        for compte, bloc in detaille.groupby("compte"):
+            deals = bloc[bloc.deal != "(hors interface)"]
+            hors = float(bloc[bloc.deal == "(hors interface)"].solde.sum())
+            synthese.append([
+                compte, ctx.libelle_compte(compte)[:34], int(len(deals)),
+                float(deals[deals.solde > 0].solde.sum()),
+                float(deals[deals.solde < 0].solde.sum()),
+                hors, float(bloc.solde.sum()),
+            ])
+            for _, r in deals.reindex(deals.solde.abs().sort_values(ascending=False).index).head(8).iterrows():
+                plus_lourds.append([compte, r.deal, r.book, r.titre or "", float(r.solde),
+                                    r.cause])
+
     return Constat(
         code="6.4",
         titre="Comptes de liaison Calypso : ils ont fonctionné, puis ont cessé de revenir à zéro",
@@ -247,8 +277,32 @@ def _c64_comptes_liaison(ctx) -> Constat:
              f"{len(jamais)} — {xaf(montant_jamais)}"),
             ("Deals ouverts à la clôture, dénoués ou annulés après",
              f"{len(apres_cloture)} — {xaf(montant_apres)}"),
+            ("Lignes du détail d'apurement, tous comptes", nb(len(detaille))),
+            ("Deals transitant par deux comptes de liaison",
+             f"{nb(deux_comptes)} — dont {nb(deux_comptes_nuls)} se soldent à zéro en cumulé"),
         ],
         tableaux=[
+            Tableau(["Compte", "Libellé", "Deals au résidu", "Résidus DÉBITEURS XAF",
+                     "Résidus CRÉDITEURS XAF", "Hors interface XAF", "SOLDE XAF"],
+                    synthese,
+                    note=("Le solde de chaque compte de liaison, reconstitué à partir des "
+                          "résidus de chaque deal. Les colonnes s'additionnent exactement au "
+                          "solde : le rapprochement est complet, au franc près, pour les trois "
+                          "comptes. « Hors interface » regroupe les écritures du compte qui ne "
+                          "proviennent pas de Calypso — balayages quotidiens de fin de "
+                          "journée.")),
+            Tableau(["Compte", "Deal", "Portefeuille", "Titre", "Résidu XAF", "Cause"],
+                    plus_lourds, max_lignes=24,
+                    note=("Les résidus les plus lourds de chaque compte. ATTENTION À LA "
+                          f"LECTURE : {nb(deux_comptes)} deals transitent par DEUX comptes de "
+                          f"liaison — c'est le circuit clientèle — et {nb(deux_comptes_nuls)} "
+                          "d'entre eux se soldent à zéro une fois les deux comptes réunis. "
+                          "Leur résidu n'est pas un écart de plus : c'est le MÊME écart, "
+                          "réparti. Les paires de montants opposés portant le même titre, "
+                          "visibles dans le tableau, en sont la signature. Le détail intégral "
+                          f"des {nb(len(detaille))} lignes figure dans le fichier joint "
+                          "ANNEXE_APUREMENT_COMPTES_LIAISON.csv, dont la somme reconstitue "
+                          "exactement les trois soldes ci-dessus.")),
             Tableau(["Compte", "Libellé", "Ouverture", "Lignes", "Retours à zéro",
                      "Dernier retour", "Jours actifs depuis", "Solde au " + cfg.fin,
                      "Solde fin extraction"],

@@ -4,7 +4,7 @@
 
   Périmètre        : Département de la trésorerie — gestion des investissements sur les marchés financiers
   Période d'audit  : 2023-09-27 au 2026-06-30
-  Rapport généré le : 20/09/2026 à 20:28
+  Rapport généré le : 20/09/2026 à 20:50
   Référentiel      : Plan Comptable des Établissements de Crédit (PCEC) — CEMAC / COBAC
 
   Ce rapport est produit automatiquement. Chaque constat indique le test exécuté, sa
@@ -1440,6 +1440,52 @@ suspens.
     Dernier retour à zéro, tous comptes confondus        : 2025-10-22
     Deals au déversement incomplet à la clôture          : 201 — -124 704 289 100 XAF
     Deals ouverts à la clôture, dénoués ou annulés après : 12 — -8 701 574 995 XAF
+    Lignes du détail d'apurement, tous comptes           : 329
+    Deals transitant par deux comptes de liaison         : 61 — dont 54 se soldent à zéro en cumulé
+
+    Compte     Libellé                             Deals au résidu  Résidus DÉBITEURS XAF  Résidus CRÉDITEURS XAF  Hors interface XAF  SOLDE XAF      
+    ---------  ----------------------------------  ---------------  ---------------------  ----------------------  ------------------  ---------------
+    467000186  CALYPSO BRIDGE ACCOUNT              193              22 987 782 070         -65 046 121 563         0                   -42 058 339 493
+    467000188  CALYPSO BRIDGE ACCOUNT MONEY MARKE  8                789 738 748            -95 241 284 128         99 406              -94 451 445 974
+    467000243  CALYPSO MIRROR TRADE BRIDGE ACCOUN  127              16 808 645 956         -13 704 625 178         0                   3 104 020 778  
+    Le solde de chaque compte de liaison, reconstitué à partir des résidus de chaque deal. Les
+    colonnes s'additionnent exactement au solde : le rapprochement est complet, au franc près, pour
+    les trois comptes. « Hors interface » regroupe les écritures du compte qui ne proviennent pas de
+    Calypso — balayages quotidiens de fin de journée.
+
+    Compte     Deal     Portefeuille              Titre         Résidu XAF       Cause                               
+    ---------  -------  ------------------------  ------------  ---------------  ------------------------------------
+    467000186  4042638  ABCM_FI.Sales             CM2J00000196  -4 994 702 740   règlement non déversé               
+    467000186  4042639  ABCM_FVOCI.Bond           CM2J00000196  4 994 702 740    règlement non déversé               
+    467000186  3612939  ABCM_FVOCI.Bond                         -4 950 000 000   jambes de bilan non déversées       
+    467000186  2830294  ABCM_FVOCI.Bond                         -3 703 970 000   jambes de bilan non déversées       
+    467000186  3035312  ABCM_FI.Sales             TD2A00000735  -3 081 657 534   règlement non déversé               
+    467000186  3035313  ABCM_FVOCI.Bond           TD2A00000735  3 081 657 534    règlement non déversé               
+    467000186  3060221  ABCM_FVOCI.Bond           TD2A00000735  -3 081 657 534   règlement non déversé               
+    467000186  3035348  ABCM_FVOCI.Bond           TD2A00000735  -3 053 794 521   règlement non déversé               
+    467000188  3349072  ABCM_MM.Plmt.Tkn.Secured                -90 101 000 000  déversement incomplet des deux côtés
+    467000188  3186053  ABCM_MM.Plmt.Tkn.Secured                -5 000 000 000   déversement incomplet des deux côtés
+    467000188  3512696  ABCM_MM.FundTransfer                    547 617 226      jambes de bilan non déversées       
+    467000188  3556481  ABCM_MM.FundTransfer                    143 727 972      jambes de bilan non déversées       
+    467000188  3568304  ABCM_MM.FundTransfer                    98 393 550       jambes de bilan non déversées       
+    467000188  3490796  ABCM_MM.Plmt.Tkn.Secured                -77 000 000      déversement incomplet des deux côtés
+    467000188  3737062  ABCM_MM.Plmt.Tkn.Secured                -63 184 722      déversement incomplet des deux côtés
+    467000188  3595014  ABCM_MM.FundTransfer                    -99 406          jambes de bilan non déversées       
+    467000243  4042675  ABCM_FI.Sales             CM2J00000196  -4 994 702 740   jambes de bilan non déversées       
+    467000243  4042638  ABCM_FI.Sales             CM2J00000196  4 994 702 740    règlement non déversé               
+    467000243  3035312  ABCM_FI.Sales             TD2A00000735  3 081 657 534    règlement non déversé               
+    467000243  3035347  ABCM_FI.Sales             TD2A00000735  -3 053 794 521   règlement non déversé               
+    467000243  3039302  ABCM_FI.Sales             TD2A00000735  3 053 794 521    déversement incomplet des deux côtés
+    467000243  3501582  ABCM_FI.Sales             GA2K00000249  2 992 253 425    règlement non déversé               
+    467000243  3501595  ABCM_FI.Sales             GA2K00000249  -2 992 253 425   jambes de bilan non déversées       
+    467000243  3815490  ABCM_FI.Sales             GA2K00000058  -510 633 562     déversement incomplet des deux côtés
+    Les résidus les plus lourds de chaque compte. ATTENTION À LA LECTURE : 61 deals transitent par
+    DEUX comptes de liaison — c'est le circuit clientèle — et 54 d'entre eux se soldent à zéro une
+    fois les deux comptes réunis. Leur résidu n'est pas un écart de plus : c'est le MÊME écart,
+    réparti. Les paires de montants opposés portant le même titre, visibles dans le tableau, en sont
+    la signature. Le détail intégral des 329 lignes figure dans le fichier joint
+    ANNEXE_APUREMENT_COMPTES_LIAISON.csv, dont la somme reconstitue exactement les trois soldes ci-
+    dessus.
 
     Compte     Libellé                              Ouverture   Lignes  Retours à zéro  Dernier retour  Jours actifs depuis  Solde au 2026-06-30  Solde fin extraction
     ---------  -----------------------------------  ----------  ------  --------------  --------------  -------------------  -------------------  --------------------

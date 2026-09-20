@@ -2351,3 +2351,49 @@ PARIS, ODDO BHF, SCB NEW-YORK. Deux d'entre eux se sont apurés en septembre 202
 
 Le 6.4 donnait le solde du compte ; le 11.8 en donne désormais la décomposition. Les deux
 constats se rejoignent exactement.
+
+## 23.12 Apurement des trois comptes de liaison, compte par compte
+
+Le 11.8 décomposait `467000188`. Généralisé aux trois comptes — `apurement_pont_detaille`
+dans `audit/data.py` — le rapprochement **boucle au franc près pour les trois** :
+
+| Compte | Deals au résidu | Résidus débiteurs | Résidus créditeurs | Hors interface | **Solde** |
+|---|---|---|---|---|---|
+| `467000186` titres | 193 | +22 987 782 070 | −65 046 121 563 | 0 | **−42 058 339 493** |
+| `467000188` money market | 8 | +789 738 748 | −95 241 284 128 | +99 406 | **−94 451 445 974** |
+| `467000243` miroir | 127 | +16 808 645 956 | −13 704 625 178 | 0 | **+3 104 020 778** |
+
+**La colonne « hors interface »** regroupe les écritures du compte qui ne viennent pas de
+Calypso : sur `467000188`, 42 balayages quotidiens `099ACRV` de quelques milliers de francs
+passés par FLEXSWITCH et les utilisateurs de fin de journée, +99 406 au total. C'est ce qui
+explique l'écart que j'avais laissé en suspens au 23.11.
+
+### Le piège de lecture, à ne pas rater
+
+**61 deals transitent par DEUX comptes de liaison** — c'est le circuit clientèle, où la
+banque achète un titre (`ABCM_FVOCI.Bond`) et le revend à un client (`ABCM_FI.Sales`). Leur
+résidu se répartit entre les deux ponts et **54 d'entre eux se soldent à zéro** une fois les
+deux comptes réunis.
+
+Signature visible dans le tableau : des **paires de montants exactement opposés portant le
+même titre**.
+
+| Deal | Compte | Résidu | Titre |
+|---|---|---|---|
+| 4042638 | `467000186` | −4 994 702 740 | CM2J00000196 |
+| 4042638 | `467000243` | +4 994 702 740 | CM2J00000196 |
+
+238 des 328 lignes sont dans ce cas — 84,0 Md en brut pour **−7,0 Md en net**.
+
+**Règle retenue** : *un résidu par compte n'est pas un écart par compte. Avant d'additionner
+des soldes de comptes de passage, vérifier si le même deal les traverse tous les deux.*
+
+Le 11.6, qui agrège par deal tous ponts confondus, n'est pas affecté : ces paires s'y
+annulent d'elles-mêmes.
+
+### Annexe produite
+
+`audit_titres.py` écrit désormais **`ANNEXE_APUREMENT_COMPTES_LIAISON.csv`** — 329 lignes,
+une par couple (compte, deal), avec le portefeuille, le titre, les dates, les événements
+déversés et la cause. La somme de la colonne `solde` par compte reconstitue exactement les
+trois soldes.

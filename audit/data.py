@@ -409,6 +409,78 @@ class Contexte:
         return pd.DataFrame(lignes)
 
     @cached_property
+    def apurement_pont_detaille(self) -> pd.DataFrame:
+        """Le même apurement, mais COMPTE PAR COMPTE et non plus agrégé par deal.
+
+        Un deal peut transiter par deux comptes de liaison — le circuit clientèle emploie à
+        la fois le pont des titres et le pont miroir. Pour rapprocher le solde d'un compte de
+        liaison de ses causes, il faut donc le détail par compte, et non par deal.
+        Les lignes du compte qui ne proviennent pas de l'interface Calypso — les balayages
+        quotidiens de fin de journée — sont regroupées sur une ligne « hors interface »,
+        afin que la somme du tableau reconstitue exactement le solde du compte.
+        """
+        c = self.calypso_enrichi
+        if c.empty:
+            return pd.DataFrame()
+        lignes = []
+        for compte in CPT_LIAISON:
+            pont = c[(c.AC_NO == compte) & c.DEAL.notna() & (c.DEAL != "")
+                     & (c.TRN_DT <= self.config.fin)]
+            for deal, g in pont.groupby("DEAL"):
+                solde = float(g.SIGNE.sum())
+                if abs(solde) < 1:
+                    continue
+                reglement = g[g.EVENEMENT == "CST_S_SETTLED"]
+                bilan = g[g.EVENEMENT != "CST_S_SETTLED"]
+                if reglement.empty:
+                    cause = "règlement non déversé"
+                elif bilan.empty:
+                    cause = "jambes de bilan non déversées"
+                else:
+                    cause = "déversement incomplet des deux côtés"
+                tout = c[c.DEAL == deal]
+                lignes.append({
+                    "compte": compte, "libelle_compte": self.libelle_compte(compte),
+                    "deal": deal, "solde": solde, "cause": cause,
+                    "book": tout.BOOK.dropna().iloc[0] if len(tout.BOOK.dropna()) else "",
+                    "titre": tout.TITRE.dropna().iloc[0] if len(tout.TITRE.dropna()) else "",
+                    "premiere_date": g.TRN_DT.min(), "derniere_date": g.TRN_DT.max(),
+                    "lignes": int(len(g)),
+                    "evenements": ", ".join(sorted(set(g.EVENEMENT.dropna()))),
+                })
+            # Ce qui, sur le compte, ne vient pas de l'interface : le solde doit boucler.
+            reste = self._hors_interface(compte)
+            if abs(reste["solde"]) >= 1:
+                lignes.append({
+                    "compte": compte, "libelle_compte": self.libelle_compte(compte),
+                    "deal": "(hors interface)", "solde": reste["solde"],
+                    "cause": "écritures étrangères à l'interface Calypso",
+                    "book": "", "titre": "",
+                    "premiere_date": reste["debut"], "derniere_date": reste["fin"],
+                    "lignes": reste["lignes"], "evenements": "",
+                })
+        if not lignes:
+            return pd.DataFrame()
+        df = pd.DataFrame(lignes)
+        return df.sort_values(["compte", "solde"]).reset_index(drop=True)
+
+    def _hors_interface(self, compte: str) -> dict:
+        """Lignes d'un compte de liaison qui ne portent pas de référence de deal Calypso."""
+        vide = {"solde": 0.0, "lignes": 0, "debut": "", "fin": ""}
+        brut = self.toutes_ecritures
+        if brut.empty:
+            return vide
+        b = brut[(brut.AC_NO == compte) & (brut.TRN_DT <= self.config.fin)].drop_duplicates(
+            subset=["TRN_REF_NO", "DRCR_IND", "LCY_AMOUNT", "STMT_DT", "DESCRIPTION"])
+        if b.empty:
+            return vide
+        hors = b[b.DESCRIPTION.fillna("").str.count(r"\|") != 9]
+        if hors.empty:
+            return vide
+        return {"solde": float(hors.SIGNE.sum()), "lignes": int(len(hors)),
+                "debut": hors.TRN_DT.min(), "fin": hors.TRN_DT.max()}
+
+    @cached_property
     def ecritures_mm(self) -> pd.DataFrame:
         return self._lire("money_market_transactions.csv")
 
