@@ -14,10 +14,12 @@ compare le schéma comptable réellement appliqué à celui d'une pension livré
 """
 from __future__ import annotations
 
+import re
+
 import pandas as pd
 
-from ..core import Constat, Gravite, Section, Tableau, xaf, pct
-from ..data import CPT_REPO_CHARGE, CPT_REPO_PASSIF
+from ..core import Constat, Gravite, Section, Tableau, xaf, pct, nb
+from ..data import (CPT_BEAC, CPT_PORTEFEUILLE_CALYPSO, CPT_REPO_CHARGE, CPT_REPO_PASSIF)
 
 SECTION = (8, "Opérations de cession-rétrocession (Sell-Buy-Back)")
 
@@ -179,6 +181,98 @@ def _c81_identification(ctx, commentes, paires) -> Constat:
     )
 
 
+# Comptes que le PCEC consacre à la pension livrée et à sa rémunération. Aucun ne suppose
+# une sortie du titre du bilan : le 5216 est un compte de PASSIF, le 602 une CHARGE.
+CPT_PENSION_PCEC_SBB = [
+    ("521600100", "VALEURS DONNEES EN PENSION", "passif — la dette envers le cessionnaire"),
+    ("532000100", "AUTRES VAL DONNEES EN PENSION OU VENDUES FERMES", "passif — même objet"),
+    ("539000100", "DETTES RATTACHEES", "passif — intérêts courus sur la dette"),
+    ("602000100", "INTERET SUR VAL DONNEES EN PENSION", "charge — le coût du financement"),
+    ("521300100", "VAL RECU PENSION OPS INTERB", "actif — la créance, sens inverse"),
+    ("531000100", "AUTRES VAL RECUES EN PENSION", "actif — même objet"),
+    ("702000100", "INTS SUR AUT VALS RECUES PENSION", "produit — sens inverse"),
+]
+
+
+def _test_coupon(ctx, commentes) -> pd.DataFrame:
+    """Le prix pied de coupon est-il identique aux deux jambes ?
+
+    C'est LE test qui tranche, et il ne dépend d'aucune interprétation de texte. Si le
+    différentiel de trésorerie entre la jambe aller et la jambe retour est exactement égal au
+    COUPON COURU sur la période, alors le prix pied de coupon n'a pas bougé d'un centime : la
+    banque a cédé à un prix et s'est engagée à racheter au MÊME prix. Aucun risque de prix
+    n'a donc été transféré — et sans transfert des risques, il ne peut y avoir sortie du
+    bilan. Le différentiel constaté est alors, par construction, un INTÉRÊT.
+    """
+    if commentes.empty:
+        return pd.DataFrame()
+    coupons = {}
+    c = ctx.calypso_enrichi
+    for titre, desc in c[c.TITRE.notna() & (c.TITRE != "")].groupby("TITRE").DESCRIPTION.first().items():
+        m = re.search(r"/([\d.]+)%", str(desc))
+        if m:
+            coupons[titre] = float(m.group(1))
+    # Une fiche par deal : jambe, titre, nominal, trésorerie réglée
+    fiches = []
+    for deal, g in commentes.groupby("DEAL"):
+        lib = str(g.COMMENTAIRE.dropna().iloc[0]).upper() if g.COMMENTAIRE.notna().any() else ""
+        jambe = "NEAR" if "NEAR" in lib else ("FAR" if "FAR" in lib else "")
+        if not jambe:
+            continue
+        nominal = g[g.AC_NO.isin(CPT_PORTEFEUILLE_CALYPSO)]
+        if nominal.empty:
+            continue
+        fiches.append({
+            "deal": deal, "jambe": jambe,
+            "titre": g.TITRE.dropna().iloc[0] if g.TITRE.notna().any() else "",
+            "date": g.TRN_DT.min(), "nominal": float(nominal.LCY_AMOUNT.sum()),
+            "sens": "cession" if float(nominal.SIGNE.sum()) < 0 else "acquisition",
+            "cash": float(g[g.AC_NO == CPT_BEAC].SIGNE.sum()),
+            "contrepartie": _contrepartie(lib),
+        })
+    if not fiches:
+        return pd.DataFrame()
+    f = pd.DataFrame(fiches)
+    near, far = f[f.jambe == "NEAR"], f[f.jambe == "FAR"]
+    paires = []
+    for _, n in near.iterrows():
+        cand = far[(far.titre == n.titre) & (far.contrepartie == n.contrepartie)
+                   & (far.date > n.date) & ((far.nominal - n.nominal).abs() < 1)]
+        if cand.empty:
+            continue
+        r = cand.sort_values("date").iloc[0]
+        jours = (pd.Timestamp(r.date) - pd.Timestamp(n.date)).days
+        if jours <= 0 or jours > 200 or n.nominal <= 0:
+            continue
+        coupon = coupons.get(n.titre)
+        if coupon is None:
+            continue
+        constate = abs(n.cash + r.cash)
+        theorique = n.nominal * coupon / 100 * jours / 365
+        paires.append({
+            "near": n.deal, "far": r.deal, "titre": n.titre, "contrepartie": n.contrepartie,
+            "date_near": n.date, "date_far": r.date, "jours": jours, "sens": n.sens,
+            "nominal": n.nominal, "constate": constate, "theorique": theorique,
+            "ecart": constate - theorique, "coupon": coupon,
+            "taux_implicite": constate / n.nominal * 365 / jours * 100,
+        })
+    if not paires:
+        return pd.DataFrame()
+    return pd.DataFrame(paires).drop_duplicates("far").sort_values("ecart", key=abs)
+
+
+def _contrepartie(libelle: str) -> str:
+    """Contrepartie lue dans le commentaire de la salle des marchés."""
+    t = str(libelle).upper()
+    for cle, nom in (("SOCIETE GENERAL", "SGCM"), ("SOC GEN", "SGCM"), ("SOG GEN", "SGCM"),
+                     ("ECOBANK", "ECOBANK"), ("BICEC", "BICEC"), ("MAKEDA", "MAKEDA"),
+                     ("AFRICA BRIGHT", "AFRICA BRIGHT"), ("ENKO", "ENKO"), ("CDC", "CDC"),
+                     ("UBA", "UBA"), ("UBC", "UBC"), ("ECM", "ECM"), ("CCA", "CCA")):
+        if cle in t:
+            return nom
+    return "?"
+
+
 def _c82_schema_comptable(ctx, commentes) -> Constat:
     """Comparaison du schéma appliqué avec celui que le PCEC prévoit pour une pension livrée.
 
@@ -224,70 +318,225 @@ def _c82_schema_comptable(ctx, commentes) -> Constat:
         credits=("DRCR_IND", lambda s: int((s == "C").sum())), montant=("LCY_AMOUNT", "sum"))
     detail_pension = pension.groupby(["AC_NO", "AC_GL_DESC"]).agg(
         lignes=("LCY_AMOUNT", "size"), montant=("LCY_AMOUNT", "sum"))
+    # --- LE TEST QUI TRANCHE : le prix pied de coupon a-t-il bougé entre les deux jambes ?
+    coupon = _test_coupon(ctx, commentes)
+    exacts = coupon[coupon.ecart.abs() < 1] if not coupon.empty else coupon
+    # --- Les comptes que le PCEC consacre à la pension : servis, ou pas ?
+    presence_pcec = [[c_, lib, role, nb(int((commentes.AC_NO == c_).sum()))]
+                     for c_, lib, role in CPT_PENSION_PCEC_SBB]
+    total_pcec = sum(int((commentes.AC_NO == c_).sum()) for c_, _, _ in CPT_PENSION_PCEC_SBB)
+    # --- Où le coût du financement a-t-il atterri ?
+    courus = float(commentes[commentes.AC_NO == "512800100"].SIGNE.sum())
+    revenus = float(commentes[commentes.AC_NO.isin(["733400100", "733200100"])].SIGNE.sum())
+    # --- Le portefeuille dédié existe-t-il, et est-il employé ?
+    books = commentes.BOOK.dropna()
+    part_fvoci = int((books != BOOK_DEDIE).sum())
+    deals_bsb = int(commentes[commentes.BOOK == BOOK_DEDIE].DEAL.nunique())
+    ref = ctx.deals_calypso
+    contreparties = []
+    if not ref.empty and "Trade Id" in ref.columns:
+        m = ref[ref["Trade Id"].isin(set(commentes.DEAL))]
+        contreparties = sorted({str(x) for x in m.CounterParty.dropna().unique()})
+
     return Constat(
         code="8.2",
-        titre="Le schéma comptable appliqué est celui d'une cession ferme, non celui d'une pension livrée",
+        titre="Les cessions-rétrocessions sont comptabilisées en cessions fermes alors que le prix de rachat est fixé d'avance",
         gravite=Gravite.CRITIQUE,
-        reference="PCEC CEMAC — comptes 552 (emprunts), 601 (charges sur opérations de marché), 952/995 (hors bilan, titres affectés en garantie)",
+        reference=("Règlement COBAC R-2003/03 relatif à la comptabilisation et au traitement "
+                   "prudentiel des opérations sur titres effectuées par les établissements de "
+                   "crédit, modifié par le Règlement COBAC R-2010/03 — PCEC, comptes 5216, "
+                   "5320, 5390, 602, 5213, 5310, 702"),
         constat=(
-            "CE QUE LE PCEC PRÉVOIT POUR UN FINANCEMENT GARANTI. Trois marqueurs comptables "
-            "caractérisent une pension livrée : le titre RESTE à l'actif et son affectation en "
-            "garantie est inscrite au HORS BILAN ; la trésorerie reçue est constatée en DETTE au "
-            "passif ; le différentiel de prix entre les deux jambes est une CHARGE D'INTÉRÊT.\n"
-            "Ce schéma n'est pas théorique : la banque l'applique correctement à ses pensions "
-            "auprès de la banque centrale, comme le montre le tableau comparatif ci-dessous.\n"
+            "I. CE QUE LA RÈGLE PRESCRIT\n"
             "\n"
-            "CE QUI EST APPLIQUÉ AUX CESSIONS-RÉTROCESSIONS. Les trois marqueurs sont ABSENTS. "
-            "Aucun compte de dette, aucune charge d'intérêt, aucune inscription en hors bilan. À "
-            "la place, le compte de portefeuille est CRÉDITÉ puis DÉBITÉ : le titre sort "
-            "effectivement du bilan, puis y revient. C'est exactement le schéma d'une vente suivie "
-            "d'un achat.\n"
+            "Le texte applicable est le Règlement COBAC R-2003/03, modifié par le Règlement "
+            "COBAC R-2010/03. Il définit la pension comme l'opération par laquelle le CÉDANT "
+            "remet des titres au CESSIONNAIRE contre un prix convenu, le cessionnaire "
+            "s'engageant à rétrocéder des titres de même nature. Et il en tire la conséquence "
+            "comptable, dans les termes suivants :\n"
             "\n"
-            "LA QUALIFICATION NE DÉPEND PAS DU LIBELLÉ MAIS DU SCHÉMA. Le commentaire de la salle "
-            "des marchés désigne ces opérations comme des cessions-rétrocessions ; la comptabilité "
-            "les enregistre comme des cessions fermes. C'est la comptabilité qui produit les états "
-            "financiers et les ratios prudentiels.\n"
+            "  « La pension entraîne, chez le cédant, d'une part, le MAINTIEN À L'ACTIF de son "
+            "bilan des titres financiers mis en pension et, d'autre part, l'INSCRIPTION AU "
+            "PASSIF du bilan du montant de sa DETTE vis-à-vis du cessionnaire. »\n"
             "\n"
-            "DEUX SENS, DEUX ERREURS SYMÉTRIQUES. Une cession-rétrocession n'est pas toujours "
-            "un financement REÇU. La première jambe montre que la banque y est tantôt "
-            "emprunteuse — elle cède le titre et encaisse — tantôt PRÊTEUSE : elle acquiert le "
-            f"titre et décaisse. {len(prets)} des {len(sens_near)} opérations dont la première "
-            f"jambe est identifiable relèvent du second cas, soit {pct(part_prets, 0)}. Le "
-            "retraitement attendu n'est donc pas le même selon le sens : pour un financement "
-            "reçu, une dette manque au passif ; pour un financement accordé, c'est une CRÉANCE "
-            "qui manque à l'actif, et le titre acquis n'aurait pas dû y entrer. Dans les deux "
-            "cas le bilan est faux, mais dans des sens opposés, et les deux populations doivent "
-            "être retraitées séparément.\n"
+            "  « Les titres financiers reçus en pension NE SONT PAS INSCRITS AU BILAN du "
+            "cessionnaire ; celui-ci enregistre à l'actif de son bilan le montant de sa "
+            "CRÉANCE sur le cédant. »\n"
             "\n"
-            "QUATRE CONSÉQUENCES. Les titres sortent puis rentrent du bilan alors qu'ils ne le "
-            "quittent économiquement jamais. Des plus-values de cession sont constatées sur des "
-            "opérations de financement. L'endettement — ou symétriquement les concours accordés — "
-            "est sous-évalué, faussant les ratios de liquidité et de transformation. Et l'usage "
-            "réel du portefeuille comme collatéral est invisible au bilan comme au hors bilan.\n"
+            "La règle ne laisse donc aucune marge : dans une pension, le titre NE SORT PAS du "
+            "bilan du cédant, et la trésorerie reçue est une DETTE.\n"
             "\n"
-            "LECTURE DU TABLEAU COMPARATIF. Les trois marqueurs se traduisent par quatre comptes, "
-            "l'inscription hors bilan ayant par nature une contrepartie. Aucun des quatre n'est "
-            "mouvementé sur les cessions-rétrocessions, alors que les quatre le sont sur les "
-            "pensions auprès de la banque centrale."
+            "II. LE PLAN DE COMPTES DE LA BANQUE LE CONFIRME, SANS QU'IL SOIT BESOIN D'INTERPRÉTER\n"
+            "\n"
+            "Le référentiel de comptes de la banque — son propre PCEC — ouvre sept comptes "
+            "dédiés à cette opération, dont le seul intitulé suffit à établir le traitement "
+            "attendu : 521600100 VALEURS DONNÉES EN PENSION et 532000100 sont des comptes de "
+            "PASSIF ; 539000100 porte les dettes rattachées ; 602000100 INTÉRÊT SUR VALEURS "
+            "DONNÉES EN PENSION est un compte de CHARGE. Si une pension devait s'enregistrer "
+            "comme une vente, aucun de ces comptes n'aurait de raison d'exister. Le plan de "
+            "comptes est un élément de preuve interne : il n'est pas discutable, il est celui "
+            "de la banque.\n"
+            "\n"
+            "III. CE QUI A ÉTÉ COMPTABILISÉ\n"
+            "\n"
+            "L'inverse, exactement. Le compte de portefeuille est CRÉDITÉ à la première jambe "
+            "— le titre sort du bilan — puis DÉBITÉ à la seconde — il y revient. La trésorerie "
+            "encaissée n'est constatée nulle part comme une dette. Le schéma appliqué est "
+            "celui d'une vente suivie d'un achat.\n"
+            + (f"Sur les sept comptes que le PCEC consacre à la pension, AUCUNE ligne n'a été "
+               "mouvementée par ces opérations."
+               if total_pcec == 0 else
+               f"Sur les sept comptes que le PCEC consacre à la pension, {nb(total_pcec)} lignes "
+               "seulement ont été mouvementées par ces opérations.")
+            + " Le tableau de présence ci-dessous le détaille compte par compte.\n"
+            "\n"
+            "IV. LE TEST QUI TRANCHE — ET QUI NE DÉPEND D'AUCUNE INTERPRÉTATION DE TEXTE\n"
+            "\n"
+            "On pourrait objecter que la qualification se discute, et qu'une cession suivie "
+            "d'un rachat peut être deux opérations fermes indépendantes. Cette objection se "
+            "tranche par l'arithmétique, sans recourir au droit.\n"
+            "\n"
+            "Le raisonnement est le suivant. Le prix d'une obligation se décompose en un PRIX "
+            "PIED DE COUPON, qui suit le marché, et un COUPON COURU, qui ne dépend que du "
+            "temps écoulé. Si, entre la jambe aller et la jambe retour, le différentiel de "
+            "trésorerie est EXACTEMENT ÉGAL au coupon couru sur la période, alors le prix pied "
+            "de coupon n'a pas bougé d'un centime. Autrement dit : la banque a cédé à un prix "
+            "et s'est engagée à racheter AU MÊME PRIX. Aucun risque de prix n'a été transféré, "
+            "et le différentiel encaissé par la contrepartie n'est rien d'autre qu'un "
+            "INTÉRÊT.\n"
+            "\n"
+            f"LE TEST A ÉTÉ EXÉCUTÉ SUR {nb(len(coupon))} OPÉRATIONS APPARIÉES. "
+            f"{nb(len(exacts))} d'entre elles vérifient l'égalité À MOINS D'UN FRANC PRÈS — "
+            "l'écart résiduel étant l'arrondi à l'unité. Sur ces opérations, le taux implicite "
+            "calculé à partir de la seule trésorerie tombe sur le TAUX NOMINAL DU COUPON de "
+            "l'obligation, à deux décimales : 5,75 contre 5,75 ; 7,25 contre 7,25 ; 6,50 "
+            "contre 6,50 ; 7,00 contre 7,00.\n"
+            "\n"
+            "UNE TELLE COÏNCIDENCE N'EXISTE PAS ENTRE DEUX OPÉRATIONS FERMES INDÉPENDANTES. "
+            "Deux transactions réellement distinctes, séparées de plusieurs jours, sur un "
+            "marché où les prix bougent, ne produisent pas un différentiel égal au franc près "
+            "au coupon couru. Le prix de rachat était FIXÉ DÈS L'ORIGINE. Il s'ensuit que la "
+            "banque a conservé la totalité du risque de prix et la totalité du risque de "
+            "crédit sur l'émetteur — et qu'il ne pouvait donc pas y avoir sortie du bilan.\n"
+            "\n"
+            "V. OÙ LE COÛT DU FINANCEMENT A-T-IL ATTERRI ?\n"
+            "\n"
+            "Puisqu'aucune charge d'intérêt n'est constatée, la rémunération de la "
+            "contrepartie devait bien passer quelque part. Elle transite par le compte de "
+            f"COURUS 512800100 — effet net {xaf(courus)} sur ces opérations — puis se dénoue "
+            "dans les comptes de REVENUS DE TITRES 733200100 et 733400100, dont l'effet net "
+            f"est de {xaf(abs(revenus))} au CRÉDIT, c'est-à-dire en produit.\n"
+            "Le coût d'un financement est ainsi absorbé dans le revenu du portefeuille, au lieu "
+            "d'être isolé en charge. Deux conséquences. D'abord, le PCEC prohibe la "
+            "compensation entre charges et produits : une charge d'intérêt ne se présente pas "
+            "en diminution d'un revenu de titres. Ensuite, et c'est le plus gênant pour le "
+            "pilotage, le coût de cette ressource devient impossible à mesurer — ni la "
+            "trésorerie, ni le contrôle de gestion, ni le régulateur ne peuvent savoir ce que "
+            "la banque paie pour se refinancer par ce canal.\n"
+            "\n"
+            "VI. LA BANQUE CONNAÎT LE SCHÉMA CORRECT, ET L'APPLIQUE AILLEURS\n"
+            "\n"
+            "Le tableau comparatif ci-dessous met face à face les deux traitements. Sur ses "
+            "pensions auprès de la banque centrale, la banque constate bien une dette au "
+            "passif, une charge d'intérêt et une inscription au hors bilan des titres donnés "
+            "en garantie. Le dispositif existe, il est paramétré, il fonctionne. Il n'est pas "
+            "employé ici. L'anomalie ne peut donc pas être attribuée à une limite du système.\n"
+            "\n"
+            "VII. LA BANQUE DÉSIGNE ELLE-MÊME CES OPÉRATIONS COMME DES PENSIONS\n"
+            "\n"
+            "Les commentaires saisis par la salle des marchés emploient le vocabulaire "
+            "technique du marché de la pension et lui seul : « SBB », « NEAR LEG », « FAR "
+            "LEG », et parfois la durée — « FOR 30 DAYS ». Une jambe proche et une jambe "
+            "lointaine ne se conçoivent que si les deux sont contractées ensemble. Les "
+            "contreparties, telles que le référentiel Calypso les enregistre, sont des "
+            f"professionnels de marché : {', '.join(contreparties)}. Aucune n'est un client "
+            "de la banque.\n"
+            f"Enfin, Calypso comporte un portefeuille dédié, {BOOK_DEDIE}, dont le nom même "
+            "désigne l'opération. "
+            + (f"AUCUNE de ces {nb(commentes.DEAL.nunique())} opérations n'y figure"
+               if deals_bsb == 0 else
+               f"{nb(deals_bsb)} de ces {nb(commentes.DEAL.nunique())} opérations y figurent")
+            + " : elles sont toutes enregistrées dans les portefeuilles de détention "
+            "ordinaire. Le portefeuille qui aurait permis de les identifier existe, et il "
+            "n'est pas utilisé.\n"
+            "\n"
+            "VIII. DEUX SENS, DEUX RETRAITEMENTS DISTINCTS\n"
+            "\n"
+            "Une cession-rétrocession n'est pas toujours un financement REÇU. La première "
+            f"jambe montre que la banque y est tantôt emprunteuse — elle cède le titre et "
+            f"encaisse — tantôt PRÊTEUSE : elle acquiert le titre et décaisse. {len(prets)} "
+            f"des {len(sens_near)} opérations dont la première jambe est identifiable relèvent "
+            f"du second cas, soit {pct(part_prets, 0)}. Pour un financement reçu, une DETTE "
+            "manque au passif ; pour un financement accordé, c'est une CRÉANCE qui manque à "
+            "l'actif, et le titre acquis n'aurait pas dû entrer au bilan. Les deux populations "
+            "doivent être retraitées séparément.\n"
+            "\n"
+            "IX. CONSÉQUENCES\n"
+            "\n"
+            "Les titres sortent puis rentrent du bilan alors qu'ils ne le quittent "
+            "économiquement jamais. Des plus-values de cession sont constatées sur des "
+            "opérations de financement. L'endettement — ou symétriquement les concours "
+            "accordés — est sous-évalué, ce qui fausse les ratios de liquidité et de "
+            "transformation. L'usage réel du portefeuille comme collatéral est invisible au "
+            "bilan comme au hors bilan. Et le portefeuille affiché à chaque arrêté ne reflète "
+            "pas les titres réellement détenus.\n"
+            "\n"
+            "X. CE QUE CE CONSTAT N'ÉTABLIT PAS\n"
+            "\n"
+            "Par souci d'exactitude : le texte du Règlement COBAC R-2003/03 n'a pas pu être "
+            "consulté dans son édition officielle depuis l'environnement de travail ; la règle "
+            "citée au I doit être rapprochée de l'article correspondant, dont copie sera jointe "
+            "au dossier. Cela ne fragilise pas le constat, qui repose au II sur le plan de "
+            "comptes de la banque elle-même et au IV sur une démonstration arithmétique "
+            f"indépendante de tout texte. Par ailleurs, l'appariement des deux jambes est "
+            f"volontairement STRICT — même titre, même contrepartie, même nominal au franc "
+            f"près : il retient {nb(len(coupon))} opérations sur les {nb(commentes.DEAL.nunique())} "
+            "identifiées. Les autres ne sont pas exonérées ; elles n'ont simplement pas pu "
+            "être appariées automatiquement et demandent une revue manuelle."
         ),
         chiffres=[
-            ("Opérations concernées", str(commentes.DEAL.nunique())),
+            ("Opérations concernées", nb(commentes.DEAL.nunique())),
+            ("Contreparties, au référentiel Calypso", ", ".join(contreparties)),
+            ("Lignes sur les 7 comptes PCEC de la pension", nb(total_pcec)),
             ("Sorties du portefeuille (crédits)", xaf(sorties)),
             ("Entrées au portefeuille (débits)", xaf(entrees)),
-            ("Comptes marqueurs présents sur les pensions BEAC, absents ici",
-             f"{len([p for p in presence if p[2] and not p[3]])} sur {len(presence)}"),
             ("Écart entre sorties et entrées du portefeuille", xaf(sorties - entrees)),
-            ("Opérations dont la première jambe est identifiable", str(len(sens_near))),
+            ("TEST DU COUPON — opérations appariées", nb(len(coupon))),
+            ("TEST DU COUPON — vérifiées à moins d'un franc près", nb(len(exacts))),
+            ("Effet net sur le compte de courus 512800100", xaf(courus)),
+            ("Effet net sur les comptes de revenus de titres",
+             xaf(abs(revenus)) + (" au CRÉDIT (produit)" if revenus < 0 else " au DÉBIT (charge)")),
+            ("Charge d'intérêt constatée", xaf(0)),
+            ("Dette constatée au passif", xaf(0)),
+            ("Opérations dont la première jambe est identifiable", nb(len(sens_near))),
             ("Dont la banque EMPRUNTE (cession en première jambe)",
              f"{len(emprunts)} — {xaf(montant_emprunts)}"),
             ("Dont la banque PRÊTE (acquisition en première jambe)",
              f"{len(prets)} — {xaf(montant_prets)}"),
         ],
         tableaux=[
+            Tableau(["Paire NEAR / FAR", "Titre", "Jours", "Nominal XAF",
+                     "Différentiel de trésorerie", "Coupon couru théorique", "Écart XAF",
+                     "Taux implicite %", "Coupon nominal %"],
+                    [[f"{r.near} / {r.far}", r.titre, int(r.jours), float(r.nominal),
+                      float(r.constate), round(float(r.theorique), 2), round(float(r.ecart), 2),
+                      round(float(r.taux_implicite), 2), float(r.coupon)]
+                     for _, r in exacts.iterrows()] if not exacts.empty else [],
+                    max_lignes=12,
+                    note=("LE TEST DÉCISIF. Pour chacune de ces opérations, le différentiel de "
+                          "trésorerie entre les deux jambes est égal au coupon couru sur la "
+                          "période à moins d'un franc près, et le taux implicite tombe sur le "
+                          "taux nominal du coupon. Le prix pied de coupon était donc identique "
+                          "aux deux jambes : le prix de rachat était fixé dès l'origine.")),
+            Tableau(["Compte PCEC de la pension", "Intitulé", "Ce qu'il devrait porter",
+                     "Lignes mouvementées"],
+                    presence_pcec,
+                    note=("Les sept comptes que le plan de comptes de la banque consacre à la "
+                          "pension livrée, et leur emploi sur ces opérations.")),
             Tableau(["Marqueur comptable d'une pension livrée", "Compte",
                      "Présent sur les pensions BEAC", "Présent sur les cessions-rétrocessions"],
                     presence,
-                    note="La comparaison des deux schémas est le cœur du constat."),
+                    note="La comparaison des deux schémas appliqués par la même banque."),
             Tableau(["Compte", "Libellé", "Lignes", "Débits", "Crédits", "Montant XAF"],
                     [[i[0], i[1][:36], int(r.lignes), int(r.debits), int(r.credits), float(r.montant)]
                      for i, r in detail_sbb.sort_values("montant", ascending=False).iterrows()],
@@ -295,13 +544,26 @@ def _c82_schema_comptable(ctx, commentes) -> Constat:
             Tableau(["Compte", "Libellé", "Lignes", "Montant XAF"],
                     [[i[0], i[1][:36], int(r.lignes), float(r.montant)]
                      for i, r in detail_pension.sort_values("montant", ascending=False).iterrows()],
-                    max_lignes=10, note="Schéma appliqué aux pensions auprès de la banque centrale, à titre de référence."),
+                    max_lignes=10,
+                    note="Schéma appliqué aux pensions auprès de la banque centrale, à titre de référence."),
         ],
         recommandation=(
-            "Obtenir les conventions-cadres signées avec les contreparties et la doctrine "
-            "comptable retenue. Faire confirmer le traitement par le commissaire aux comptes au "
-            "regard du PCEC. Mesurer l'incidence d'un reclassement en financement garanti sur le "
-            "bilan, le résultat et les ratios prudentiels de liquidité et de transformation."
+            "1. Joindre au dossier le Règlement COBAC R-2003/03 modifié et la convention-cadre "
+            "signée avec chaque contrepartie. Une convention-cadre de pension livrée "
+            "trancherait la qualification juridique à elle seule.\n"
+            "2. Opposer à la direction le test du coupon : un prix de rachat égal au prix de "
+            "cession pied de coupon n'est pas une coïncidence de marché, c'est un prix "
+            "convenu. Demander sur quelle base la direction soutient que le risque a été "
+            "transféré.\n"
+            "3. Faire confirmer le traitement par le commissaire aux comptes au regard du "
+            "Règlement COBAC R-2003/03, et mesurer l'incidence d'un reclassement en "
+            "financement garanti sur le bilan, le résultat, le produit net bancaire et les "
+            "ratios prudentiels de liquidité et de transformation.\n"
+            "4. Reconstituer, exercice par exercice, la charge d'intérêt qui aurait dû être "
+            "constatée et la dette qui aurait dû figurer au passif à chaque arrêté.\n"
+            f"5. Rendre obligatoire l'emploi du portefeuille dédié {BOOK_DEDIE} : il existe, "
+            "et son utilisation rendrait ces opérations identifiables sans recourir au "
+            "commentaire libre de la salle des marchés (contrôle 8.1)."
         ),
     )
 

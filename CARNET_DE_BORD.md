@@ -2469,3 +2469,104 @@ Gravité maintenue à **ELEVEE**, mais le constat est **recentré** :
 
 **Règle retenue** : *une explication de la direction ne s'accepte ni ne se rejette en bloc.
 On la retient pour ce qu'elle explique, et l'on isole ce qu'elle n'explique pas.*
+
+---
+
+# Session 25 — Revalidation du point 8.2 : recherche sur le PCEC et test décisif
+
+## 25.1 Le texte applicable, identifié
+
+**Règlement COBAC R-2003/03** relatif à la comptabilisation et au traitement prudentiel des
+opérations sur titres effectuées par les établissements de crédit, **modifié par le
+Règlement COBAC R-2010/03**. C'est le texte qui gouverne le 8.2 — je le nommais jusqu'ici
+par ses seuls numéros de comptes.
+
+La règle, telle que les sources consultées la restituent :
+
+> « La pension entraîne, chez le **cédant**, d'une part, le **maintien à l'actif** de son
+> bilan des titres financiers mis en pension et, d'autre part, l'**inscription au passif**
+> du bilan du montant de sa **dette** vis-à-vis du cessionnaire. »
+>
+> « Les titres financiers reçus en pension **ne sont pas inscrits au bilan** du
+> cessionnaire ; celui-ci enregistre à l'actif de son bilan le montant de sa **créance** sur
+> le cédant. »
+
+**Limite à signaler** : l'édition officielle du règlement (beac.int, sgcobac.org, liziba.cg)
+est **bloquée par la politique de sortie réseau** de l'environnement. La citation doit être
+rapprochée de l'article correspondant, copie à joindre au dossier. Je l'ai écrit dans le
+rapport plutôt que de le taire.
+
+## 25.2 Pourquoi cela ne fragilise pas le constat
+
+Parce que j'ai deux preuves qui **ne dépendent d'aucun texte** :
+
+**(a) Le plan de comptes de la banque elle-même.** `gltm_master.csv` ouvre sept comptes
+dédiés dont l'intitulé dit le traitement :
+
+| Compte | Intitulé | Nature |
+|---|---|---|
+| 521600100 | VALEURS DONNEES EN PENSION | **passif** |
+| 532000100 | AUTRES VAL DONNEES EN PENSION | **passif** |
+| 539000100 | DETTES RATTACHEES | passif |
+| 602000100 | INTERET SUR VAL DONNEES EN PENSION | **charge** |
+| 521300100 / 531000100 / 702000100 | sens inverse | actif / produit |
+
+Si une pension devait s'enregistrer comme une vente, **aucun de ces comptes n'aurait de
+raison d'exister**. Preuve interne, non discutable.
+
+**Aucune ligne** n'a été mouvementée sur ces sept comptes par les 215 opérations.
+
+**(b) Le test du coupon — la démonstration arithmétique.**
+
+## 25.3 Le test du coupon
+
+Le prix d'une obligation = **prix pied de coupon** (qui suit le marché) + **coupon couru**
+(qui ne dépend que du temps). Donc :
+
+> Si le différentiel de trésorerie entre la jambe aller et la jambe retour est **exactement
+> égal au coupon couru** sur la période, le prix pied de coupon **n'a pas bougé d'un
+> centime**. La banque a cédé à un prix et s'est engagée à racheter **au même prix**.
+
+Exécuté sur **55 paires appariées** (même titre, même contrepartie, même nominal au franc
+près, jambe FAR postérieure). **11 vérifient l'égalité à moins d'un franc près** :
+
+| Paire | Titre | J | Nominal | Différentiel | Coupon théorique | Écart | Taux impl. | Coupon |
+|---|---|---|---|---|---|---|---|---|
+| 4108846/4124059 | GA2J00000390 | 4 | 1 000 000 000 | 630 137 | 630 136,99 | **+0,01** | 5,75 | 5,75 |
+| 4296308/4306541 | CG2L00000046 | 2 | 1 016 850 000 | 403 954 | 403 954,11 | **−0,11** | 7,25 | 7,25 |
+| 4108848/4124060 | GA2K00000074 | 4 | 5 000 000 000 | 3 561 644 | 3 561 643,84 | **+0,16** | 6,50 | 6,50 |
+| 3832393/3842883 | GQ2J00000057 | 5 | 9 916 500 000 | 9 508 972 | 9 508 972,60 | **−0,60** | 7,00 | 7,00 |
+
+Le taux implicite, calculé **à partir de la seule trésorerie**, tombe sur le **taux nominal
+du coupon** à deux décimales. Les écarts sont des arrondis à l'unité.
+
+**Une telle coïncidence n'existe pas entre deux opérations fermes indépendantes.** Le prix
+de rachat était **fixé dès l'origine** → la banque a conservé 100 % du risque de prix et
+100 % du risque de crédit émetteur → il ne pouvait pas y avoir sortie du bilan.
+
+## 25.4 Où est passé le coût du financement
+
+Il transite par les **courus 512800100** (effet net +230 033 257) puis se dénoue dans les
+**revenus de titres 733200100/733400100**, pour **1 055 906 959 XAF au crédit**. Le coût
+d'un financement est donc absorbé dans le revenu du portefeuille au lieu d'être isolé en
+charge — compensation prohibée par le PCEC, et coût de la ressource impossible à mesurer.
+
+## 25.5 Trois éléments corroborants trouvés en chemin
+
+1. **Le vocabulaire** : « NEAR LEG », « FAR LEG », « FOR 30 DAYS ». Une jambe proche et une
+   jambe lointaine ne se conçoivent que contractées ensemble.
+2. **Les contreparties**, au référentiel Calypso : BICECCM, CCACM, CDCG, ECOBANKCG,
+   ECOBANKCM, ECOBANKGQ, SGCM, UBACM, UBCM. **Aucun client.**
+3. **Le portefeuille dédié `ABCM_BSB.Bond` existe et n'est pas utilisé** : les 215 opérations
+   sont logées dans `ABCM_FVOCI.Bond` (204) et `ABCM_FVOCI.Bills` (11), c'est-à-dire dans
+   les portefeuilles de détention ordinaire.
+
+## 25.6 Ce que j'ai écrit comme limite
+
+L'appariement est **volontairement strict** : 55 paires sur 215 opérations. Les autres ne
+sont pas exonérées — elles n'ont pas pu être appariées automatiquement et demandent une revue
+manuelle. Le rapport le dit.
+
+**Règle retenue** : *quand l'accès au texte manque, chercher la démonstration qui s'en
+passe. Ici, l'arithmétique du coupon prouve la fixation du prix de rachat sans qu'aucun
+texte soit nécessaire.*

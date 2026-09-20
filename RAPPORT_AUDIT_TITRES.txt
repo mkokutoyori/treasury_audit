@@ -4,7 +4,7 @@
 
   Périmètre        : Département de la trésorerie — gestion des investissements sur les marchés financiers
   Période d'audit  : 2023-09-27 au 2026-06-30
-  Rapport généré le : 20/09/2026 à 21:01
+  Rapport généré le : 20/09/2026 à 21:28
   Référentiel      : Plan Comptable des Établissements de Crédit (PCEC) — CEMAC / COBAC
 
   Ce rapport est produit automatiquement. Chaque constat indique le test exécuté, sa
@@ -62,7 +62,7 @@ RÉCAPITULATIF DES ANOMALIES PAR GRAVITÉ
   CRITIQUE  [6.1] Aucun référentiel de contrat n'alimente plus le core banking
   CRITIQUE  [6.4] Comptes de liaison Calypso : ils ont fonctionné, puis ont cessé de revenir à zéro
   CRITIQUE  [6.7] L'interface Calypso déverse certains mouvements en double dans le grand livre
-  CRITIQUE  [8.2] Le schéma comptable appliqué est celui d'une cession ferme, non celui d'une pension livrée
+  CRITIQUE  [8.2] Les cessions-rétrocessions sont comptabilisées en cessions fermes alors que le prix de rachat est fixé d'avance
   CRITIQUE  [9.4] Comptes présentant un solde contraire à leur nature comptable à une date d'arrêté
   CRITIQUE  [11.6] Le solde des comptes de liaison mesure exactement les déversements incomplets
   CRITIQUE  [11.8] Anatomie du déversement incomplet le plus lourd — pension 3349072
@@ -2010,53 +2010,177 @@ appliqué avec celui que le PCEC prévoit pour une pension livrée.
   5 contrôle(s) exécuté(s) — 5 anomalie(s), 0 sans anomalie.
 
 ----------------------------------------------------------------------------------------------------
-[8.2] Le schéma comptable appliqué est celui d'une cession ferme, non celui d'une pension livrée
+[8.2] Les cessions-rétrocessions sont comptabilisées en cessions fermes alors que le prix de rachat est fixé d'avance
   Gravité : CRITIQUE
-  Référence : PCEC CEMAC — comptes 552 (emprunts), 601 (charges sur opérations de marché), 952/995 (hors bilan, titres affectés en garantie)
+  Référence : Règlement COBAC R-2003/03 relatif à la comptabilisation et au traitement prudentiel des opérations sur titres effectuées par les établissements de crédit, modifié par le Règlement COBAC R-2010/03 — PCEC, comptes 5216, 5320, 5390, 602, 5213, 5310, 702
 
-  CE QUE LE PCEC PRÉVOIT POUR UN FINANCEMENT GARANTI. Trois marqueurs comptables caractérisent une
-  pension livrée : le titre RESTE à l'actif et son affectation en garantie est inscrite au HORS
-  BILAN ; la trésorerie reçue est constatée en DETTE au passif ; le différentiel de prix entre les
-  deux jambes est une CHARGE D'INTÉRÊT.
-  Ce schéma n'est pas théorique : la banque l'applique correctement à ses pensions auprès de la
-  banque centrale, comme le montre le tableau comparatif ci-dessous.
+  I. CE QUE LA RÈGLE PRESCRIT
 
-  CE QUI EST APPLIQUÉ AUX CESSIONS-RÉTROCESSIONS. Les trois marqueurs sont ABSENTS. Aucun compte de
-  dette, aucune charge d'intérêt, aucune inscription en hors bilan. À la place, le compte de
-  portefeuille est CRÉDITÉ puis DÉBITÉ : le titre sort effectivement du bilan, puis y revient. C'est
-  exactement le schéma d'une vente suivie d'un achat.
+  Le texte applicable est le Règlement COBAC R-2003/03, modifié par le Règlement COBAC R-2010/03. Il
+  définit la pension comme l'opération par laquelle le CÉDANT remet des titres au CESSIONNAIRE
+  contre un prix convenu, le cessionnaire s'engageant à rétrocéder des titres de même nature. Et il
+  en tire la conséquence comptable, dans les termes suivants :
 
-  LA QUALIFICATION NE DÉPEND PAS DU LIBELLÉ MAIS DU SCHÉMA. Le commentaire de la salle des marchés
-  désigne ces opérations comme des cessions-rétrocessions ; la comptabilité les enregistre comme des
-  cessions fermes. C'est la comptabilité qui produit les états financiers et les ratios prudentiels.
+  « La pension entraîne, chez le cédant, d'une part, le MAINTIEN À L'ACTIF de son bilan des titres
+  financiers mis en pension et, d'autre part, l'INSCRIPTION AU PASSIF du bilan du montant de sa
+  DETTE vis-à-vis du cessionnaire. »
 
-  DEUX SENS, DEUX ERREURS SYMÉTRIQUES. Une cession-rétrocession n'est pas toujours un financement
-  REÇU. La première jambe montre que la banque y est tantôt emprunteuse — elle cède le titre et
-  encaisse — tantôt PRÊTEUSE : elle acquiert le titre et décaisse. 38 des 94 opérations dont la
-  première jambe est identifiable relèvent du second cas, soit 40 %. Le retraitement attendu n'est
-  donc pas le même selon le sens : pour un financement reçu, une dette manque au passif ; pour un
-  financement accordé, c'est une CRÉANCE qui manque à l'actif, et le titre acquis n'aurait pas dû y
-  entrer. Dans les deux cas le bilan est faux, mais dans des sens opposés, et les deux populations
-  doivent être retraitées séparément.
+  « Les titres financiers reçus en pension NE SONT PAS INSCRITS AU BILAN du cessionnaire ; celui-ci
+  enregistre à l'actif de son bilan le montant de sa CRÉANCE sur le cédant. »
 
-  QUATRE CONSÉQUENCES. Les titres sortent puis rentrent du bilan alors qu'ils ne le quittent
-  économiquement jamais. Des plus-values de cession sont constatées sur des opérations de
-  financement. L'endettement — ou symétriquement les concours accordés — est sous-évalué, faussant
-  les ratios de liquidité et de transformation. Et l'usage réel du portefeuille comme collatéral est
-  invisible au bilan comme au hors bilan.
+  La règle ne laisse donc aucune marge : dans une pension, le titre NE SORT PAS du bilan du cédant,
+  et la trésorerie reçue est une DETTE.
 
-  LECTURE DU TABLEAU COMPARATIF. Les trois marqueurs se traduisent par quatre comptes, l'inscription
-  hors bilan ayant par nature une contrepartie. Aucun des quatre n'est mouvementé sur les cessions-
-  rétrocessions, alors que les quatre le sont sur les pensions auprès de la banque centrale.
+  II. LE PLAN DE COMPTES DE LA BANQUE LE CONFIRME, SANS QU'IL SOIT BESOIN D'INTERPRÉTER
 
-    Opérations concernées                                         : 215
-    Sorties du portefeuille (crédits)                             : 473 462 410 000 XAF
-    Entrées au portefeuille (débits)                              : 444 206 660 000 XAF
-    Comptes marqueurs présents sur les pensions BEAC, absents ici : 4 sur 4
-    Écart entre sorties et entrées du portefeuille                : 29 255 750 000 XAF
-    Opérations dont la première jambe est identifiable            : 94
-    Dont la banque EMPRUNTE (cession en première jambe)           : 56 — 238 817 070 000 XAF
-    Dont la banque PRÊTE (acquisition en première jambe)          : 38 — 149 909 180 000 XAF
+  Le référentiel de comptes de la banque — son propre PCEC — ouvre sept comptes dédiés à cette
+  opération, dont le seul intitulé suffit à établir le traitement attendu : 521600100 VALEURS
+  DONNÉES EN PENSION et 532000100 sont des comptes de PASSIF ; 539000100 porte les dettes rattachées
+  ; 602000100 INTÉRÊT SUR VALEURS DONNÉES EN PENSION est un compte de CHARGE. Si une pension devait
+  s'enregistrer comme une vente, aucun de ces comptes n'aurait de raison d'exister. Le plan de
+  comptes est un élément de preuve interne : il n'est pas discutable, il est celui de la banque.
+
+  III. CE QUI A ÉTÉ COMPTABILISÉ
+
+  L'inverse, exactement. Le compte de portefeuille est CRÉDITÉ à la première jambe — le titre sort
+  du bilan — puis DÉBITÉ à la seconde — il y revient. La trésorerie encaissée n'est constatée nulle
+  part comme une dette. Le schéma appliqué est celui d'une vente suivie d'un achat.
+  Sur les sept comptes que le PCEC consacre à la pension, AUCUNE ligne n'a été mouvementée par ces
+  opérations. Le tableau de présence ci-dessous le détaille compte par compte.
+
+  IV. LE TEST QUI TRANCHE — ET QUI NE DÉPEND D'AUCUNE INTERPRÉTATION DE TEXTE
+
+  On pourrait objecter que la qualification se discute, et qu'une cession suivie d'un rachat peut
+  être deux opérations fermes indépendantes. Cette objection se tranche par l'arithmétique, sans
+  recourir au droit.
+
+  Le raisonnement est le suivant. Le prix d'une obligation se décompose en un PRIX PIED DE COUPON,
+  qui suit le marché, et un COUPON COURU, qui ne dépend que du temps écoulé. Si, entre la jambe
+  aller et la jambe retour, le différentiel de trésorerie est EXACTEMENT ÉGAL au coupon couru sur la
+  période, alors le prix pied de coupon n'a pas bougé d'un centime. Autrement dit : la banque a cédé
+  à un prix et s'est engagée à racheter AU MÊME PRIX. Aucun risque de prix n'a été transféré, et le
+  différentiel encaissé par la contrepartie n'est rien d'autre qu'un INTÉRÊT.
+
+  LE TEST A ÉTÉ EXÉCUTÉ SUR 55 OPÉRATIONS APPARIÉES. 11 d'entre elles vérifient l'égalité À MOINS
+  D'UN FRANC PRÈS — l'écart résiduel étant l'arrondi à l'unité. Sur ces opérations, le taux
+  implicite calculé à partir de la seule trésorerie tombe sur le TAUX NOMINAL DU COUPON de
+  l'obligation, à deux décimales : 5,75 contre 5,75 ; 7,25 contre 7,25 ; 6,50 contre 6,50 ; 7,00
+  contre 7,00.
+
+  UNE TELLE COÏNCIDENCE N'EXISTE PAS ENTRE DEUX OPÉRATIONS FERMES INDÉPENDANTES. Deux transactions
+  réellement distinctes, séparées de plusieurs jours, sur un marché où les prix bougent, ne
+  produisent pas un différentiel égal au franc près au coupon couru. Le prix de rachat était FIXÉ
+  DÈS L'ORIGINE. Il s'ensuit que la banque a conservé la totalité du risque de prix et la totalité
+  du risque de crédit sur l'émetteur — et qu'il ne pouvait donc pas y avoir sortie du bilan.
+
+  V. OÙ LE COÛT DU FINANCEMENT A-T-IL ATTERRI ?
+
+  Puisqu'aucune charge d'intérêt n'est constatée, la rémunération de la contrepartie devait bien
+  passer quelque part. Elle transite par le compte de COURUS 512800100 — effet net 230 033 257 XAF
+  sur ces opérations — puis se dénoue dans les comptes de REVENUS DE TITRES 733200100 et 733400100,
+  dont l'effet net est de 1 055 906 959 XAF au CRÉDIT, c'est-à-dire en produit.
+  Le coût d'un financement est ainsi absorbé dans le revenu du portefeuille, au lieu d'être isolé en
+  charge. Deux conséquences. D'abord, le PCEC prohibe la compensation entre charges et produits :
+  une charge d'intérêt ne se présente pas en diminution d'un revenu de titres. Ensuite, et c'est le
+  plus gênant pour le pilotage, le coût de cette ressource devient impossible à mesurer — ni la
+  trésorerie, ni le contrôle de gestion, ni le régulateur ne peuvent savoir ce que la banque paie
+  pour se refinancer par ce canal.
+
+  VI. LA BANQUE CONNAÎT LE SCHÉMA CORRECT, ET L'APPLIQUE AILLEURS
+
+  Le tableau comparatif ci-dessous met face à face les deux traitements. Sur ses pensions auprès de
+  la banque centrale, la banque constate bien une dette au passif, une charge d'intérêt et une
+  inscription au hors bilan des titres donnés en garantie. Le dispositif existe, il est paramétré,
+  il fonctionne. Il n'est pas employé ici. L'anomalie ne peut donc pas être attribuée à une limite
+  du système.
+
+  VII. LA BANQUE DÉSIGNE ELLE-MÊME CES OPÉRATIONS COMME DES PENSIONS
+
+  Les commentaires saisis par la salle des marchés emploient le vocabulaire technique du marché de
+  la pension et lui seul : « SBB », « NEAR LEG », « FAR LEG », et parfois la durée — « FOR 30 DAYS
+  ». Une jambe proche et une jambe lointaine ne se conçoivent que si les deux sont contractées
+  ensemble. Les contreparties, telles que le référentiel Calypso les enregistre, sont des
+  professionnels de marché : BICECCM, CCACM, CDCG, ECOBANKCG, ECOBANKCM, ECOBANKGQ, SGCM, UBACM,
+  UBCM. Aucune n'est un client de la banque.
+  Enfin, Calypso comporte un portefeuille dédié, ABCM_BSB.Bond, dont le nom même désigne
+  l'opération. AUCUNE de ces 215 opérations n'y figure : elles sont toutes enregistrées dans les
+  portefeuilles de détention ordinaire. Le portefeuille qui aurait permis de les identifier existe,
+  et il n'est pas utilisé.
+
+  VIII. DEUX SENS, DEUX RETRAITEMENTS DISTINCTS
+
+  Une cession-rétrocession n'est pas toujours un financement REÇU. La première jambe montre que la
+  banque y est tantôt emprunteuse — elle cède le titre et encaisse — tantôt PRÊTEUSE : elle acquiert
+  le titre et décaisse. 38 des 94 opérations dont la première jambe est identifiable relèvent du
+  second cas, soit 40 %. Pour un financement reçu, une DETTE manque au passif ; pour un financement
+  accordé, c'est une CRÉANCE qui manque à l'actif, et le titre acquis n'aurait pas dû entrer au
+  bilan. Les deux populations doivent être retraitées séparément.
+
+  IX. CONSÉQUENCES
+
+  Les titres sortent puis rentrent du bilan alors qu'ils ne le quittent économiquement jamais. Des
+  plus-values de cession sont constatées sur des opérations de financement. L'endettement — ou
+  symétriquement les concours accordés — est sous-évalué, ce qui fausse les ratios de liquidité et
+  de transformation. L'usage réel du portefeuille comme collatéral est invisible au bilan comme au
+  hors bilan. Et le portefeuille affiché à chaque arrêté ne reflète pas les titres réellement
+  détenus.
+
+  X. CE QUE CE CONSTAT N'ÉTABLIT PAS
+
+  Par souci d'exactitude : le texte du Règlement COBAC R-2003/03 n'a pas pu être consulté dans son
+  édition officielle depuis l'environnement de travail ; la règle citée au I doit être rapprochée de
+  l'article correspondant, dont copie sera jointe au dossier. Cela ne fragilise pas le constat, qui
+  repose au II sur le plan de comptes de la banque elle-même et au IV sur une démonstration
+  arithmétique indépendante de tout texte. Par ailleurs, l'appariement des deux jambes est
+  volontairement STRICT — même titre, même contrepartie, même nominal au franc près : il retient 55
+  opérations sur les 215 identifiées. Les autres ne sont pas exonérées ; elles n'ont simplement pas
+  pu être appariées automatiquement et demandent une revue manuelle.
+
+    Opérations concernées                                : 215
+    Contreparties, au référentiel Calypso                : BICECCM, CCACM, CDCG, ECOBANKCG, ECOBANKCM, ECOBANKGQ, SGCM, UBACM, UBCM
+    Lignes sur les 7 comptes PCEC de la pension          : 0
+    Sorties du portefeuille (crédits)                    : 473 462 410 000 XAF
+    Entrées au portefeuille (débits)                     : 444 206 660 000 XAF
+    Écart entre sorties et entrées du portefeuille       : 29 255 750 000 XAF
+    TEST DU COUPON — opérations appariées                : 55
+    TEST DU COUPON — vérifiées à moins d'un franc près   : 11
+    Effet net sur le compte de courus 512800100          : 230 033 257 XAF
+    Effet net sur les comptes de revenus de titres       : 1 055 906 959 XAF au CRÉDIT (produit)
+    Charge d'intérêt constatée                           : 0 XAF
+    Dette constatée au passif                            : 0 XAF
+    Opérations dont la première jambe est identifiable   : 94
+    Dont la banque EMPRUNTE (cession en première jambe)  : 56 — 238 817 070 000 XAF
+    Dont la banque PRÊTE (acquisition en première jambe) : 38 — 149 909 180 000 XAF
+
+    Paire NEAR / FAR   Titre         Jours  Nominal XAF    Différentiel de trésorerie  Coupon couru théorique  Écart XAF  Taux implicite %  Coupon nominal %
+    -----------------  ------------  -----  -------------  --------------------------  ----------------------  ---------  ----------------  ----------------
+    4108846 / 4124059  GA2J00000390  4      1 000 000 000  630 137                     630 136,99              0,01       5,75              5,75            
+    4296308 / 4306541  CG2L00000046  2      1 016 850 000  403 954                     403 954,11              -0,11      7,25              7,25            
+    4108848 / 4124060  GA2K00000074  4      5 000 000 000  3 561 644                   3 561 643,84            0,16       6,50              6,50            
+    4296469 / 4306545  CG2J00000602  2      973 290 000    319 986                     319 985,75              0,25       6,00              6,00            
+    4296307 / 4306533  CG2A00000817  2      3 000 000 000  986 301                     986 301,37              -0,37      6,00              6,00            
+    3818189 / 3842307  CG2A00000593  6      1 500 000 000  1 356 164                   1 356 164,38            -0,38      5,50              5,50            
+    3818192 / 3842324  CG2A00000601  6      1 000 000 000  945 205                     945 205,48              -0,48      5,75              5,75            
+    3832393 / 3842883  GQ2J00000057  5      9 916 500 000  9 508 972                   9 508 972,60            -0,60      7,00              7,00            
+    3818196 / 3842355  CG2A00000585  6      885 080 000    800 210                     800 209,32              0,68       5,50              5,50            
+    3818194 / 3842348  CG2A00000544  6      1 863 870 000  1 685 142                   1 685 142,74            -0,74      5,50              5,50            
+    4108849 / 4124061  GA2K00000082  4      2 810 000 000  1 770 684                   1 770 684,93            -0,93      5,75              5,75            
+    LE TEST DÉCISIF. Pour chacune de ces opérations, le différentiel de trésorerie entre les deux
+    jambes est égal au coupon couru sur la période à moins d'un franc près, et le taux implicite
+    tombe sur le taux nominal du coupon. Le prix pied de coupon était donc identique aux deux jambes
+    : le prix de rachat était fixé dès l'origine.
+
+    Compte PCEC de la pension  Intitulé                                         Ce qu'il devrait porter                   Lignes mouvementées
+    -------------------------  -----------------------------------------------  ----------------------------------------  -------------------
+    521600100                  VALEURS DONNEES EN PENSION                       passif — la dette envers le cessionnaire  0                  
+    532000100                  AUTRES VAL DONNEES EN PENSION OU VENDUES FERMES  passif — même objet                       0                  
+    539000100                  DETTES RATTACHEES                                passif — intérêts courus sur la dette     0                  
+    602000100                  INTERET SUR VAL DONNEES EN PENSION               charge — le coût du financement           0                  
+    521300100                  VAL RECU PENSION OPS INTERB                      actif — la créance, sens inverse          0                  
+    531000100                  AUTRES VAL RECUES EN PENSION                     actif — même objet                        0                  
+    702000100                  INTS SUR AUT VALS RECUES PENSION                 produit — sens inverse                    0                  
+    Les sept comptes que le plan de comptes de la banque consacre à la pension livrée, et leur
+    emploi sur ces opérations.
 
     Marqueur comptable d'une pension livrée   Compte     Présent sur les pensions BEAC  Présent sur les cessions-rétrocessions
     ----------------------------------------  ---------  -----------------------------  --------------------------------------
@@ -2064,7 +2188,7 @@ appliqué avec celui que le PCEC prévoit pour une pension livrée.
     Charge d'intérêt                          601100100  oui                            non                                   
     Titres affectés en garantie (hors bilan)  952100100  oui                            non                                   
     Contrepartie hors bilan                   995000100  oui                            non                                   
-    La comparaison des deux schémas est le cœur du constat.
+    La comparaison des deux schémas appliqués par la même banque.
 
     Compte       Libellé                               Lignes  Débits  Crédits  Montant XAF      
     -----------  ------------------------------------  ------  ------  -------  -----------------
@@ -2091,10 +2215,20 @@ appliqué avec celui que le PCEC prévoit pour une pension livrée.
     Schéma appliqué aux pensions auprès de la banque centrale, à titre de référence.
 
   Recommandation :
-    Obtenir les conventions-cadres signées avec les contreparties et la doctrine comptable retenue.
-    Faire confirmer le traitement par le commissaire aux comptes au regard du PCEC. Mesurer
-    l'incidence d'un reclassement en financement garanti sur le bilan, le résultat et les ratios
-    prudentiels de liquidité et de transformation.
+    1. Joindre au dossier le Règlement COBAC R-2003/03 modifié et la convention-cadre signée avec
+    chaque contrepartie. Une convention-cadre de pension livrée trancherait la qualification
+    juridique à elle seule.
+    2. Opposer à la direction le test du coupon : un prix de rachat égal au prix de cession pied de
+    coupon n'est pas une coïncidence de marché, c'est un prix convenu. Demander sur quelle base la
+    direction soutient que le risque a été transféré.
+    3. Faire confirmer le traitement par le commissaire aux comptes au regard du Règlement COBAC
+    R-2003/03, et mesurer l'incidence d'un reclassement en financement garanti sur le bilan, le
+    résultat, le produit net bancaire et les ratios prudentiels de liquidité et de transformation.
+    4. Reconstituer, exercice par exercice, la charge d'intérêt qui aurait dû être constatée et la
+    dette qui aurait dû figurer au passif à chaque arrêté.
+    5. Rendre obligatoire l'emploi du portefeuille dédié ABCM_BSB.Bond : il existe, et son
+    utilisation rendrait ces opérations identifiables sans recourir au commentaire libre de la salle
+    des marchés (contrôle 8.1).
 
 ----------------------------------------------------------------------------------------------------
 [8.1] L'identification des cessions-rétrocessions par le commentaire est incomplète
