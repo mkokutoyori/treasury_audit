@@ -411,18 +411,24 @@ def _c27_concentration(ctx) -> Constat:
         )
     return Constat(
         code="2.8",
-        titre="Structure du portefeuille par contrepartie",
+        titre="Structure du portefeuille par contrepartie sous l'ancien dispositif",
         gravite=Gravite.CONFORME,
         constat=(
             "Le portefeuille est exposé à quatre souverains de la CEMAC. Cette concentration "
             "n'est pas une anomalie : elle résulte d'une DÉCISION DE POLITIQUE DE RISQUE de la "
             "banque, qui a restreint son univers d'investissement en écartant délibérément le "
             "Tchad et la République Centrafricaine en raison de leur profil de risque. Aucun "
-            "contrat sur ces deux souverains n'est constaté, ce qui atteste le respect de la "
-            "politique.\n"
+            "contrat sur ces deux souverains n'est constaté DANS LE RÉFÉRENTIEL FLEXCUBE.\n"
+            "PORTÉE DE CE CONSTAT. Le référentiel des contrats ne reçoit plus rien depuis la "
+            "bascule du 16/06/2025 : la conclusion ci-dessus ne vaut donc QUE pour la partie de "
+            "la période antérieure à cette date. Le contrôle 11.4 repose la question sur le flux "
+            "du nouveau dispositif, et y constate des titres des deux souverains exclus. Le "
+            "respect de la politique de risque doit être apprécié sur les deux contrôles réunis, "
+            "et non sur celui-ci seul.\n"
             "Le contrôle reste utile à double titre : il vérifie le respect de l'univers "
-            "autorisé, et il documente la répartition effective, qui doit être rapprochée des "
-            "limites internes par contrepartie et des ratios prudentiels de division des risques."
+            "autorisé sur l'ancien dispositif, et il documente la répartition effective, qui "
+            "doit être rapprochée des limites internes par contrepartie et des ratios "
+            "prudentiels de division des risques."
         ),
         chiffres=[
             ("Contreparties", str(len(par_cpty))),

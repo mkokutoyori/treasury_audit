@@ -4,7 +4,7 @@
 
   Périmètre        : Département de la trésorerie — gestion des investissements sur les marchés financiers
   Période d'audit  : 2023-09-27 au 2026-06-30
-  Rapport généré le : 20/09/2026 à 11:28
+  Rapport généré le : 20/09/2026 à 12:00
   Référentiel      : Plan Comptable des Établissements de Crédit (PCEC) — CEMAC / COBAC
 
   Ce rapport est produit automatiquement. Chaque constat indique le test exécuté, sa
@@ -39,24 +39,26 @@ SOMMAIRE
   Section 8 — Opérations de cession-rétrocession (Sell-Buy-Back)  (5 anomalie(s) / 5 contrôle(s))
   Section 9 — Résultat, classement comptable et rendement  (4 anomalie(s) / 4 contrôle(s))
   Section 10 — Cohérence entre le système amont et le grand livre  (5 anomalie(s) / 5 contrôle(s))
+  Section 11 — Le portefeuille de titres comme un tout  (6 anomalie(s) / 7 contrôle(s))
 
 ----------------------------------------------------------------------------------------------------
 RÉCAPITULATIF DES ANOMALIES PAR GRAVITÉ
 ----------------------------------------------------------------------------------------------------
 
-  CRITIQUE   : 7
-  ELEVEE     : 17
-  MOYENNE    : 19
+  CRITIQUE   : 8
+  ELEVEE     : 20
+  MOYENNE    : 21
   FAIBLE     : 3
-  TOTAL      : 46
+  TOTAL      : 52
 
   CRITIQUE  [4.2] Écritures manuelles dépourvues de tout validateur
   CRITIQUE  [5.3] Sur-apurement du compte de courus à la migration, laissant un compte d'actif en solde créditeur
   CRITIQUE  [6.1] Aucun référentiel de contrat n'alimente plus le core banking
-  CRITIQUE  [6.4] Comptes de liaison Calypso non apurés, en dérive continue
+  CRITIQUE  [6.4] Comptes de liaison Calypso non apurés : mesure globale des déversements manquants
   CRITIQUE  [6.7] L'interface Calypso déverse certains mouvements en double dans le grand livre
   CRITIQUE  [8.2] Le schéma comptable appliqué est celui d'une cession ferme, non celui d'une pension livrée
   CRITIQUE  [9.4] Comptes présentant un solde contraire à leur nature comptable à une date d'arrêté
+  CRITIQUE  [11.6] Le solde des comptes de liaison mesure exactement les déversements incomplets
   ELEVEE    [2.6] Taux contractuels aberrants au regard des opérations comparables
   ELEVEE    [3.4] L'annulation d'un contrat ne contre-passe pas les intérêts courus déjà enregistrés
   ELEVEE    [3.7] Accumulation des intérêts courus au-delà d'une année de coupons
@@ -74,6 +76,9 @@ RÉCAPITULATIF DES ANOMALIES PAR GRAVITÉ
   ELEVEE    [9.3] Rendement implicite très supérieur aux taux contractuels du portefeuille
   ELEVEE    [10.2] Deals annulés, en attente ou hypothétiques ayant produit de la comptabilité
   ELEVEE    [10.4] Saisie des deals par des comptes génériques dans le système amont
+  ELEVEE    [11.3] Codification des titres : codes fictifs, pays contradictoires et libellés divergents
+  ELEVEE    [11.4] Titres de souverains exclus par la politique de risque dans le nouveau dispositif
+  ELEVEE    [11.5] Le portefeuille est comptabilisé au pair : la prime et la décote sont portées à part
   MOYENNE   [1.2] Lignes dupliquées dans les extractions
   MOYENNE   [1.4] Opération technique passée un week-end, touchant l'ensemble des comptes du périmètre
   MOYENNE   [1.5] Deux conventions de contre-passation opposées entre les deux systèmes
@@ -93,6 +98,8 @@ RÉCAPITULATIF DES ANOMALIES PAR GRAVITÉ
   MOYENNE   [9.1] Progression du résultat de l'activité de titres
   MOYENNE   [10.1] Deals conclus sans écriture, sur des portefeuilles pourtant couverts par le périmètre
   MOYENNE   [10.5] Référentiel des opérateurs non normalisé
+  MOYENNE   [11.2] Les titres acquis pour la clientèle transitent par le portefeuille propre
+  MOYENNE   [11.7] Schéma comptable du nouveau dispositif, reconstitué sur un échantillon de titres
   FAIBLE    [1.3] Jours ouvrés sans écriture restant à rapprocher du calendrier des fériés
   FAIBLE    [2.4] Contrats comptabilisés tardivement après leur négociation
   FAIBLE    [10.3] Écritures postérieures à la dernière négociation du référentiel extrait
@@ -399,15 +406,20 @@ CONTRÔLES SANS ANOMALIE
         Contrats sans écriture : 0
         Écritures sans contrat : 0
 
-  [2.8] Structure du portefeuille par contrepartie
+  [2.8] Structure du portefeuille par contrepartie sous l'ancien dispositif
       Le portefeuille est exposé à quatre souverains de la CEMAC. Cette concentration n'est pas une
       anomalie : elle résulte d'une DÉCISION DE POLITIQUE DE RISQUE de la banque, qui a restreint
       son univers d'investissement en écartant délibérément le Tchad et la République Centrafricaine
-      en raison de leur profil de risque. Aucun contrat sur ces deux souverains n'est constaté, ce
-      qui atteste le respect de la politique.
-      Le contrôle reste utile à double titre : il vérifie le respect de l'univers autorisé, et il
-      documente la répartition effective, qui doit être rapprochée des limites internes par
-      contrepartie et des ratios prudentiels de division des risques.
+      en raison de leur profil de risque. Aucun contrat sur ces deux souverains n'est constaté DANS
+      LE RÉFÉRENTIEL FLEXCUBE.
+      PORTÉE DE CE CONSTAT. Le référentiel des contrats ne reçoit plus rien depuis la bascule du
+      16/06/2025 : la conclusion ci-dessus ne vaut donc QUE pour la partie de la période antérieure
+      à cette date. Le contrôle 11.4 repose la question sur le flux du nouveau dispositif, et y
+      constate des titres des deux souverains exclus. Le respect de la politique de risque doit être
+      apprécié sur les deux contrôles réunis, et non sur celui-ci seul.
+      Le contrôle reste utile à double titre : il vérifie le respect de l'univers autorisé sur
+      l'ancien dispositif, et il documente la répartition effective, qui doit être rapprochée des
+      limites internes par contrepartie et des ratios prudentiels de division des risques.
 
         Contreparties                      : 4
         Nominal de la période              : 1 018 106 273 333 XAF
@@ -1218,15 +1230,19 @@ suspens.
     Étudier l'extension de l'interface au-delà du grand livre.
 
 ----------------------------------------------------------------------------------------------------
-[6.4] Comptes de liaison Calypso non apurés, en dérive continue
+[6.4] Comptes de liaison Calypso non apurés : mesure globale des déversements manquants
   Gravité : CRITIQUE
 
   Les comptes de liaison ouverts pour l'interface Calypso ont leur première écriture au jour de la
   bascule : leur solde d'ouverture est donc nul et le cumul des mouvements constitue leur solde
   exact.
-  Or un compte de liaison est, par construction, un COMPTE DE PASSAGE : il est mouvementé dans un
-  sens à l'initiation de l'opération et dans l'autre à son dénouement, et doit revenir à zéro. Un
-  solde qui ne fait que croître établit que le dénouement ne suit pas l'initiation.
+  Or un compte de liaison est, par construction, un COMPTE DE PASSAGE : chaque deal y fait transiter
+  ses jambes de bilan d'un côté et son règlement en trésorerie de l'autre, de sorte qu'un deal
+  intégralement déversé le laisse à zéro.
+  LA CAUSE EST ÉTABLIE. Le contrôle 11.6 décompose ce solde deal par deal : il ne traduit pas un
+  retard d'apurement mais la somme des MOUVEMENTS QUE L'INTERFACE N'A PAS DÉVERSÉS — tantôt le
+  règlement, tantôt les jambes de bilan, tantôt une partie des deux. Le présent contrôle en donne la
+  mesure globale, le contrôle 11.6 le détail et les conséquences.
   Le solde cumulé atteint à la fin de la période d'audit un montant considérable, sans qu'aucun
   retour à zéro ne soit constaté depuis l'ouverture de ces comptes, soit 12 mois.
 
@@ -1251,9 +1267,8 @@ suspens.
 
   Recommandation :
     Vérifier si ce solde figure tel quel au bilan à la date d'arrêté. Obtenir l'état de
-    rapprochement de ces comptes et sa périodicité. Déterminer s'il s'agit d'opérations non
-    dénouées, d'un paramétrage d'interface asymétrique — une jambe déversée, l'autre non — ou d'un
-    décalage de dates de valeur.
+    rapprochement de ces comptes et sa périodicité. Traiter la cause au contrôle 11.6, qui identifie
+    deal par deal les mouvements que l'interface n'a pas déversés.
 
 ----------------------------------------------------------------------------------------------------
 [6.7] L'interface Calypso déverse certains mouvements en double dans le grand livre
@@ -1639,10 +1654,20 @@ appliqué avec celui que le PCEC prévoit pour une pension livrée.
   désigne ces opérations comme des cessions-rétrocessions ; la comptabilité les enregistre comme des
   cessions fermes. C'est la comptabilité qui produit les états financiers et les ratios prudentiels.
 
+  DEUX SENS, DEUX ERREURS SYMÉTRIQUES. Une cession-rétrocession n'est pas toujours un financement
+  REÇU. La première jambe montre que la banque y est tantôt emprunteuse — elle cède le titre et
+  encaisse — tantôt PRÊTEUSE : elle acquiert le titre et décaisse. 38 des 94 opérations dont la
+  première jambe est identifiable relèvent du second cas, soit 40 %. Le retraitement attendu n'est
+  donc pas le même selon le sens : pour un financement reçu, une dette manque au passif ; pour un
+  financement accordé, c'est une CRÉANCE qui manque à l'actif, et le titre acquis n'aurait pas dû y
+  entrer. Dans les deux cas le bilan est faux, mais dans des sens opposés, et les deux populations
+  doivent être retraitées séparément.
+
   QUATRE CONSÉQUENCES. Les titres sortent puis rentrent du bilan alors qu'ils ne le quittent
   économiquement jamais. Des plus-values de cession sont constatées sur des opérations de
-  financement. L'endettement est sous-évalué, faussant les ratios de liquidité et de transformation.
-  Et l'usage réel du portefeuille comme collatéral est invisible au bilan comme au hors bilan.
+  financement. L'endettement — ou symétriquement les concours accordés — est sous-évalué, faussant
+  les ratios de liquidité et de transformation. Et l'usage réel du portefeuille comme collatéral est
+  invisible au bilan comme au hors bilan.
 
   LECTURE DU TABLEAU COMPARATIF. Les trois marqueurs se traduisent par quatre comptes, l'inscription
   hors bilan ayant par nature une contrepartie. Aucun des quatre n'est mouvementé sur les cessions-
@@ -1653,6 +1678,9 @@ appliqué avec celui que le PCEC prévoit pour une pension livrée.
     Entrées au portefeuille (débits)                              : 444 206 660 000 XAF
     Comptes marqueurs présents sur les pensions BEAC, absents ici : 4 sur 4
     Écart entre sorties et entrées du portefeuille                : 29 255 750 000 XAF
+    Opérations dont la première jambe est identifiable            : 94
+    Dont la banque EMPRUNTE (cession en première jambe)           : 56 — 238 817 070 000 XAF
+    Dont la banque PRÊTE (acquisition en première jambe)          : 38 — 149 909 180 000 XAF
 
     Marqueur comptable d'une pension livrée   Compte     Présent sur les pensions BEAC  Présent sur les cessions-rétrocessions
     ----------------------------------------  ---------  -----------------------------  --------------------------------------
@@ -2400,6 +2428,438 @@ séparation des tâches dans le système amont et qualité du référentiel des 
   Recommandation :
     Confirmer l'étendue de l'extraction du référentiel des deals. Pour les deals qui n'y
     figureraient réellement pas, obtenir la justification des écritures correspondantes.
+
+====================================================================================================
+SECTION 11 — LE PORTEFEUILLE DE TITRES COMME UN TOUT
+====================================================================================================
+
+La bascule du 16/06/2025 a changé l'outil de gestion, pas l'actif : la banque n'a qu'un portefeuille
+de titres. Cette section le reconstitue de bout en bout, à travers les deux dispositifs, distingue
+les titres détenus en propre de ceux acquis pour être placés auprès de la clientèle, contrôle la
+codification des titres du nouveau dispositif et mesure l'exposition souveraine réelle.
+
+  7 contrôle(s) exécuté(s) — 6 anomalie(s), 1 sans anomalie.
+
+----------------------------------------------------------------------------------------------------
+[11.6] Le solde des comptes de liaison mesure exactement les déversements incomplets
+  Gravité : CRITIQUE
+
+  CE QUE LE CONTRÔLE ÉTABLIT. Le contrôle 6.4 constate que les comptes de liaison Calypso ne
+  reviennent pas à zéro, sans en donner la cause. L'examen détaillé du schéma comptable la fournit :
+  chaque deal produit plusieurs mouvements — couru, nominal, prime ou décote, règlement — qui
+  transitent TOUS par un compte de liaison, les jambes de bilan d'un côté et le règlement en
+  trésorerie de l'autre. Un deal intégralement déversé laisse donc le compte de liaison À ZÉRO.
+  Le solde de ces comptes n'est pas un retard d'apurement : c'est la MESURE EXACTE des mouvements
+  que l'interface n'a pas déversés.
+
+  TROIS SITUATIONS, TROIS CONSÉQUENCES DIFFÉRENTES.
+  - « règlement non déversé » : les comptes de bilan ont bougé, la trésorerie non. Le titre est
+    entré ou sorti du portefeuille sans que l'argent ne suive. Le solde du compte de règlement
+    auprès de la banque centrale est faux du même montant.
+  - « jambes de bilan non déversées » : la trésorerie a bougé, les comptes de bilan non. L'argent
+    est sorti ou entré sans que le titre ne soit constaté : le portefeuille est faux du même
+    montant.
+  - « déversement incomplet des deux côtés » : une partie seulement des mouvements est arrivée. Le
+    cas le plus lourd de la période est une pension auprès de la banque centrale dont le
+    remboursement a bien éteint la dette mais dont le décaissement correspondant n'a jamais été
+    déversé.
+
+  PORTÉE. Le défaut n'est pas marginal : il touche une part significative des deals et ses effets se
+  cumulent sans jamais être corrigés. Il constitue, avec les doublons du contrôle 6.7, l'explication
+  complète de la dérive relevée en 6.4.
+
+    Deals transitant par un compte de liaison        : 1 208
+    Deals au déversement INCOMPLET — période d'audit : 201 (17 %)
+    Résidu cumulé sur la période d'audit             : -124 704 289 100 XAF
+    Deals au déversement incomplet après la clôture  : 62
+    Résidu cumulé après la clôture                   : -53 250 957 155 XAF
+
+    Cause du résidu                       Deals  Résidu cumulé XAF
+    ------------------------------------  -----  -----------------
+    déversement incomplet des deux côtés  43     -90 907 850 382  
+    jambes de bilan non déversées         87     -43 045 843 952  
+    règlement non déversé                 71     9 249 405 234    
+    Répartition des deals de la période d'audit par nature du déversement manquant.
+
+    Portefeuille              Deals  Résidu cumulé XAF
+    ------------------------  -----  -----------------
+    ABCM_MM.Plmt.Tkn.Secured  4      -95 241 184 722  
+    ABCM_FVOCI.Bond           114    -15 613 009 104  
+    ABCM_FVOCI.Bills          7      -7 200 657 222   
+    ABCM_FI.Sales             72     -7 193 427 105   
+    ABCM_BSB.Bond             2      -3 528 767       
+    ABCM_MM.FundTransfer      2      547 517 820      
+
+    Deal     Date        Portefeuille              Titre         Résidu XAF       Cause                                 Événements déversés                                             
+    -------  ----------  ------------------------  ------------  ---------------  ------------------------------------  ----------------------------------------------------------------
+    3349072  2025-12-23  ABCM_MM.Plmt.Tkn.Secured                -90 101 000 000  déversement incomplet des deux côtés  CST_S_SETTLED, INTEREST, NOMINAL, NOMINAL_REV, PRINCIPAL_DEPOSIT
+    3186053  2025-11-07  ABCM_MM.Plmt.Tkn.Secured                -5 000 000 000   déversement incomplet des deux côtés  CST_S_SETTLED, INTEREST, NOMINAL, NOMINAL_REV, PRINCIPAL_DEPOSIT
+    4042639  2026-06-30  ABCM_FVOCI.Bond           CM2J00000196  4 994 702 740    règlement non déversé                 ACCRUAL_BS, NOMINAL, PREM_DISC                                  
+    4042675  2026-06-30  ABCM_FI.Sales             CM2J00000196  -4 994 702 740   jambes de bilan non déversées         CST_S_SETTLED, NOMINAL                                          
+    3612939  2026-03-02  ABCM_FVOCI.Bond                         -4 950 000 000   jambes de bilan non déversées         CST_S_SETTLED                                                   
+    2830294  2025-07-30  ABCM_FVOCI.Bond                         -3 703 970 000   jambes de bilan non déversées         CST_S_SETTLED                                                   
+    3060221  2025-10-08  ABCM_FVOCI.Bond           TD2A00000735  -3 081 657 534   règlement non déversé                 ACCRUAL_BS, NOMINAL, PREM_DISC                                  
+    3035313  2025-09-30  ABCM_FVOCI.Bond           TD2A00000735  3 081 657 534    règlement non déversé                 ACCRUAL_BS, NOMINAL, PREM_DISC                                  
+    3035348  2025-09-30  ABCM_FVOCI.Bond           TD2A00000735  -3 053 794 521   règlement non déversé                 ACCRUAL_BS, ACCRUAL_REAL, NOMINAL, PREM_DISC, REALIZED_CLEAN_PL 
+    3039302  2025-10-01  ABCM_FI.Sales             TD2A00000735  3 053 794 521    déversement incomplet des deux côtés  CST_S_SETTLED, NOMINAL, REALIZED_CLEAN_PL                       
+    2832878  2025-09-30  ABCM_FVOCI.Bond           GQ2J00000057  -3 016 684 932   jambes de bilan non déversées         CST_S_SETTLED                                                   
+    3612943  2026-03-02  ABCM_FVOCI.Bond                         -3 000 000 000   jambes de bilan non déversées         CST_S_SETTLED                                                   
+    Les douze résidus les plus lourds de la période d'audit.
+
+  Recommandation :
+    Mettre en place un contrôle quotidien du solde des comptes de liaison PAR DEAL : tout deal dont
+    le compte de liaison ne revient pas à zéro en fin de journée signale un déversement incomplet et
+    doit être repris. Rapprocher le compte de règlement auprès de la banque centrale de son relevé
+    pour chacun des deals recensés, et passer les écritures manquantes.
+
+----------------------------------------------------------------------------------------------------
+[11.3] Codification des titres : codes fictifs, pays contradictoires et libellés divergents
+  Gravité : ELEVEE
+
+  LE CODE EST LE SEUL IDENTIFIANT. Calypso ne crée aucun contrat dans le core banking : depuis la
+  bascule, un titre n'est désigné dans le grand livre que par le code porté par le libellé de ses
+  écritures. Ce code commande tout ce qui suit — rapprochement avec le conservateur, valorisation,
+  échéancier, exposition par émetteur. Sa fiabilité conditionne celle du portefeuille.
+
+  PREMIER TEST — LE CODE EXISTE-T-IL ? Le code d'un titre CEMAC commence par le code pays ISO de son
+  émetteur souverain. Or 5 titres portent un code de REMPLISSAGE, composé de X, qui n'identifie
+  rien. Ces titres ne peuvent être ni rapprochés d'un relevé de conservation, ni valorisés, ni
+  rattachés à une souche. Ils portent pourtant un encours de 40 000 000 000 XAF au portefeuille.
+
+  DEUXIÈME TEST — LE CODE ET L'ÉMETTEUR CONCORDENT-ILS ? Le libellé porte aussi un mnémonique
+  d'émetteur, redondant avec le code pays. Sur 4 titres, les deux se CONTREDISENT : un titre dont le
+  code désigne un pays est libellé au nom d'un autre. L'un des deux champs est faux, et l'exposition
+  par souverain est donc fausse pour ces titres. 3 titres portent en outre un mnémonique qui ne
+  correspond à aucun émetteur répertorié et ne permet donc aucun recoupement.
+
+  TROISIÈME TEST — LE MÊME TITRE PORTE-T-IL LE MÊME LIBELLÉ DANS LES DEUX SYSTÈMES ? NON : sur 129
+  titres présents dans les deux sources, 123 portent un libellé différent. L'écart est systématique
+  et porte sur la DATE D'ÉCHÉANCE : le grand livre l'écrit en mois/jour/année, l'extraction du
+  système amont en jour/mois/année. Pour un titre échéant le 3 janvier, le grand livre affiche 01/03
+  et le référentiel 03/01 — les deux lectures étant plausibles, l'échéance d'un titre est
+  INDÉTERMINABLE à la seule lecture du grand livre. Un échéancier bâti sur ces libellés est faux
+  pour tout titre dont le jour et le mois sont tous deux inférieurs à 13.
+
+    Titres identifiés dans le flux Calypso               : 132
+    Titres à CODE FICTIF (composé de X)                  : 5
+    Encours porté par ces titres                         : 40 000 000 000 XAF
+    Titres dont le pays et le mnémonique se contredisent : 4
+    Titres à mnémonique d'émetteur non répertorié        : 3
+    Titres à code pays hors CEMAC                        : 0
+    Titres présents dans les deux sources                : 129
+    Dont libellé DIVERGENT entre les deux sources        : 123 (95 %)
+
+    Titre       Libellé du grand livre                      Encours portefeuille XAF  Deals
+    ----------  ------------------------------------------  ------------------------  -----
+    XXXXXXXXX1  BondGOGA/XXXXXX1/XAF/2Y/04/05/2027/5.6%     10 500 000 000            2    
+    XXXXXXXXX2  BondGOGA/XXXXXX2/XAF/3Y/04/05/2028/6%       3 500 000 000             1    
+    XXXXXXXXX3  BondGOGA/XXXXXXXXX3/XAF/0D/10/01/2027/5.6%  3 000 000 000             1    
+    XXXXXXXXX4  BondGOGA/XXXXXXXXX4/XAF/0D/10/01/2028/6%    7 000 000 000             1    
+    XXXXXXXXX5  BondGOGA/XXXXXXXXX5/XAF/3Y/03/10/2029/6%    16 000 000 000            1    
+    Titres dont le code ne désigne rien. Le libellé lui-même n'est pas stable : le code y est
+    parfois plus court que dans le champ titre.
+
+    Titre         Pays du code        Mnémonique du libellé  Pays du mnémonique  Libellé                                      
+    ------------  ------------------  ---------------------  ------------------  ---------------------------------------------
+    CG2A00000882  CONGO               GOGA                   GABON               BondGOGA/CG2A00000882/XAF/2Y/07/09/2028/5.75%
+    CG2K00000070  CONGO               GOGA                   GABON               BondGOGA/CG2K00000070/XAF/0D/04/14/2026/6.25%
+    GA2A00000308  GABON               GOCON                  CONGO               BondGOCON/GA2A00000308/XAF/0D/05/02/2027/5%  
+    GA2C00000025  GABON               GOCO                   CONGO               BondGOCO/GA2C00000025/XAF/0D/07/09/2028/7.25%
+    CM1300001003  CAMEROUN            GQCM                                       Discount/GQCM/CM1300001003/XAF/09/30/2026    
+    GQ1300001633  GUINEE EQUATORIALE  GQCM                                       Discount/GQCM/GQ1300001633/XAF/03/11/2027    
+    GQ1300001641  GUINEE EQUATORIALE  GQCM                                       Discount/GQCM/GQ1300001641/XAF/03/25/2027    
+    Titres dont les deux champs d'identification désignent des pays différents, ou dont le
+    mnémonique n'est rattachable à aucun émetteur.
+
+    Titre         Libellé au grand livre                         Libellé au référentiel amont                 
+    ------------  ---------------------------------------------  ---------------------------------------------
+    CF2A00000074  BondGOCF/CF2A00000074/XAF/0D/09/17/2027/6%     BondGOCF/CF2A00000074/XAF/0D/17/09/2027/6%   
+    CF2J00000158  BondGOCF/CF2J00000158/XAF/0D/09/17/2028/6.25%  BondGOCF/CF2J00000158/XAF/0D/17/09/2028/6.25%
+    CG1300000862  Discount/GOCO/CG1300000862/XAF/05/28/2026      Discount/GOCO/CG1300000862/XAF/28/05/2026    
+    CG2A00000478  BondGOCG/CG2A00000478/XAF/0D/03/01/2026/5.4%   BondGOCG/CG2A00000478/XAF/0D/01/03/2026/5.4% 
+    CG2A00000486  BondGOCG/CG2A00000486/XAF/0D/03/28/2026/5.5%   BondGOCG/CG2A00000486/XAF/0D/28/03/2026/5.5% 
+    CG2A00000494  BondGOCG/CG2A00000494/XAF/0D/04/11/2026/5.4%   BondGOCG/CG2A00000494/XAF/0D/11/04/2026/5.4% 
+    CG2A00000502  BondGOCO/CG2A00000502/XAF/0D/04/25/2026/5.4%   BondGOCO/CG2A00000502/XAF/0D/25/04/2026/5.4% 
+    CG2A00000510  BondGOCO/CG2A00000510/XAF/0D/05/30/2026/5.25%  BondGOCO/CG2A00000510/XAF/0D/30/05/2026/5.25%
+    CG2A00000593  BondGOCG/CG2A00000593/XAF/0D/01/09/2027/5.5%   BondGOCG/CG2A00000593/XAF/0D/09/01/2027/5.5% 
+    CG2A00000601  BondGOCG/CG2A00000601/XAF/0D/03/20/2027/5.75%  BondGOCG/CG2A00000601/XAF/0D/20/03/2027/5.75%
+    Le mois et le jour de l'échéance sont permutés d'une source à l'autre.
+
+  Recommandation :
+    Faire attribuer un code réel aux titres identifiés par un code de remplissage et rapprocher leur
+    encours du relevé du conservateur. Corriger les titres dont le pays et le mnémonique se
+    contredisent, après avoir établi lequel des deux fait foi. Imposer à l'interface un format de
+    date unique et non ambigu — la norme ISO — pour le libellé des titres.
+
+----------------------------------------------------------------------------------------------------
+[11.4] Titres de souverains exclus par la politique de risque dans le nouveau dispositif
+  Gravité : ELEVEE
+
+  La banque a restreint son univers d'investissement à quatre des six souverains de la CEMAC, en
+  écartant délibérément le Tchad et la République Centrafricaine en raison de leur profil de risque.
+  Le contrôle 2.8 vérifie le respect de cette politique — mais sur le seul référentiel Flexcube, qui
+  ne reçoit plus rien depuis la bascule. La question devait donc être reposée sur le flux Calypso.
+  ELLE N'EST PAS TENUE. 3 titres émis par les souverains exclus ont été traités, pour 9 056 800 000
+  XAF d'acquisitions cumulées. La conclusion du contrôle 2.8 ne vaut donc que pour la période
+  antérieure à la bascule et ne peut être étendue à l'ensemble de la période d'audit.
+  Ces titres ont par ailleurs figuré AU BILAN À UNE DATE D'ARRÊTÉ : l'exposition n'est pas seulement
+  intrajournalière, elle est arrêtée.
+  Une partie de ces opérations relève du placement auprès de la clientèle plutôt que de
+  l'investissement pour compte propre. La distinction atténue le risque de crédit porté mais ne
+  l'annule pas : le titre transite par le bilan de la banque, et la politique de risque ne distingue
+  pas les deux usages.
+
+    Souverains exclus par la politique                 : TCHAD, REPUBLIQUE CENTRAFRICAINE
+    Titres de ces souverains traités depuis la bascule : 3
+    Deals concernés                                    : 19
+    Acquisitions cumulées                              : 9 056 800 000 XAF
+    Portefeuilles utilisés                             : ABCM_FI.Sales, ABCM_FVOCI.Bond
+    Arrêtés où ces titres figurent au bilan            : 1
+
+    Souverain                  Code  Titres  Deals  Acquisitions XAF  Encours à fin d'extraction XAF  Statut                
+    -------------------------  ----  ------  -----  ----------------  ------------------------------  ----------------------
+    CAMEROUN                   CM    38      172    393 141 970 000   73 804 590 000                                        
+    GABON                      GA    41      269    351 521 610 000   104 551 983 333                                       
+    CONGO                      CG    37      210    183 114 030 000   31 101 760 000                                        
+    GUINEE EQUATORIALE         GQ    8       79     101 274 080 000   31 506 310 000                                        
+    TCHAD                      TD    1       9      9 000 000 000     0,00                            EXCLU PAR LA POLITIQUE
+    REPUBLIQUE CENTRAFRICAINE  CF    2       10     56 800 000        0,00                            EXCLU PAR LA POLITIQUE
+    Exposition souveraine du nouveau dispositif, reconstituée depuis le code pays des titres.
+
+    Titre         Libellé                                        Portefeuilles                   Du          Au          Deals
+    ------------  ---------------------------------------------  ------------------------------  ----------  ----------  -----
+    CF2A00000074  BondGOCF/CF2A00000074/XAF/0D/09/17/2027/6%     ABCM_FI.Sales, ABCM_FVOCI.Bond  2025-10-17  2025-10-22  4    
+    CF2J00000158  BondGOCF/CF2J00000158/XAF/0D/09/17/2028/6.25%  ABCM_FI.Sales, ABCM_FVOCI.Bond  2025-10-17  2026-05-07  6    
+    TD2A00000735  BondGOTD/TD2A00000735/XAF/0D/03/01/2026/6.5%   ABCM_FI.Sales, ABCM_FVOCI.Bond  2025-09-30  2026-03-18  9    
+    Titres des souverains exclus.
+
+    Date d'arrêté  Encours des souverains exclus XAF
+    -------------  ---------------------------------
+    2023-12-31     0,00                             
+    2024-06-30     0,00                             
+    2024-12-31     0,00                             
+    2025-06-30     0,00                             
+    2025-12-31     11 300 000                       
+    2026-06-30     0,00                             
+
+  Recommandation :
+    Faire confirmer si la politique d'exclusion couvre les titres acquis pour être placés auprès de
+    la clientèle. Obtenir le contrôle de premier niveau qui doit bloquer la saisie d'un titre hors
+    univers autorisé dans le système amont, et expliquer pourquoi il n'a pas joué.
+
+----------------------------------------------------------------------------------------------------
+[11.5] Le portefeuille est comptabilisé au pair : la prime et la décote sont portées à part
+  Gravité : ELEVEE
+
+  COMMENT LE PORTEFEUILLE EST VALORISÉ. Les comptes de portefeuille ne portent pas le prix payé mais
+  la VALEUR NOMINALE du titre. L'écart entre les deux — la prime si le titre est acquis au-dessus du
+  pair, la décote s'il l'est en dessous — est logé dans des comptes de régularisation, puis rapporté
+  au résultat. L'encours de 11.1 est donc un nominal, et non une valeur d'acquisition.
+  CE QUE CELA CHANGE. Deux portefeuilles de même nominal peuvent avoir coûté des montants très
+  différents. La valeur comptable du portefeuille n'est lisible qu'en ajoutant au nominal le solde
+  des comptes de régularisation, ce que fait le tableau ci-dessous.
+  QUAND LA DÉCOTE EST-ELLE ACQUISE ? L'examen détaillé montre qu'elle n'est pas étalée sur la durée
+  de vie du titre mais reprise EN TOTALITÉ lors de la cession, par l'événement de réalisation. Un
+  titre acquis sous le pair et revendu au pair quelques jours plus tard dégage donc immédiatement
+  l'intégralité de la décote en produit. Le rapprochement avec le contrôle 9.3, qui constate un
+  rendement implicite très supérieur aux taux contractuels, s'impose : c'est la même mécanique vue
+  de deux côtés. Le produit ainsi dégagé n'est pas marginal : il représente une composante majeure
+  du résultat de l'activité.
+  UNE POSITION IMPOSSIBLE. À une ou plusieurs dates d'arrêté, les comptes de régularisation
+  présentent un solde DÉBITEUR. Un compte de produits comptabilisés d'avance ne peut être débiteur :
+  cela revient à dire que la banque a rapporté au résultat plus de produit qu'elle n'en avait
+  différé. Le contrôle 9.4 relève la même anomalie sur le compte des bons du Trésor.
+
+    Nominal du portefeuille à la clôture                    : 244 098 816 666 XAF
+    Solde des comptes de régularisation à la clôture        : 585 075 319 XAF — sens DÉBITEUR, contraire à la nature du compte
+    VALEUR COMPTABLE DU PORTEFEUILLE                        : 244 683 891 985 XAF
+    Produit tiré des primes et décotes — période d'audit    : 7 640 766 066 XAF
+    Produit tiré des primes et décotes — toute l'extraction : 12 393 901 859 XAF
+    Arrêtés à solde de régularisation débiteur              : 1
+
+    Date d'arrêté  Nominal XAF      Régularisations XAF  Valeur comptable XAF
+    -------------  ---------------  -------------------  --------------------
+    2023-12-31     71 749 600 000   -301 140 511         71 448 459 489      
+    2024-06-30     79 310 970 000   -741 414 119         78 569 555 881      
+    2024-12-31     115 432 180 000  -440 108 571         114 992 071 429     
+    2025-06-30     135 921 813 333  -545 957 231         135 375 856 102     
+    2025-12-31     212 912 553 333  -133 980 474         212 778 572 859     
+    2026-06-30     244 098 816 666  585 075 319          244 683 891 985     
+    Un montant négatif en régularisation est un solde créditeur, sens normal du compte : la prime
+    restant à rapporter vient alors en diminution du nominal.
+
+  Recommandation :
+    Faire confirmer la méthode de reprise de la prime et de la décote au regard du PCEC : un
+    étalement actuariel sur la durée de vie résiduelle du titre et une reprise intégrale à la
+    cession n'ont pas le même effet sur le résultat de l'exercice. Justifier le solde débiteur des
+    comptes de régularisation.
+
+----------------------------------------------------------------------------------------------------
+[11.2] Les titres acquis pour la clientèle transitent par le portefeuille propre
+  Gravité : MOYENNE
+
+  La banque n'achète pas seulement des titres pour son compte : elle en acquiert aussi pour les
+  replacer auprès de sa clientèle. Le nouveau dispositif loge cette activité dans un portefeuille
+  distinct, « ABCM_FI.Sales ».
+  LE CIRCUIT EST INDIRECT. Le titre est d'abord acquis dans le portefeuille propre, au bilan, puis
+  transféré au bureau clientèle par une opération miroir, avant de ressortir au hors bilan lorsque
+  le client en prend livraison et règle. Entre l'acquisition et le placement, le titre figure donc
+  au BILAN DE LA BANQUE et pèse sur ses encours, alors qu'il n'est pas destiné à y rester.
+  CONSÉQUENCE POUR L'ANALYSE. L'encours du portefeuille propre présenté au contrôle 11.1 comprend, à
+  toute date, une fraction non identifiable de titres en attente de placement. Aucun compte ne les
+  sépare : seul le portefeuille du système amont le fait, et ce portefeuille n'est pas déversé dans
+  le grand livre.
+  LE PONT MIROIR N'EST PAS APURÉ. Il porte 3 104 020 778 XAF à la clôture, c'est-à-dire des
+  transferts vers le bureau clientèle dont la contrepartie n'est jamais arrivée : soit le client n'a
+  pas réglé, soit la jambe correspondante n'a pas été déversée.
+
+    Deals de placement auprès de la clientèle         : 202
+    Titres concernés                                  : 29
+    Dont figurant AUSSI au portefeuille propre        : 29
+    Volume transféré au bureau clientèle              : 35 302 280 281 XAF
+    Commissions de placement constatées               : 5 596 771 XAF
+    Titres de la clientèle au hors bilan à la clôture : 23 893 110 000 XAF
+    Solde du pont miroir à la clôture                 : 3 104 020 778 XAF
+
+    Date d'arrêté  Titres de la clientèle (hors bilan)  Pont miroir  
+    -------------  -----------------------------------  -------------
+    2023-12-31     0,00                                 0,00         
+    2024-06-30     0,00                                 0,00         
+    2024-12-31     0,00                                 0,00         
+    2025-06-30     30 159 010 000                       0,00         
+    2025-12-31     28 635 360 000                       3 187 086 395
+    2026-06-30     23 893 110 000                       3 104 020 778
+    Le hors bilan mesure ce que la clientèle détient ; le pont miroir mesure ce qui a quitté le
+    portefeuille propre sans être réglé.
+
+    Titre          Deals  Écritures  Du          Au        
+    -------------  -----  ---------  ----------  ----------
+    GQ2J00000057   26     126        2025-07-17  2026-09-11
+    GA2B00000125   22     100        2026-01-16  2026-08-14
+    GA2K00000058   22     114        2025-11-17  2026-08-31
+    CG2J00000503   15     76         2026-01-27  2026-05-07
+    CG2J00000404   10     56         2025-09-17  2026-05-08
+    GA2B00000091   6      40         2026-01-21  2026-05-07
+    GA2B00000182   6      32         2025-12-23  2026-05-18
+    GA2K00000249   6      24         2026-02-02  2026-09-14
+    TD2A00000735   5      30         2025-09-30  2026-03-18
+    CG2J00000495   5      28         2025-10-08  2026-03-26
+    CG2B00000097   4      20         2026-04-23  2026-07-21
+    CG2A00000478   4      16         2025-10-21  2025-11-14
+    CF2J00000158   4      34         2025-10-17  2026-05-07
+    GA2A00000357   3      20         2026-09-03  2026-09-10
+    GA000002039-6  3      10         2026-04-30  2026-08-10
+    ... et 14 autre(s) ligne(s)
+    Titres ayant fait l'objet d'un placement auprès de la clientèle.
+
+  Recommandation :
+    Obtenir du système amont l'encours de titres détenus en attente de placement à chaque date
+    d'arrêté, afin de séparer le portefeuille d'investissement du stock d'intermédiation. Apurer le
+    pont miroir et en expliquer le solde.
+
+----------------------------------------------------------------------------------------------------
+[11.7] Schéma comptable du nouveau dispositif, reconstitué sur un échantillon de titres
+  Gravité : MOYENNE
+
+  POURQUOI CE CONTRÔLE. Calypso ne crée aucun contrat dans le core banking et n'y documente aucun
+  schéma comptable. La seule façon d'établir comment le nouveau dispositif comptabilise un titre est
+  de suivre un titre réel, mouvement par mouvement, du premier au dernier. C'est la démarche suivie
+  ici sur un échantillon de 6 titres, tiré régulièrement dans la liste ordonnée des codes afin
+  d'être reproductible et de couvrir les deux natures — obligations et bons du Trésor à escompte.
+
+  LE SCHÉMA ÉTABLI. Chaque opération produit des mouvements distincts, chacun équilibré, qui
+  transitent tous par un compte de liaison :
+  - NOMINAL porte la VALEUR NOMINALE du titre aux comptes de portefeuille : le portefeuille est donc
+    tenu au pair, et non au prix payé ;
+  - ACCRUAL_BS porte le coupon couru acheté ou vendu au compte de créances rattachées ;
+  - PREM_DISC porte la prime ou la décote aux comptes de régularisation ;
+  - CST_S_SETTLED porte le règlement au compte de la banque centrale.
+
+  L'ÉGALITÉ QUI EN DÉCOULE. Le règlement doit être égal au nominal, majoré du couru et diminué de la
+  décote. C'est la vérification menée deal par deal ci-dessous : elle valide le schéma et, avec lui,
+  la lecture faite aux contrôles 11.5 et 11.6.
+  Elle est vérifiée AU CENTIME PRÈS sur 18 des 22 deals de l'échantillon, ce qui établit le schéma.
+  LES 4 EXCEPTIONS SONT INSTRUCTIVES. Elles ne remettent pas le schéma en cause : elles signalent
+  les deals dont un mouvement a été déversé DEUX FOIS, ou dont une jambe manque. Le contrôle
+  retrouve ainsi, par une voie entièrement indépendante, les deux défauts d'interface relevés aux
+  contrôles 6.7 et 11.6. L'égalité de règlement constitue donc un test de détection simple et
+  complet, que la banque pourrait exécuter quotidiennement.
+
+    Titres examinés intégralement                                   : 6
+    Deals contrôlés sur ces titres                                  : 22
+    Deals vérifiant l'égalité de règlement                          : 18 sur 22
+    Deals en écart — mouvement déversé deux fois ou jambe manquante : 4
+
+    Titre         Nature    Portefeuilles                   Deals  Écritures  Du          Au        
+    ------------  --------  ------------------------------  -----  ---------  ----------  ----------
+    CF2A00000074  Bond      ABCM_FI.Sales, ABCM_FVOCI.Bond  4      28         2025-10-17  2025-10-22
+    CG2A00000874  Bond      ABCM_FVOCI.Bond                 2      14         2026-07-24  2026-08-06
+    CM1200002127  Discount  ABCM_FVOCI.Bills                2      16         2026-04-29  2026-05-07
+    CM2J00000196  Bond      ABCM_FI.Sales, ABCM_FVOCI.Bond  14     110        2025-12-04  2026-06-30
+    GA2A00000357  Bond      ABCM_FI.Sales, ABCM_FVOCI.Bond  5      40         2026-08-25  2026-09-15
+    GA2K00000074  Bond      ABCM_FVOCI.Bond                 5      30         2025-06-16  2026-08-17
+    Échantillon examiné.
+
+    Titre         Deal     Date        Nominal         Couru         Prime/décote  Règlement attendu  Règlement constaté  Écart     
+    ------------  -------  ----------  --------------  ------------  ------------  -----------------  ------------------  ----------
+    CF2A00000074  3098446  2025-10-22  22 900 000      105 403       -1 832 000    21 173 403         21 173 403          0,00      
+    CG2A00000874  4131298  2026-07-24  4 926 000 000   11 943 863    0,00          4 937 943 863      4 937 943 863       0,00      
+    CG2A00000874  4184911  2026-08-06  -4 926 000 000  -25 480 241   0,00          -4 951 480 241     -4 951 480 241      0,00      
+    CM1200002127  3728215  2026-04-29  3 000 000 000   0,00          -76 916 667   2 923 083 333      2 923 083 333       0,00      
+    CM1200002127  3817331  2026-04-30  -3 000 000 000  0,00          2 416 667     -2 997 583 333     -2 997 583 333      0,00      
+    CM2J00000196  3288919  2025-12-04  9 500 000 000   0,00          -285 000 000  9 215 000 000      9 215 000 000       0,00      
+    CM2J00000196  3387200  2025-12-31  -9 500 000 000  -45 547 945   0,00          -9 545 547 945     -9 545 547 945      0,00      
+    CM2J00000196  3405066  2026-01-09  9 500 000 000   56 934 932    0,00          9 556 934 932      9 556 934 932       0,00      
+    CM2J00000196  3413037  2026-01-12  -9 500 000 000  -60 188 356   -465 500      -9 560 653 856     -9 560 653 856      0,00      
+    CM2J00000196  3433872  2026-01-15  9 500 000 000   68 321 918    0,00          9 568 321 918      9 568 321 918       0,00      
+    CM2J00000196  3433901  2026-01-15  -9 500 000 000  -68 321 918   -2 964 000    -9 571 285 918     -9 569 803 918      -1 482 000
+    CM2J00000196  3495989  2026-02-03  9 500 000 000   94 349 315    0,00          9 594 349 315      9 594 349 315       0,00      
+    CM2J00000196  3556516  2026-02-17  -9 500 000 000  -117 123 288  -2 631 500    -9 619 754 788     -9 619 754 788      0,00      
+    CM2J00000196  3670238  2026-03-17  9 500 000 000   167 551 370   0,00          9 667 551 370      9 667 551 370       0,00      
+    Vérification de l'égalité fondatrice du schéma : nominal + couru − décote = règlement. Un
+    montant négatif en prime/décote est une décote, qui vient en diminution du règlement.
+
+  Recommandation :
+    Conserver cette reconstitution au dossier : elle documente un schéma comptable que le core
+    banking n'expose pas, et sert de référence à tout contrôle ultérieur sur le flux Calypso. La
+    faire valider par l'équipe en charge du paramétrage. Instaurer le test d'égalité de règlement
+    comme contrôle quotidien de premier niveau : il détecte à lui seul les doublons de déversement
+    et les jambes manquantes.
+
+----------------------------------------------------------------------------------------------------
+CONTRÔLES SANS ANOMALIE
+
+  [11.1] Le portefeuille vu comme une seule série, de bout en bout
+      Le portefeuille de titres de la banque est porté par deux jeux de comptes successifs : les
+      comptes du dispositif Flexcube jusqu'à la bascule, ceux du dispositif Calypso ensuite. Aucun
+      état ne les réunit, alors qu'il s'agit du MÊME actif : toute analyse conduite sur un seul jeu
+      de comptes s'arrête ou commence au 16/06/2025 et ne dit rien de l'évolution réelle.
+      La série reconstituée ci-dessous est la seule lecture continue du portefeuille. L'encours
+      passe de 71 749 600 000 XAF au premier arrêté de la période à 244 098 816 666 XAF au dernier,
+      soit une multiplication par 3,4 en moins de trois ans. Cette progression est le fait
+      générateur de la plupart des constats du présent rapport : elle commande les intérêts courus,
+      le résultat, le besoin de refinancement et l'exposition souveraine.
+      La bascule elle-même est neutre : ce qui sort des comptes Flexcube entre pour le même montant
+      dans les comptes Calypso, la continuité de l'actif est donc assurée.
+
+        Encours au premier arrêté de la période                 : 71 749 600 000 XAF
+        Encours au dernier arrêté de la période                 : 244 098 816 666 XAF
+        Multiplication sur la période                           : × 3,4
+        Sortie NETTE des comptes Flexcube le jour de la bascule : 126 688 763 333 XAF
+        Entrée NETTE dans les comptes Calypso le même jour      : 126 674 696 869 XAF
+        Écart de bascule                                        : -14 066 464 XAF
+
+        Date d'arrêté  Comptes Flexcube  Comptes Calypso  PORTEFEUILLE PROPRE  Titres de la clientèle (hors bilan)  Dispositif
+        -------------  ----------------  ---------------  -------------------  -----------------------------------  ----------
+        2023-12-31     71 749 600 000    0,00             71 749 600 000       0,00                                 Flexcube  
+        2024-06-30     79 310 970 000    0,00             79 310 970 000       0,00                                 Flexcube  
+        2024-12-31     115 432 180 000   0,00             115 432 180 000      0,00                                 Flexcube  
+        2025-06-30     0,00              135 921 813 333  135 921 813 333      30 159 010 000                       Calypso   
+        2025-12-31     0,00              212 912 553 333  212 912 553 333      28 635 360 000                       Calypso   
+        2026-06-30     0,00              244 098 816 666  244 098 816 666      23 893 110 000                       Calypso   
+        Le portefeuille propre est au bilan, les titres placés auprès de la clientèle au hors bilan. Les
+        deux colonnes ne s'additionnent pas : la seconde ne appartient pas à la banque.
+
 
 ====================================================================================================
                                            FIN DU RAPPORT                                           

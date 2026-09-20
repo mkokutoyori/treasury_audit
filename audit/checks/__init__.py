@@ -10,6 +10,7 @@ from . import (
     s08_sbb,
     s09_resultat,
     s10_coherence,
+    s11_portefeuille,
 )
 
 MODULES = [
@@ -23,4 +24,5 @@ MODULES = [
     s08_sbb,
     s09_resultat,
     s10_coherence,
+    s11_portefeuille,
 ]

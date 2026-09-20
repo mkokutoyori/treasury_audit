@@ -168,16 +168,20 @@ def _c64_comptes_liaison(ctx) -> Constat:
             + pd.Timestamp(cfg.fin).month - pd.Timestamp(ouverture).month)
     return Constat(
         code="6.4",
-        titre="Comptes de liaison Calypso non apurés, en dérive continue",
+        titre="Comptes de liaison Calypso non apurés : mesure globale des déversements manquants",
         gravite=gravite,
         constat=(
             "Les comptes de liaison ouverts pour l'interface Calypso ont leur première écriture au "
             "jour de la bascule : leur solde d'ouverture est donc nul et le cumul des mouvements "
             "constitue leur solde exact.\n"
-            "Or un compte de liaison est, par construction, un COMPTE DE PASSAGE : il est "
-            "mouvementé dans un sens à l'initiation de l'opération et dans l'autre à son "
-            "dénouement, et doit revenir à zéro. Un solde qui ne fait que croître établit que le "
-            "dénouement ne suit pas l'initiation.\n"
+            "Or un compte de liaison est, par construction, un COMPTE DE PASSAGE : chaque deal "
+            "y fait transiter ses jambes de bilan d'un côté et son règlement en trésorerie de "
+            "l'autre, de sorte qu'un deal intégralement déversé le laisse à zéro.\n"
+            "LA CAUSE EST ÉTABLIE. Le contrôle 11.6 décompose ce solde deal par deal : il ne "
+            "traduit pas un retard d'apurement mais la somme des MOUVEMENTS QUE L'INTERFACE N'A "
+            "PAS DÉVERSÉS — tantôt le règlement, tantôt les jambes de bilan, tantôt une partie "
+            "des deux. Le présent contrôle en donne la mesure globale, le contrôle 11.6 le "
+            "détail et les conséquences.\n"
             "Le solde cumulé atteint à la fin de la période d'audit un montant considérable, sans "
             f"qu'aucun retour à zéro ne soit constaté depuis l'ouverture de ces comptes, soit "
             f"{mois} mois."
@@ -194,9 +198,8 @@ def _c64_comptes_liaison(ctx) -> Constat:
         ],
         recommandation=(
             "Vérifier si ce solde figure tel quel au bilan à la date d'arrêté. Obtenir l'état de "
-            "rapprochement de ces comptes et sa périodicité. Déterminer s'il s'agit d'opérations "
-            "non dénouées, d'un paramétrage d'interface asymétrique — une jambe déversée, l'autre "
-            "non — ou d'un décalage de dates de valeur."
+            "rapprochement de ces comptes et sa périodicité. Traiter la cause au contrôle 11.6, "
+            "qui identifie deal par deal les mouvements que l'interface n'a pas déversés."
         ),
     )
 

@@ -28,6 +28,29 @@ CPT_REPO_DETTES = "559000101"
 CPT_REPO_CHARGE = "601100100"
 CPT_COLLATERAL = ["952100100", "995000100"]
 CPT_PROVISION = "591400100"
+# Hors bilan de la clientèle : les titres placés auprès des clients y sont logés, le
+# portefeuille propre de la banque restant au bilan (comptes 511 et 512).
+CPT_CLIENTELE = ["938000100", "998000100"]
+CPT_MIROIR = "467000243"
+BOOK_CLIENTELE = "ABCM_FI.Sales"
+BOOKS_TITRES = ["ABCM_FVOCI.Bond", "ABCM_FVOCI.Bills", "ABCM_BSB.Bond", "ABCM_FI.Sales"]
+
+# Codes pays ISO des souverains CEMAC, tels qu'ils préfixent le code des titres, et
+# mnémoniques d'émetteur rencontrés dans les libellés. Le rapprochement des deux permet de
+# détecter les titres dont l'identification se contredit d'un champ à l'autre.
+PAYS_CEMAC = {
+    "CM": "CAMEROUN", "GA": "GABON", "CG": "CONGO", "GQ": "GUINEE EQUATORIALE",
+    "TD": "TCHAD", "CF": "REPUBLIQUE CENTRAFRICAINE",
+}
+MNEMONIQUES_EMETTEUR = {
+    "GOCM": "CM", "CMTB": "CM",
+    "GOGA": "GA", "GATB": "GA",
+    "GOCG": "CG", "GOCO": "CG", "GOCON": "CG",
+    "GOGQ": "GQ", "GQTB": "GQ",
+    "GOCF": "CF", "GOTD": "TD",
+}
+# Codes pays exclus du périmètre d'investissement, correspondants de SOUVERAINS_EXCLUS.
+PAYS_EXCLUS = ["TD", "CF"]
 CPT_BEAC = "099ACO00001"
 
 # Nature attendue du solde de chaque compte du périmètre, au sens du PCEC.
@@ -192,6 +215,112 @@ class Contexte:
                 df[col + "_n"] = pd.to_numeric(df[col], errors="coerce")
         df["DEAL"] = df["Trade Id"]
         return df
+
+    # --- titres du nouveau dispositif -----------------------------------------------------
+    # Calypso ne crée aucun contrat dans le core banking : le seul signalement d'un titre
+    # est le libellé de ses écritures. On en reconstitue un référentiel, en le rapprochant
+    # du libellé porté par l'extraction Calypso elle-même.
+
+    @staticmethod
+    def _decoder_libelle(libelle: str) -> dict:
+        """Décompose un libellé de titre Calypso.
+
+        Deux formes coexistent :
+          BondGOGA/GA2K00000249/XAF/0D/08/15/2029/6.5%   (obligation)
+          Discount/CMTB/CM1300000849/XAF/04/22/2026      (bon du Trésor, sans coupon)
+        """
+        texte = str(libelle or "")
+        morceaux = texte.split("/")
+        if not morceaux or not morceaux[0]:
+            return {}
+        tete = morceaux[0]
+        if tete.startswith("Discount"):
+            nature, mnemo = "Discount", (morceaux[1] if len(morceaux) > 1 else "")
+            reste = morceaux[2:]
+        elif tete.startswith("Bond"):
+            nature, mnemo = "Bond", tete[4:]
+            reste = morceaux[1:]
+        else:
+            return {}
+        code = reste[0] if reste else ""
+        devise = reste[1] if len(reste) > 1 else ""
+        # Le taux, quand il existe, est le dernier morceau et se termine par %.
+        taux = morceaux[-1] if morceaux[-1].endswith("%") else ""
+        dates = [m for m in morceaux if m.isdigit() and len(m) == 2]
+        annee = next((m for m in morceaux if m.isdigit() and len(m) == 4), "")
+        return {"nature": nature, "mnemo": mnemo, "code": code, "devise": devise,
+                "taux": taux, "jour_mois": dates[-2:], "annee": annee}
+
+    @cached_property
+    def titres_calypso(self) -> pd.DataFrame:
+        """Un titre par ligne, vu depuis le grand livre et depuis le référentiel Calypso."""
+        c = self.calypso_enrichi
+        if c.empty:
+            return pd.DataFrame()
+        vus = c[c.TITRE.notna() & (c.TITRE != "")]
+        if vus.empty:
+            return pd.DataFrame()
+        base = (vus.groupby("TITRE")
+                .agg(libelle_gl=("LIBELLE_TITRE", "first"),
+                     lignes=("LCY_AMOUNT", "size"),
+                     deals=("DEAL", "nunique"),
+                     premier=("TRN_DT", "min"),
+                     dernier=("TRN_DT", "max"),
+                     books=("BOOK", lambda s: ", ".join(sorted(set(s.dropna()))))))
+        # Libellé porté par l'extraction Calypso, indexé sur le code du titre
+        ref = {}
+        deals = self.deals_calypso
+        if not deals.empty and "Product Description" in deals.columns:
+            for texte in deals["Product Description"].dropna().unique():
+                decode = self._decoder_libelle(texte)
+                if decode.get("code"):
+                    ref[decode["code"]] = texte
+        base["libelle_ref"] = [ref.get(i, "") for i in base.index]
+        base["pays_code"] = [str(i)[:2] for i in base.index]
+        decodes = [self._decoder_libelle(l) for l in base.libelle_gl]
+        base["nature"] = [d.get("nature", "") for d in decodes]
+        base["mnemo"] = [d.get("mnemo", "") for d in decodes]
+        base["pays_mnemo"] = [MNEMONIQUES_EMETTEUR.get(d.get("mnemo", ""), "") for d in decodes]
+        base["taux"] = [d.get("taux", "") for d in decodes]
+        return base.reset_index()
+
+    @cached_property
+    def apurement_pont(self) -> pd.DataFrame:
+        """Solde résiduel de chaque deal sur les comptes de liaison Calypso.
+
+        Le déversement d'un deal se décompose en mouvements, chacun équilibré, qui
+        transitent TOUS par un compte de liaison : les jambes de bilan d'un côté, le
+        règlement en trésorerie de l'autre. Un deal intégralement déversé laisse donc le
+        compte de liaison à zéro. Le solde résiduel mesure exactement ce qui manque.
+        """
+        c = self.calypso_enrichi
+        if c.empty:
+            return pd.DataFrame()
+        pont = c[c.AC_NO.isin(CPT_LIAISON) & c.DEAL.notna() & (c.DEAL != "")]
+        if pont.empty:
+            return pd.DataFrame()
+        lignes = []
+        for deal, g in pont.groupby("DEAL"):
+            solde = float(g.SIGNE.sum())
+            if abs(solde) < 1:
+                continue
+            reglement = g[g.EVENEMENT == "CST_S_SETTLED"]
+            bilan = g[g.EVENEMENT != "CST_S_SETTLED"]
+            if reglement.empty:
+                cause = "règlement non déversé"
+            elif bilan.empty:
+                cause = "jambes de bilan non déversées"
+            else:
+                cause = "déversement incomplet des deux côtés"
+            tout = c[c.DEAL == deal]
+            lignes.append({
+                "deal": deal, "solde": solde, "cause": cause,
+                "date": tout.TRN_DT.min(), "book": tout.BOOK.dropna().iloc[0]
+                if len(tout.BOOK.dropna()) else "",
+                "titre": tout.TITRE.dropna().iloc[0] if len(tout.TITRE.dropna()) else "",
+                "evenements": ", ".join(sorted(set(tout.EVENEMENT.dropna()))),
+            })
+        return pd.DataFrame(lignes)
 
     @cached_property
     def ecritures_mm(self) -> pd.DataFrame:

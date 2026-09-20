@@ -1372,3 +1372,158 @@ tableau repliées sur la largeur du rapport.
 **Règle retenue pour la suite** : *un constat n'est acquis que lorsque son texte, son chiffre
 et son périmètre disent la même chose.* Les sept contradictions de 14.1 ont toutes été trouvées
 en lisant le paragraphe et le tableau l'un contre l'autre, sans donnée nouvelle.
+
+---
+
+# SESSION 15 — Comprendre Calypso par les titres, puis réconcilier le portefeuille
+
+Trois demandes : ne pas oublier le test de codification des titres ; réconcilier l'analyse du
+portefeuille MM et celle du portefeuille Calypso en un seul portefeuille, en distinguant dans
+Calypso les titres propres de ceux achetés pour la clientèle ; et, avant tout, tirer six titres
+au hasard, suivre manuellement toutes leurs transactions pour comprendre le fonctionnement de
+Calypso, puis relire à cette lumière tous les travaux déjà faits sur Calypso.
+
+## 15.1 La méthode : six titres suivis mouvement par mouvement
+
+Tirage aléatoire sur la liste des titres du flux Calypso : `CM1300000849`, `CG1300000862`,
+`CM1200001897`, `CM2J00000212`, `GQ1300001641`, `GA2K00000249`. Quatre bons du Trésor à
+escompte, deux obligations, dont une présente à la fois au portefeuille propre et au
+portefeuille clientèle.
+
+### Le schéma comptable de Calypso, enfin lisible
+
+Chaque deal produit des MOUVEMENTS, chacun équilibré, qui transitent TOUS par un compte de
+liaison. Exemple d'une acquisition d'obligation (deal 3175371, 10/11/2025) :
+
+| Événement | Débit | Crédit | Montant |
+|---|---|---|---|
+| `ACCRUAL_BS` | 512800100 courus | pont 467000186 | 249 315 100 |
+| `NOMINAL` | 512410100 portefeuille | pont | 20 000 000 000 |
+| `PREM_DISC` | pont | 472200108 régularisation | 1 790 000 000 |
+| `CST_S_SETTLED` | pont | 099ACO00001 nostro | 18 459 315 100 |
+
+**Trois enseignements majeurs, qu'aucune analyse antérieure n'avait vus :**
+
+1. **Le portefeuille est tenu AU PAIR.** Les comptes 511/512 portent le NOMINAL, pas le prix
+   payé. L'écart — prime ou décote — vit dans les comptes de régularisation 472200106 (bons)
+   et 472200108 (obligations). L'encours de 244 Md au 30/06/2026 est donc un nominal.
+2. **La décote n'est pas étalée, elle est reprise EN TOTALITÉ à la cession.** Sur le deal
+   3175371 : décote de 1 790 000 000 constatée le 10/11, reprise les 18/11 (984 500 000 =
+   55 %) et 24/11 (805 500 000 = 45 %), au prorata exact des quantités revendues. Acheté à
+   91,05 % du pair, revendu au pair en huit jours. **7 640 766 066 XAF de produit de cette
+   seule nature sur la période d'audit.** C'est la même mécanique que le rendement implicite
+   de 15 % du contrôle 9.3, vue de l'autre côté.
+3. **ÉGALITÉ FONDATRICE : nominal + couru − décote = règlement.** Vérifiée au centime près
+   sur 18 des 22 deals de l'échantillon. Les 4 exceptions sont des mouvements déversés deux
+   fois — le deal 3433901 porte le `PREM_DISC` 24107305 sous DEUX références Flexcube. Ce
+   test retrouve donc seul, et par une voie indépendante, les défauts d'interface des
+   contrôles 6.7 et 11.6.
+
+### Le circuit des titres vendus à la clientèle
+
+Traçé sur `GA2K00000249` : `NOM_FULL` transfère du pont 467000186 vers le **pont miroir**
+467000243 ; `NOMINAL` sort les titres au hors bilan (938000100 / 998000100) ; `CST_S_SETTLED`
+débite le compte du client. Le titre **transite donc par le bilan de la banque** avant d'être
+placé.
+
+## 15.2 ⚠ CE QUE CETTE COMPRÉHENSION A INVALIDÉ
+
+### Le solde des comptes de liaison n'est pas un retard d'apurement
+
+Le contrôle 6.4 constatait une « dérive continue » sans cause. Puisqu'un deal intégralement
+déversé laisse le pont à ZÉRO, le solde du pont **mesure exactement les mouvements manquants**.
+
+| | Deals | Résidu |
+|---|---|---|
+| Deals transitant par un pont | 1 208 | — |
+| Dont **soldés à zéro** | 945 | 0 |
+| Dont **déversement incomplet** (période d'audit) | 201 | −124 704 289 100 |
+
+Trois causes, trois conséquences distinctes : règlement non déversé (la trésorerie est fausse),
+jambes de bilan non déversées (le portefeuille est faux), déversement partiel des deux côtés.
+
+**Le cas le plus lourd : le deal 3349072**, pension BEAC de 90 Md tirée le 23/12/2025. Le
+remboursement du 31/03/2026 éteint bien la dette (552400100 débité) et constate l'intérêt,
+**mais le décaissement n'a jamais été déversé**. Vérifié : aucun mouvement de 90 Md sur le
+nostro entre le 30/03 et le 02/04/2026. Le compte BEAC est donc surévalué de 90 101 000 000 XAF
+à la clôture. Nouveau contrôle **11.6, CRITIQUE**.
+
+### La politique de risque n'est pas tenue
+
+Le contrôle 2.8 concluait « aucun contrat sur le Tchad et la Centrafrique, la politique est
+respectée ». Mais 2.8 ne teste que MM_CONTRACT, **qui ne reçoit plus rien depuis la bascule**.
+Le flux Calypso contient :
+- `TD2A00000735` (Tchad) — 9 deals, 9 000 000 000 d'acquisitions
+- `CF2A00000074`, `CF2J00000158` (Centrafrique) — 10 deals, dont un encours de 11 300 000 XAF
+  **au bilan au 31/12/2025**
+
+2.8 est requalifié « sous l'ancien dispositif » et renvoie au nouveau contrôle **11.4**.
+
+### Les cessions-rétrocessions ne vont pas toutes dans le même sens
+
+Le contrôle 8.2 posait que l'endettement était sous-évalué. Le sens de la première jambe dit
+autre chose : sur 94 opérations identifiables, **38 (40 %) sont des financements ACCORDÉS** —
+la banque acquiert le titre et décaisse. Pour celles-là, ce n'est pas une dette qui manque au
+passif mais une **créance à l'actif**, et le titre acquis n'aurait pas dû y entrer. Les deux
+populations appellent des retraitements opposés.
+
+## 15.3 La codification des titres (le test demandé)
+
+Depuis la bascule, le libellé de l'écriture est le **seul** signalement d'un titre. Trois tests.
+
+| Test | Résultat |
+|---|---|
+| Le code existe-t-il ? | **5 titres à code de remplissage** (`XXXXXXXXX1`…`5`), portant **40 000 000 000 XAF** d'encours |
+| Code pays et mnémonique concordent-ils ? | **4 titres se contredisent** (`CG2K00000070` codé Congo, libellé `BondGOGA`) + **3 à mnémonique non répertorié** (`GQCM`) |
+| Même libellé dans les deux sources ? | **123 titres sur 129 divergent (95 %)** |
+
+Le troisième test est le plus grave. Le grand livre écrit l'échéance en **MM/JJ/AAAA**,
+l'extraction Calypso en **JJ/MM/AAAA** :
+
+```
+grand livre : BondGOCG/CG2A00000478/XAF/0D/03/01/2026/5.4%
+référentiel : BondGOCG/CG2A00000478/XAF/0D/01/03/2026/5.4%
+```
+
+Les deux lectures sont plausibles : **l'échéance de ce titre est indéterminable**. Tout
+échéancier construit sur ces libellés est faux pour chaque titre dont le jour et le mois sont
+inférieurs à 13. Nouveau contrôle **11.3, ELEVEE**.
+
+## 15.4 Le portefeuille réconcilié (la demande centrale)
+
+| Arrêté | Comptes Flexcube | Comptes Calypso | **PORTEFEUILLE PROPRE** | Clientèle (hors bilan) |
+|---|---|---|---|---|
+| 31/12/2023 | 71 749 600 000 | — | **71 749 600 000** | 0 |
+| 30/06/2024 | 79 310 970 000 | — | **79 310 970 000** | 0 |
+| 31/12/2024 | 115 432 180 000 | — | **115 432 180 000** | 0 |
+| 30/06/2025 | — | 135 921 813 333 | **135 921 813 333** | 30 159 010 000 |
+| 31/12/2025 | — | 212 912 553 333 | **212 912 553 333** | 28 635 360 000 |
+| 30/06/2026 | — | 244 098 816 666 | **244 098 816 666** | 23 893 110 000 |
+
+**× 3,4 en moins de trois ans.** La bascule est neutre : −14 066 464 XAF d'écart entre la
+sortie nette des comptes Flexcube et l'entrée nette dans les comptes Calypso.
+
+La séparation propre / clientèle est **possible au hors bilan mais pas au bilan** : les titres
+destinés aux clients transitent par le portefeuille propre sans qu'aucun compte ne les
+distingue. Le pont miroir porte **3 104 020 778 XAF** non apurés à la clôture.
+
+## 15.5 Nouvelle section 11 — Le portefeuille de titres comme un tout
+
+| Contrôle | Gravité | Objet |
+|---|---|---|
+| **11.1** | conforme | Le portefeuille en une seule série, de bout en bout |
+| **11.2** | MOYENNE | Les titres de la clientèle transitent par le portefeuille propre |
+| **11.3** | ELEVEE | Codification : codes fictifs, pays contradictoires, dates ambiguës |
+| **11.4** | ELEVEE | Souverains exclus présents dans le nouveau dispositif |
+| **11.5** | ELEVEE | Portefeuille au pair : prime, décote et valeur comptable |
+| **11.6** | CRITIQUE | Le solde des ponts mesure les déversements manquants |
+| **11.7** | MOYENNE | Schéma comptable reconstitué sur l'échantillon de six titres |
+
+**52 anomalies** — 8 critiques, 20 élevées, 21 moyennes, 3 faibles — sur **11 sections et
+66 contrôles**.
+
+**Règle retenue** : *avant d'auditer un système, en reconstituer le schéma comptable sur un
+échantillon réel suivi de bout en bout.* Les quatre constats les plus lourds de cette session
+— la pension de 90 Md non décaissée, les souverains exclus, les dates d'échéance ambiguës, les
+40 Md de titres sans code — sont tous sortis de cette lecture, et aucun n'était visible dans
+les agrégats.

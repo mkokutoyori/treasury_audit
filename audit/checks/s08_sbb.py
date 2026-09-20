@@ -206,6 +206,19 @@ def _c82_schema_comptable(ctx, commentes) -> Constat:
     portefeuille = commentes[commentes.AC_NO.isin(["512410100", "511210100"])]
     sorties = float(portefeuille[portefeuille.DRCR_IND == "C"].LCY_AMOUNT.sum())
     entrees = float(portefeuille[portefeuille.DRCR_IND == "D"].LCY_AMOUNT.sum())
+    # DANS QUEL SENS ? Une cession-rétrocession peut être un financement REÇU — la banque cède
+    # le titre et encaisse — ou un financement ACCORDÉ — elle acquiert le titre et décaisse.
+    # Le sens se lit sur la première jambe, celle que le commentaire désigne comme « near ».
+    premiere = commentes.copy()
+    premiere["jambe"] = premiere.COMMENTAIRE.fillna("").str.upper().str.extract(r"(NEAR|FAR)")[0]
+    near = premiere[(premiere.jambe == "NEAR") & premiere.AC_NO.isin(["512410100", "511210100"])]
+    sens_near = near.groupby("DEAL").SIGNE.sum()
+    emprunts = sens_near[sens_near < 0]        # le titre sort : la banque reçoit de la trésorerie
+    prets = sens_near[sens_near > 0]           # le titre entre : la banque en décaisse
+    montant_emprunts = -float(emprunts.sum())
+    montant_prets = float(prets.sum())
+    part_prets = len(prets) / max(len(sens_near), 1) * 100
+
     detail_sbb = commentes.groupby(["AC_NO", "AC_GL_DESC"]).agg(
         lignes=("LCY_AMOUNT", "size"), debits=("DRCR_IND", lambda s: int((s == "D").sum())),
         credits=("DRCR_IND", lambda s: int((s == "C").sum())), montant=("LCY_AMOUNT", "sum"))
@@ -235,11 +248,22 @@ def _c82_schema_comptable(ctx, commentes) -> Constat:
             "les enregistre comme des cessions fermes. C'est la comptabilité qui produit les états "
             "financiers et les ratios prudentiels.\n"
             "\n"
+            "DEUX SENS, DEUX ERREURS SYMÉTRIQUES. Une cession-rétrocession n'est pas toujours "
+            "un financement REÇU. La première jambe montre que la banque y est tantôt "
+            "emprunteuse — elle cède le titre et encaisse — tantôt PRÊTEUSE : elle acquiert le "
+            f"titre et décaisse. {len(prets)} des {len(sens_near)} opérations dont la première "
+            f"jambe est identifiable relèvent du second cas, soit {pct(part_prets, 0)}. Le "
+            "retraitement attendu n'est donc pas le même selon le sens : pour un financement "
+            "reçu, une dette manque au passif ; pour un financement accordé, c'est une CRÉANCE "
+            "qui manque à l'actif, et le titre acquis n'aurait pas dû y entrer. Dans les deux "
+            "cas le bilan est faux, mais dans des sens opposés, et les deux populations doivent "
+            "être retraitées séparément.\n"
+            "\n"
             "QUATRE CONSÉQUENCES. Les titres sortent puis rentrent du bilan alors qu'ils ne le "
             "quittent économiquement jamais. Des plus-values de cession sont constatées sur des "
-            "opérations de financement. L'endettement est sous-évalué, faussant les ratios de "
-            "liquidité et de transformation. Et l'usage réel du portefeuille comme collatéral est "
-            "invisible au bilan comme au hors bilan.\n"
+            "opérations de financement. L'endettement — ou symétriquement les concours accordés — "
+            "est sous-évalué, faussant les ratios de liquidité et de transformation. Et l'usage "
+            "réel du portefeuille comme collatéral est invisible au bilan comme au hors bilan.\n"
             "\n"
             "LECTURE DU TABLEAU COMPARATIF. Les trois marqueurs se traduisent par quatre comptes, "
             "l'inscription hors bilan ayant par nature une contrepartie. Aucun des quatre n'est "
@@ -253,6 +277,11 @@ def _c82_schema_comptable(ctx, commentes) -> Constat:
             ("Comptes marqueurs présents sur les pensions BEAC, absents ici",
              f"{len([p for p in presence if p[2] and not p[3]])} sur {len(presence)}"),
             ("Écart entre sorties et entrées du portefeuille", xaf(sorties - entrees)),
+            ("Opérations dont la première jambe est identifiable", str(len(sens_near))),
+            ("Dont la banque EMPRUNTE (cession en première jambe)",
+             f"{len(emprunts)} — {xaf(montant_emprunts)}"),
+            ("Dont la banque PRÊTE (acquisition en première jambe)",
+             f"{len(prets)} — {xaf(montant_prets)}"),
         ],
         tableaux=[
             Tableau(["Marqueur comptable d'une pension livrée", "Compte",
