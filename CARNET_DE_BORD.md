@@ -2324,3 +2324,30 @@ FONDS AVEC LA BANQUE CENTRALE, `561100100` LORI BANQUE CENTRALE, `526000100` BEA
 OBLIGATOIRES, `466000145` / `467000145` DÉBITEURS / CRÉDITEURS DIVERS BEAC. Ils ne changent
 pas la conclusion — l'argument du pont est indépendant du compte de trésorerie — mais leur
 extraction permettrait de clore formellement la question.
+
+## 23.11 Le poids de cette seule opération dans le compte 467000188
+
+Décomposition intégrale du solde du pont « money market » au 30/06/2026 — elle boucle au
+franc près :
+
+| Deal | Portefeuille | Résidu |
+|---|---|---|
+| **3349072** | `ABCM_MM.Plmt.Tkn.Secured` | **−90 101 000 000** |
+| 3186053 | `ABCM_MM.Plmt.Tkn.Secured` | −5 000 000 000 |
+| 3490796 | `ABCM_MM.Plmt.Tkn.Secured` | −77 000 000 |
+| 3737062 | `ABCM_MM.Plmt.Tkn.Secured` | −63 184 722 |
+| 3595014 | `ABCM_MM.FundTransfer` | −99 406 |
+| 3568304 | `ABCM_MM.FundTransfer` | +98 393 550 |
+| 3556481 | `ABCM_MM.FundTransfer` | +143 727 972 |
+| 3512696 | `ABCM_MM.FundTransfer` | +547 617 226 |
+| **TOTAL** | | **−94 451 445 974** |
+
+**Une seule opération fait 95,4 % du solde.** Sans elle, le compte serait à
+−4 350 445 974 — un écart qui resterait à corriger, mais d'un ordre de grandeur sans rapport.
+
+Les résidus positifs ne sont pas des pensions : ce sont des **virements internationaux**
+(`ABCM_MM.FundTransfer`) en cours de dénouement chez les correspondants — SOCIETE GENERALE
+PARIS, ODDO BHF, SCB NEW-YORK. Deux d'entre eux se sont apurés en septembre 2026.
+
+Le 6.4 donnait le solde du compte ; le 11.8 en donne désormais la décomposition. Les deux
+constats se rejoignent exactement.

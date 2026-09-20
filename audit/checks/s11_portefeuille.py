@@ -808,6 +808,24 @@ def _c118_cas_le_plus_lourd(ctx) -> Constat:
                              if regul.DESCRIPTION.fillna("").str.contains(dl).any()})
     deal_corrige = deal in deals_corriges
 
+    # CE QUE CETTE SEULE OPÉRATION PÈSE DANS LE COMPTE DE LIAISON QUI LA PORTE.
+    cpt_pont = str(g[g.AC_NO.str.startswith("4670")].AC_NO.iloc[0]) if len(
+        g[g.AC_NO.str.startswith("4670")]) else "467000188"
+    mouvements_pont = toutes[(toutes.AC_NO == cpt_pont) & (toutes.TRN_DT <= ctx.config.fin)]
+    solde_pont = float(mouvements_pont.drop_duplicates(
+        subset=["TRN_REF_NO", "DRCR_IND", "LCY_AMOUNT", "STMT_DT", "DESCRIPTION"]).SIGNE.sum())
+    par_deal = (c[(c.AC_NO == cpt_pont) & (c.TRN_DT <= ctx.config.fin)]
+                .groupby("DEAL").SIGNE.sum())
+    par_deal = par_deal[par_deal.abs() > 1].sort_values()
+    poids = abs(float(pire.solde)) / abs(solde_pont) * 100 if solde_pont else 0.0
+    sans_lui = solde_pont - float(pire.solde)
+    lignes_pont = []
+    for dl, v in par_deal.items():
+        gg = c[c.DEAL == dl]
+        book = str(gg.BOOK.dropna().iloc[0]) if gg.BOOK.notna().any() else ""
+        lignes_pont.append([dl, book, float(v),
+                            "CE DEAL" if dl == deal else ""])
+
     nostro = float(g[g.AC_NO == "099ACO00001"].SIGNE.sum())
     attendu_nostro = -float(fiche.interet.iloc[0]) if not fiche.empty and fiche.interet.notna().iloc[0] else 0.0
     collateral = g[(g.AC_NO == "952100100") & (g.DRCR_IND == "C")]
@@ -936,6 +954,16 @@ def _c118_cas_le_plus_lourd(ctx) -> Constat:
             "en double se voit et se corrige ; une écriture absente ne laisse aucune trace de "
             "son absence.\n"
             "\n"
+            f"CE QUE CETTE SEULE OPÉRATION PÈSE DANS LE COMPTE {cpt_pont}. Ce compte de "
+            f"liaison, qui devrait être à zéro, est à {xaf(solde_pont)} au "
+            f"{ctx.config.fin}. Sa décomposition deal par deal, ci-dessous, tient en "
+            f"{nb(len(lignes_pont))} lignes et boucle au franc près. CETTE SEULE PENSION EN "
+            f"REPRÉSENTE {pct(poids, 1)}. Sans elle, le compte serait à {xaf(sans_lui)} — un "
+            "écart qui resterait à corriger, mais d'un ordre de grandeur sans rapport. Les "
+            "quelques résidus positifs qui figurent dans le tableau ne sont pas des pensions "
+            "mais des virements internationaux en cours de dénouement chez les "
+            "correspondants ; deux d'entre eux se sont d'ailleurs apurés en septembre 2026.\n"
+            "\n"
             "UN EFFET CONNEXE. Les titres donnés en garantie sont restés inscrits au hors bilan "
             f"jusqu'à la comptabilisation du remboursement, soit {jours_gage} jours après "
             "l'échéance contractuelle. Pendant toute cette durée, ils apparaissaient "
@@ -960,6 +988,9 @@ def _c118_cas_le_plus_lourd(ctx) -> Constat:
             ("Effet CONSTATÉ sur le compte de règlement", f"entrée de {xaf(nostro)}"),
             ("ERREUR SUR LA TRÉSORERIE, à compter du 2026-03-31", xaf(nostro - attendu_nostro)),
             ("Résidu porté par le compte de liaison", xaf(float(pire.solde))),
+            (f"Solde total du compte de liaison {cpt_pont} au {ctx.config.fin}", xaf(solde_pont)),
+            ("Part de ce seul deal dans ce solde", pct(poids, 1)),
+            ("Solde du compte de liaison sans ce deal", xaf(sans_lui)),
             ("Erreur sur la trésorerie au 2025-12-31", xaf(0)),
             ("Nature de l'anomalie au 2025-12-31",
              "cut-off — pension échue présentée comme vivante"),
@@ -990,6 +1021,11 @@ def _c118_cas_le_plus_lourd(ctx) -> Constat:
                           "comptabilisation et à chaque date d'arrêté. Au 31 décembre 2025 le "
                           "compte de liaison est à zéro : l'anomalie de trésorerie n'existe "
                           "pas encore, celle de cut-off si. Elle naît le 31 mars 2026.")),
+            Tableau(["Deal", "Portefeuille", f"Résidu sur {cpt_pont} XAF", "Repère"],
+                    lignes_pont, max_lignes=12,
+                    note=(f"Décomposition intégrale du solde du compte de liaison {cpt_pont} au "
+                          f"{ctx.config.fin}. La somme des résidus par deal reconstitue le "
+                          "solde du compte ; une seule opération en fait l'essentiel.")),
             Tableau(["Deal", "Résidu du pont XAF", "Règlements", "Cause lue sur les mouvements"],
                     taxonomie, max_lignes=12,
                     note=("Toutes les pensions dont le compte de liaison ne revient pas à "

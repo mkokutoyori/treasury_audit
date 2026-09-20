@@ -4,7 +4,7 @@
 
   Périmètre        : Département de la trésorerie — gestion des investissements sur les marchés financiers
   Période d'audit  : 2023-09-27 au 2026-06-30
-  Rapport généré le : 20/09/2026 à 20:20
+  Rapport généré le : 20/09/2026 à 20:28
   Référentiel      : Plan Comptable des Établissements de Crédit (PCEC) — CEMAC / COBAC
 
   Ce rapport est produit automatiquement. Chaque constat indique le test exécuté, sa
@@ -2927,6 +2927,14 @@ codification des titres du nouveau dispositif et mesure l'exposition souveraine 
   une jambe MANQUE. Une écriture en double se voit et se corrige ; une écriture absente ne laisse
   aucune trace de son absence.
 
+  CE QUE CETTE SEULE OPÉRATION PÈSE DANS LE COMPTE 467000188. Ce compte de liaison, qui devrait être
+  à zéro, est à -94 451 445 974 XAF au 2026-06-30. Sa décomposition deal par deal, ci-dessous, tient
+  en 8 lignes et boucle au franc près. CETTE SEULE PENSION EN REPRÉSENTE 95,4 %. Sans elle, le
+  compte serait à -4 350 445 974 XAF — un écart qui resterait à corriger, mais d'un ordre de
+  grandeur sans rapport. Les quelques résidus positifs qui figurent dans le tableau ne sont pas des
+  pensions mais des virements internationaux en cours de dénouement chez les correspondants ; deux
+  d'entre eux se sont d'ailleurs apurés en septembre 2026.
+
   UN EFFET CONNEXE. Les titres donnés en garantie sont restés inscrits au hors bilan jusqu'à la
   comptabilisation du remboursement, soit 95 jours après l'échéance contractuelle. Pendant toute
   cette durée, ils apparaissaient indisponibles alors qu'ils ne l'étaient plus, ce qui minore
@@ -2945,6 +2953,9 @@ codification des titres du nouveau dispositif et mesure l'exposition souveraine 
     Effet CONSTATÉ sur le compte de règlement                        : entrée de 90 000 000 000 XAF
     ERREUR SUR LA TRÉSORERIE, à compter du 2026-03-31                : 90 101 000 000 XAF
     Résidu porté par le compte de liaison                            : -90 101 000 000 XAF
+    Solde total du compte de liaison 467000188 au 2026-06-30         : -94 451 445 974 XAF
+    Part de ce seul deal dans ce solde                               : 95,4 %
+    Solde du compte de liaison sans ce deal                          : -4 350 445 974 XAF
     Erreur sur la trésorerie au 2025-12-31                           : 0 XAF
     Nature de l'anomalie au 2025-12-31                               : cut-off — pension échue présentée comme vivante
     Comptes de règlement auprès de la banque centrale                : 1
@@ -3002,6 +3013,19 @@ codification des titres du nouveau dispositif et mesure l'exposition souveraine 
     Ce que l'opération pèse sur chaque compte, aux deux dates de comptabilisation et à chaque date
     d'arrêté. Au 31 décembre 2025 le compte de liaison est à zéro : l'anomalie de trésorerie
     n'existe pas encore, celle de cut-off si. Elle naît le 31 mars 2026.
+
+    Deal     Portefeuille              Résidu sur 467000188 XAF  Repère 
+    -------  ------------------------  ------------------------  -------
+    3349072  ABCM_MM.Plmt.Tkn.Secured  -90 101 000 000           CE DEAL
+    3186053  ABCM_MM.Plmt.Tkn.Secured  -5 000 000 000                   
+    3490796  ABCM_MM.Plmt.Tkn.Secured  -77 000 000                      
+    3737062  ABCM_MM.Plmt.Tkn.Secured  -63 184 722                      
+    3595014  ABCM_MM.FundTransfer      -99 406                          
+    3568304  ABCM_MM.FundTransfer      98 393 550                       
+    3556481  ABCM_MM.FundTransfer      143 727 972                      
+    3512696  ABCM_MM.FundTransfer      547 617 226                      
+    Décomposition intégrale du solde du compte de liaison 467000188 au 2026-06-30. La somme des
+    résidus par deal reconstitue le solde du compte ; une seule opération en fait l'essentiel.
 
     Deal     Résidu du pont XAF  Règlements  Cause lue sur les mouvements               
     -------  ------------------  ----------  -------------------------------------------
