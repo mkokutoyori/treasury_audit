@@ -4,7 +4,7 @@
 
   Périmètre        : Département de la trésorerie — gestion des investissements sur les marchés financiers
   Période d'audit  : 2023-09-27 au 2026-06-30
-  Rapport généré le: 19/09/2026 à 21:17
+  Rapport généré le: 20/09/2026 à 06:36
   Référentiel      : Plan Comptable des Établissements de Crédit (PCEC) — CEMAC / COBAC
 
   Ce rapport est produit automatiquement. Chaque constat indique le test exécuté, sa
@@ -12,9 +12,10 @@
   conclusion d'audit tant qu'ils n'ont pas été discutés avec les services concernés.
 
   LIMITES DE L'EXTRACTION :
-    - Les extractions ne contiennent que des mouvements : aucun solde d'ouverture n'est fourni. Pour
-      les comptes ouverts pendant la période, le cumul des mouvements vaut solde ; pour les autres,
-      tout encours reste à ancrer sur la balance générale.
+    - L'extraction des comptes de trésorerie couvre l'historique INTÉGRAL de chaque compte : le
+      solde d'ouverture est nul par construction et le solde est donc calculable à toute date. Le
+      contrôle 1.7 en apporte la démonstration. Les soldes énoncés dans ce rapport restent néanmoins
+      à confirmer par la balance générale avant toute conclusion définitive.
     - Le référentiel des deals du nouveau système n'a pas été fourni. Nominal, taux, échéance et
       contrepartie des opérations postérieures à la bascule ne sont connus qu'indirectement, par le
       libellé des écritures.
@@ -28,37 +29,40 @@
 SOMMAIRE
 ----------------------------------------------------------------------------------------------------
 
-  Section 1 — Intégrité et complétude des données  (5 anomalie(s) / 7 contrôle(s))
+  Section 1 — Intégrité et complétude des données  (4 anomalie(s) / 7 contrôle(s))
   Section 2 — Référentiel des contrats de marché monétaire  (5 anomalie(s) / 8 contrôle(s))
-  Section 3 — Cycle de vie des titres sous Flexcube  (5 anomalie(s) / 6 contrôle(s))
+  Section 3 — Cycle de vie des titres sous Flexcube  (6 anomalie(s) / 7 contrôle(s))
   Section 4 — Contrôle interne et séparation des tâches  (5 anomalie(s) / 5 contrôle(s))
   Section 5 — Migration Flexcube MM vers Calypso  (2 anomalie(s) / 6 contrôle(s))
-  Section 6 — Manquements du dispositif Calypso  (6 anomalie(s) / 6 contrôle(s))
+  Section 6 — Manquements du dispositif Calypso  (7 anomalie(s) / 7 contrôle(s))
   Section 7 — Pensions livrées auprès de la banque centrale  (4 anomalie(s) / 4 contrôle(s))
   Section 8 — Opérations de cession-rétrocession (Sell-Buy-Back)  (4 anomalie(s) / 4 contrôle(s))
-  Section 9 — Résultat, classement comptable et rendement  (3 anomalie(s) / 3 contrôle(s))
+  Section 9 — Résultat, classement comptable et rendement  (4 anomalie(s) / 4 contrôle(s))
 
 ----------------------------------------------------------------------------------------------------
 RÉCAPITULATIF DES ANOMALIES PAR GRAVITÉ
 ----------------------------------------------------------------------------------------------------
 
-  CRITIQUE   : 5
-  ELEVEE     : 17
-  MOYENNE    : 15
+  CRITIQUE   : 7
+  ELEVEE     : 18
+  MOYENNE    : 14
   FAIBLE     : 2
-  TOTAL      : 39
+  TOTAL      : 41
 
   CRITIQUE  [4.2] Écritures manuelles dépourvues de tout validateur
   CRITIQUE  [5.3] Sur-apurement du compte de courus à la migration, laissant un compte d'actif en solde créditeur
   CRITIQUE  [6.1] Aucun référentiel de contrat n'alimente plus le core banking
   CRITIQUE  [6.4] Comptes de liaison Calypso non apurés, en dérive continue
+  CRITIQUE  [6.7] L'interface Calypso déverse certains mouvements en double dans le grand livre
   CRITIQUE  [8.2] Cessions-rétrocessions comptabilisées en cession et acquisition fermes
+  CRITIQUE  [9.4] Comptes présentant un solde contraire à leur nature comptable à une date d'arrêté
   ELEVEE    [2.6] Taux contractuels aberrants au regard des opérations comparables
   ELEVEE    [2.7] Contrats du référentiel dépourvus d'écriture comptable
   ELEVEE    [3.1] Dénouements majoritairement antérieurs à l'échéance contractuelle
   ELEVEE    [3.2] Liquidations systématiquement au pair, y compris anticipées
   ELEVEE    [3.3] Contrats créés puis liquidés dans la même journée
   ELEVEE    [3.4] Pratique de liquidation puis réouverture : les volumes bruts ne sont pas des flux économiques
+  ELEVEE    [3.7] Accumulation des intérêts courus au-delà d'une année de coupons
   ELEVEE    [4.1] Contrôle des quatre yeux neutralisé pour les flux automatiques
   ELEVEE    [5.5] Changement de catégorie comptable opéré à la migration
   ELEVEE    [6.2] Le contrôle des quatre yeux de Flexcube est intégralement neutralisé sur le flux Calypso
@@ -73,7 +77,6 @@ RÉCAPITULATIF DES ANOMALIES PAR GRAVITÉ
   MOYENNE   [1.2] Lignes dupliquées dans les extractions
   MOYENNE   [1.4] Opération technique passée un week-end, touchant l'ensemble des comptes du périmètre
   MOYENNE   [1.5] Deux conventions de contre-passation opposées entre les deux systèmes
-  MOYENNE   [1.7] Absence de soldes d'ouverture dans les extractions
   MOYENNE   [2.1] Références de contrat en doublon dans le référentiel
   MOYENNE   [2.4] Contrats comptabilisés tardivement après leur négociation
   MOYENNE   [2.8] Concentration du portefeuille sur les souverains CEMAC
@@ -96,7 +99,7 @@ Contrôles de forme sur les extractions du core banking : équilibre de la parti
 continuité calendaire, conventions de contre-passation et couverture des données. Ces tests
 conditionnent la fiabilité de toutes les sections suivantes.
 
-  7 contrôle(s) exécuté(s) — 5 anomalie(s), 2 sans anomalie.
+  7 contrôle(s) exécuté(s) — 4 anomalie(s), 3 sans anomalie.
 
 ----------------------------------------------------------------------------------------------------
 [1.2] Lignes dupliquées dans les extractions
@@ -181,32 +184,6 @@ conditionnent la fiabilité de toutes les sections suivantes.
     d'extraction ultérieure.
 
 ----------------------------------------------------------------------------------------------------
-[1.7] Absence de soldes d'ouverture dans les extractions
-  Gravité : MOYENNE
-
-  Les extractions ne contiennent que des MOUVEMENTS : aucun solde d'ouverture n'est fourni. Pour les
-  comptes dont la première écriture est postérieure au début de l'extraction, le solde d'ouverture
-  est nul par construction et le cumul des mouvements vaut solde — c'est le cas de la majorité des
-  comptes du périmètre, et notamment des comptes ouverts lors de la bascule. Pour les comptes plus
-  anciens, tout encours reste à ancrer sur la balance générale.
-  Cette limite est structurelle : elle affecte tous les constats portant sur un encours et non sur
-  un flux.
-
-    Comptes du périmètre                               : 41
-    Comptes ouverts pendant la période (solde fiable)  : 39
-    Comptes antérieurs à l'extraction (solde à ancrer) : 2
-    Début de l'extraction                              : 2022-06-08
-
-    Compte à solde d'ouverture inconnu  1re écriture
-    ----------------------------------  ------------
-    475000102                           2022-06-08  
-    476000102                           2022-06-08  
-
-  Recommandation :
-    Obtenir la balance générale détaillée aux 31/12/2023, 31/12/2024, 30/06/2025, 31/12/2025 et
-    30/06/2026 pour les comptes du périmètre.
-
-----------------------------------------------------------------------------------------------------
 [1.3] Jours ouvrés sans écriture restant à rapprocher du calendrier des fériés
   Gravité : FAIBLE
 
@@ -240,11 +217,44 @@ CONTRÔLES SANS ANOMALIE
       écriture n'est déséquilibrée et la somme des débits moins crédits est nulle. Les extractions
       filtrées par compte ne sont pas testées : leurs jambes de contrepartie sont hors périmètre par
       construction.
+
+        Source        Lignes   Écritures  Déséquilibrées  Montant  Somme D-C
+        ------------  -------  ---------  --------------  -------  ---------
+        Module MM     59 446   23 707     0               0.00     0.00     
+        Flux Calypso  194 938  95 868     0               0.00     0.00     
+
   [1.6] Couverture temporelle de l'extraction
       L'extraction couvre 2022-06-08 à 2026-09-18 et déborde donc la période d'audit dans les deux
       sens : 26 414 écritures antérieures  qui permettent d'établir les soldes d'ouverture  et 46
       738 écritures postérieures  utiles au titre des événements postérieurs à la clôture. Les unes
       comme les autres sont exclues des agrégats de la période.
+
+  [1.7] Complétude de l'historique et calculabilité des soldes
+      L'extraction des comptes de trésorerie couvre l'historique INTÉGRAL de chaque compte, depuis
+      sa première écriture. Le solde d'ouverture est donc nul par construction et le cumul des
+      mouvements constitue le solde exact à toute date. Tous les contrôles de soldes du présent
+      rapport reposent sur ce constat.
+      Trois éléments l'établissent. D'abord, plusieurs comptes reviennent EXACTEMENT à zéro sur
+      toute leur vie : un compte tronqué ne le ferait pas. Ensuite, les dates de première écriture
+      sont échelonnées et ne forment pas un mur de troncature. Enfin, aucun compte ne présente
+      durablement un solde contredisant sa nature comptable, hormis les cas qui font l'objet de
+      constats distincts.
+      L'extraction dédiée du compte 511800100 (32 937 lignes) est IDENTIQUE à ce que contient
+      l'extraction des comptes de trésorerie  ligne pour ligne et au solde près.
+
+        Comptes du périmètre                                : 41
+        Première écriture de l'extraction                   : 2022-06-08
+        Comptes soldés exactement à zéro                    : 4
+        Comptes à solde durablement contraire à leur nature : 5
+
+        Compte     Libellé                                 Période                  Écritures  Solde final
+        ---------  --------------------------------------  -----------------------  ---------  -----------
+        511410100  OBLIGATIONS DU TRESOR ASSIMILABLES PLA  2022-08-16 → 2025-06-16  980        0.00       
+        511800100  CREANCES RATTACHEES - PLACEMENT         2022-08-16 → 2025-07-31  32 937     0.00       
+        512200100  BONS DE TRESOR - TRANSACTION            2022-08-05 → 2025-06-16  228        0.00       
+        591400100  PROV DEPRECIATION DES OBLIGATIONS ET B  2025-06-16 → 2025-06-17  68         0.00       
+        Comptes dont le retour exact à zéro atteste la complétude de l'historique.
+
 
 ====================================================================================================
 SECTION 2 — RÉFÉRENTIEL DES CONTRATS DE MARCHÉ MONÉTAIRE
@@ -414,15 +424,25 @@ CONTRÔLES SANS ANOMALIE
       quantième julien + séquence). L'agence et le produit encodés correspondent aux colonnes du
       référentiel, et la date reconstituée depuis le quantième julien est égale à la date de
       booking, sur la totalité des contrats.
+
   [2.3] Cohérence chronologique des dates contractuelles
       Sur les 596 contrats, l'ordre négociation ≤ valeur ≤ échéance est respecté et toutes les dates
       sont renseignées.
+
   [2.5] Cohérence interne du référentiel et conventions de décompte des jours
       Pour la totalité des 596 contrats, le montant d'intérêt porté au référentiel se déduit
       exactement du nominal, du taux et de la durée. Le référentiel est donc cohérent en interne.
       Le contrôle révèle par ailleurs que DEUX conventions de décompte coexistent (360 et 365
       jours), appliquées de façon homogène par type de produit. Cette distinction doit être connue
       de tout recalcul d'intérêt.
+
+        Produit  Base  Contrats
+        -------  ----  --------
+        BTTR     360   1       
+        MTPD     360   2       
+        OTAP     365   485     
+        TBTR     360   108     
+
 
 ====================================================================================================
 SECTION 3 — CYCLE DE VIE DES TITRES SOUS FLEXCUBE
@@ -432,7 +452,7 @@ Revue du cycle de vie des titres dans le module MM : dénouements par rapport à
 contractuelle, prix de liquidation, pratique de liquidation/réouverture, exactitude des intérêts
 courus et apurement des créances rattachées.
 
-  6 contrôle(s) exécuté(s) — 5 anomalie(s), 1 sans anomalie.
+  7 contrôle(s) exécuté(s) — 6 anomalie(s), 1 sans anomalie.
 
 ----------------------------------------------------------------------------------------------------
 [3.1] Dénouements majoritairement antérieurs à l'échéance contractuelle
@@ -551,6 +571,38 @@ courus et apurement des créances rattachées.
     évolution du paramétrage permettrait le remboursement partiel.
 
 ----------------------------------------------------------------------------------------------------
+[3.7] Accumulation des intérêts courus au-delà d'une année de coupons
+  Gravité : ELEVEE
+
+  Les créances rattachées représentent les coupons acquis mais non encore encaissés. Rapportées à
+  une année d'intérêts théorique au taux médian du portefeuille (6.00 %), elles dépassent douze mois
+  de coupons à certaines dates d'arrêté.
+  Le portefeuille étant composé de titres à coupon annuel, un encours de courus supérieur à une
+  année signifie que des coupons échus n'ont pas été encaissés, ou que les courus correspondants
+  n'ont pas été apurés.
+  La progression du ratio est en outre continue et s'accélère nettement après la bascule sur le
+  nouveau système : il convient de déterminer si le changement d'outil a altéré le suivi des
+  encaissements de coupons.
+
+    Taux médian du portefeuille            : 6.00 %
+    Arrêtés au-delà d'une année de coupons : 1
+    Pire arrêté                            : 2026-06-30 — 1.31 année(s) d'intérêts, soit 19 249 608 622 XAF
+
+    Date d'arrêté  Portefeuille XAF  Courus XAF      Courus / portef. %  Années d'intérêts
+    -------------  ----------------  --------------  ------------------  -----------------
+    2023-12-31     71 749 600 000    662 336 797     0.92                0.15             
+    2024-06-30     79 310 970 000    1 975 466 036   2.49                0.42             
+    2024-12-31     115 432 180 000   2 455 219 083   2.13                0.35             
+    2025-06-30     135 921 813 333   2 185 349 530   1.61                0.27             
+    2025-12-31     212 912 553 333   10 964 366 724  5.15                0.86             
+    2026-06-30     244 098 816 666   19 249 608 622  7.89                1.31             
+
+  Recommandation :
+    Établir l'échéancier des coupons attendus et le rapprocher des encaissements constatés sur le
+    compte de règlement, à chaque date d'arrêté. Identifier les titres dont le coupon est échu et
+    non encaissé.
+
+----------------------------------------------------------------------------------------------------
 [3.5] Écarts individuels sur le recalcul des intérêts courus
   Gravité : MOYENNE
 
@@ -594,6 +646,7 @@ CONTRÔLES SANS ANOMALIE
       solde net nul. Les coupons sont encaissés en trésorerie  l'apurement étant passé par écriture
       manuelle en module DE et non par l'événement automatique du module MM. Le contrôle des quatre
       yeux est respecté sur la totalité des apurements (0 auto-validation  0 sans validateur).
+
 
 ====================================================================================================
 SECTION 4 — CONTRÔLE INTERNE ET SÉPARATION DES TÂCHES
@@ -815,17 +868,48 @@ CONTRÔLES SANS ANOMALIE
       Le portefeuille sorti de Flexcube et le portefeuille réintroduit dans Calypso se rapprochent à
       0.0012 % près, sur un nombre identique de positions. La migration des nominaux est donc
       correctement exécutée.
+
+        Positions sorties de Flexcube  : 65
+        Positions entrées dans Calypso : 68
+        Montant sorti                  : 126 688 763 333 XAF
+        Montant entré                  : 126 690 278 772 XAF
+        Écart                          : 1 515 439 XAF (0.0012 %)
+
+        Sens               Compte     Montant XAF      Lignes
+        -----------------  ---------  ---------------  ------
+        Flexcube — sortie  511410100  107 203 763 333  55    
+        Flexcube — sortie  512200100  19 485 000 000   10    
+        Calypso — entrée   511210100  19 486 515 439   13    
+        Calypso — entrée   512410100  107 203 763 333  55    
+
   [5.2] Reprise des intérêts courus dans le nouveau système
       Les intérêts courus attachés aux positions migrées ont été réintroduits dans Calypso par
       l'événement ACCRUAL_BS, sur le compte 512800100. Le compte d'origine (511800100) a été soldé
       le même jour — voir le contrôle 5.3, qui établit que ce solde a été passé pour un montant
       supérieur au solde réel.
+
+        Positions dont les courus sont repris : 55
+        Courus repris                         : 3 089 462 049 XAF
+
   [5.4] Extinction des comptes du dispositif Flexcube
       Les comptes de portefeuille, de créances rattachées et de provision du dispositif d'origine
       reviennent exactement à zéro sur l'ensemble de leur historique. L'extinction est propre.
+
+        Compte     Libellé                                   Lignes  Solde XAF  Dernier mouvement
+        ---------  ----------------------------------------  ------  ---------  -----------------
+        511410100  OBLIGATIONS DU TRESOR ASSIMILABLES PLACE  980     0.00       2025-06-16       
+        512200100  BONS DE TRESOR - TRANSACTION              228     0.00       2025-06-16       
+        511800100  CREANCES RATTACHEES - PLACEMENT           32 937  0.00       2025-07-31       
+        591400100  PROV DEPRECIATION DES OBLIGATIONS ET BON  68      0.00       2025-06-17       
+
   [5.6] Continuité chronologique de la bascule
       Le module d'origine s'arrête le 2025-06-16 et le nouveau dispositif démarre le 2025-06-16 : la
       bascule s'opère sans interruption ni période de double comptabilisation.
+
+        Dernière écriture du module MM                 : 2025-06-16
+        Première écriture Calypso                      : 2025-06-16
+        Écritures MM postérieures au démarrage Calypso : 0
+
 
 ====================================================================================================
 SECTION 6 — MANQUEMENTS DU DISPOSITIF CALYPSO
@@ -836,7 +920,7 @@ comptables et rien d'autre. Cette section mesure ce que ce choix d'architecture 
 matière de piste d'audit, de contrôle et de rapprochement, et identifie les soldes qu'il laisse en
 suspens.
 
-  6 contrôle(s) exécuté(s) — 6 anomalie(s), 0 sans anomalie.
+  7 contrôle(s) exécuté(s) — 7 anomalie(s), 0 sans anomalie.
 
 ----------------------------------------------------------------------------------------------------
 [6.1] Aucun référentiel de contrat n'alimente plus le core banking
@@ -899,6 +983,90 @@ suspens.
     rapprochement de ces comptes et sa périodicité. Déterminer s'il s'agit d'opérations non
     dénouées, d'un paramétrage d'interface asymétrique — une jambe déversée, l'autre non — ou d'un
     décalage de dates de valeur.
+
+----------------------------------------------------------------------------------------------------
+[6.7] L'interface Calypso déverse certains mouvements en double dans le grand livre
+  Gravité : CRITIQUE
+
+  Chaque mouvement Calypso porte un identifiant de transfert unique. Or des mouvements apparaissent
+  DEUX FOIS dans le grand livre, sous deux références Flexcube différentes, le même jour, pour le
+  même compte, le même sens et le même montant. L'interface n'est donc pas idempotente : elle peut
+  rejouer une opération déjà déversée sans la détecter.
+  Ce défaut n'est pas théorique : il fausse directement le solde des comptes touchés. Le compte de
+  règlement de la banque centrale et le compte de portefeuille figurent parmi eux, ce qui signifie
+  que le nostro et la valeur du portefeuille présentés au bilan sont affectés. Le phénomène se
+  produit sur toute la période et n'est corrigé par aucune écriture d'annulation.
+  Il constitue par ailleurs une CAUSE RACINE d'autres constats du présent rapport, au premier rang
+  desquels la dérive des comptes de liaison (contrôle 6.4) et le solde anormal du compte d'emprunt
+  (contrôle 9.4).
+
+    Mouvements déversés en double      : 178
+    Montant total dupliqué             : 289 631 995 600 XAF
+    Période                            : 2025-09-29 → 2026-09-15
+    Comptes touchés                    : 35
+    Dont comptes à impact significatif : 22
+
+    Compte       Libellé                                 Mouvements  Impact sur le solde XAF
+    -----------  --------------------------------------  ----------  -----------------------
+    552400100    EMPRUNT AU JR LE JR BQ NON ASSOC        4           30 000 000 000         
+    467000188    CALYPSO BRIDGE ACCOUNT MONEY MARKET     15          -29 685 292 656        
+    952100100    TITRES D INVESTISSEMENT PUBLICS AFFECT  2           -16 000 000 000        
+    995000100    CPTE GL OPS SUR TITRES ET VALS AFFECT   2           16 000 000 000         
+    467000186    CALYPSO BRIDGE ACCOUNT                  17          -14 893 700 500        
+    099ACO00001  BANQUE DES ETATS DE LAFRIQUE CENTRA     7           11 693 426 801         
+    512410100    OBLIGATIONS DU TRESOR ASSIMILABLES TRA  6           3 153 680 000          
+    998000100    VALEURS GEREES POUR COMPTE DE TIERS     3           -3 043 680 000         
+    938000100    VAL GEREES POUR COMPTE DE LA CLIENTELE  3           3 043 680 000          
+    971400100    DEV VENDUES CTANT NON ENCORE LIVRES     13          -2 218 400 337         
+    971200100    DEV ACHETES CTANT NON ENCORE RECU       13          2 218 400 337          
+    972400100    DEVISE VENDU A TERM NON ENC LIVRES      8           -1 326 073 696         
+    979000100    COMPTE D AJUSTEMENT DEVISES HORS BILAN  8           1 326 073 696          
+    00110000006  STONEX FINANCIAL LIMITED                1           -1 313 881 871         
+    475000160    COMPTE POSITION DE CHANGE CALYPSO       1           1 313 881 871          
+    099ACO00013  SOCIETE GENERALE PARIS                  9           1 214 280 624          
+    476000160    CPTE DE CONT VAL POS CHGE CALYPSO       4           -1 170 369 512         
+    475000102    EUR COMPTE POSITION DE CHANGE           8           1 003 729 509          
+    ... et 17 autre(s) ligne(s)
+    Impact = montant dont le solde du compte est faussé par les doublons.
+
+    Mois     Mouvements  Montant dupliqué XAF
+    -------  ----------  --------------------
+    2025-09  4           340 815 236         
+    2025-10  10          6 244 238 462       
+    2025-11  22          24 340 669 206      
+    2025-12  14          1 394 751 160       
+    2026-01  6           930 935 444         
+    2026-02  20          1 915 896 260       
+    2026-03  26          15 349 253 426      
+    2026-04  12          1 918 909 580       
+    2026-05  2           3 870 083 496       
+    2026-06  8           20 360 657 556      
+    2026-07  16          15 369 523 746      
+    2026-08  20          183 246 911 758     
+    2026-09  18          14 349 350 270      
+
+    Deal     Mouvement  Date        Compte       Sens  Montant XAF   
+    -------  ---------  ----------  -----------  ----  --------------
+    4184547  25573387   2026-08-04  552400100    C     25 000 000 000
+    4184547  25573387   2026-08-04  467000188    D     25 000 000 000
+    4184571  25573417   2026-08-04  467000188    C     25 000 000 000
+    4184571  25573417   2026-08-04  552400100    D     25 000 000 000
+    4184547  25573388   2026-08-04  552400100    D     25 000 000 000
+    4184547  25573388   2026-08-04  467000188    C     25 000 000 000
+    4173737  25573349   2026-08-04  099ACO00001  D     13 303 996 233
+    4173737  25573349   2026-08-04  467000186    C     13 303 996 233
+    4024895  25229148   2026-06-25  952100100    C     10 000 000 000
+    4024895  25229148   2026-06-25  995000100    D     10 000 000 000
+    4148007  25497875   2026-07-27  995000100    D     6 000 000 000 
+    4148007  25497875   2026-07-27  952100100    C     6 000 000 000 
+    Les douze doublons les plus importants.
+
+  Recommandation :
+    Faire corriger l'interface pour qu'elle rejette tout mouvement déjà déversé, en s'appuyant sur
+    l'identifiant de transfert. Quantifier l'incidence cumulée sur les soldes à chaque date d'arrêté
+    et passer les écritures de correction. Mettre en place un contrôle de rapprochement quotidien
+    entre le nombre de mouvements émis par Calypso et le nombre d'écritures reçues dans le grand
+    livre.
 
 ----------------------------------------------------------------------------------------------------
 [6.2] Le contrôle des quatre yeux de Flexcube est intégralement neutralisé sur le flux Calypso
@@ -1284,7 +1452,35 @@ Reconstitution du résultat de l'activité à partir des écritures de clôture 
 cohérence entre catégorie de bilan et catégorie de produit au sens du PCEC, et analyse du rendement
 implicite du portefeuille.
 
-  3 contrôle(s) exécuté(s) — 3 anomalie(s), 0 sans anomalie.
+  4 contrôle(s) exécuté(s) — 4 anomalie(s), 0 sans anomalie.
+
+----------------------------------------------------------------------------------------------------
+[9.4] Comptes présentant un solde contraire à leur nature comptable à une date d'arrêté
+  Gravité : CRITIQUE
+
+  Des comptes présentent, à une ou plusieurs dates d'arrêté, un solde de sens contraire à leur
+  nature : compte d'actif créditeur ou compte de passif débiteur. Une telle position est impossible
+  en soi et révèle une écriture manquante, une écriture en double, ou une imputation erronée.
+  Le cas le plus marquant concerne un compte de produits perçus d'avance devenu débiteur :
+  l'étalement au résultat a dépassé le produit initialement différé, ce qui signifie que des
+  produits ont été reconnus SANS CONTREPARTIE. Celui du compte d'emprunt au jour le jour trouve son
+  origine dans le déversement en double de l'interface (contrôle 6.7).
+  Ce contrôle n'est possible que parce que l'extraction couvre l'historique intégral des comptes et
+  que leur solde est donc calculable à toute date.
+
+    Comptes concernés               : 3
+    Dont solde anormal significatif : 2
+    Dates d'arrêté testées          : 2023-12-31, 2024-06-30, 2024-12-31, 2025-06-30, 2025-12-31, 2026-06-30
+
+    Compte     Libellé                               Nature     Arrêtés en anomalie  Pire arrêté  Solde à cette date  Solde final
+    ---------  ------------------------------------  ---------  -------------------  -----------  ------------------  -----------
+    511800100  CREANCES RATTACHEES - PLACEMENT       debiteur   1                    2025-06-30   -1 205 231 891      0.00       
+    472200106  PRODUITS PERCU DAVANCE SUR BON DE TR  crediteur  1                    2026-06-30   686 724 016         718 339 497
+    559000101  DETTES RATTACHEES PRET EMPRUNT AU JR  crediteur  1                    2026-06-30   66 000 000          66 000 000 
+
+  Recommandation :
+    Obtenir la justification de chaque solde anormal à la date d'arrêté concernée et vérifier s'il
+    figure tel quel dans les états financiers et les états réglementaires transmis à la COBAC.
 
 ----------------------------------------------------------------------------------------------------
 [9.2] Revenus du portefeuille imputés à la mauvaise catégorie comptable

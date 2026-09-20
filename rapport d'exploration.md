@@ -11,7 +11,8 @@ zéros de tête et d'éviter toute conversion numérique parasite.
 **Référentiel comptable applicable** : Plan Comptable des Établissements de Crédit (PCEC) de la
 CEMAC — COBAC.
 
-> **Version 4** — intègre la seconde extraction (comptes généraux Calypso, §11), la troisième
+> **Version 5** — intègre la révision du §14 (historique intégral des comptes) ainsi que
+> la seconde extraction (comptes généraux Calypso, §11), la troisième
 > (historique du compte `511800100`, §12) et la quatrième (**41 comptes de trésorerie, tous
 > modules, §13**), fournies en cours de mission. Les constats revus
 > ou retirés sont signalés comme tels et conservés dans le corps du rapport, afin de préserver la
@@ -520,11 +521,14 @@ Activité **apparue le 7 novembre 2025** — absente de toute la période Flexcu
 ### 7.1 Volumétrie
 - **128 opérations** de pension livrée, **5 506 Md XAF tirés** au total sur 11 mois.
 - Encours net à la fin de l'extraction (14/09/2026) : **20 Md XAF** comptabilisés, soit
-  **25 Md XAF** après correction du solde d'ouverture manquant (cf. §7.3).
+  **45 Md XAF** — chiffre corrigé au §13.5 sur l'historique intégral.
 - Charge d'intérêt nette : de 58 M à 441 M XAF par mois, soit environ **2,65 Md XAF** cumulés.
 - Collatéral mobilisé net (`952100100`) : **77 847 170 000 XAF**.
 
-### 7.2 Évolution de l'encours (retraité du solde d'ouverture de +5 Md)
+### 7.2 Évolution de l'encours
+
+> ⚠ **Les chiffres de ce paragraphe, établis sur une extraction partielle, sont corrigés au
+> §13.5. Le retraitement « solde d'ouverture de +5 Md » qui y figurait est ERRONÉ : voir §14.**
 
 | Fin de mois | Encours emprunté (XAF) |
 |---|---:|
@@ -707,11 +711,12 @@ Il faut souligner les points positifs, qui sont nombreux et significatifs :
 ## 9. Limites de l'exploration et données à obtenir
 
 ### 9.1 Limites du périmètre fourni
-1. **Aucun solde d'ouverture.** Les fichiers ne contiennent que des **mouvements**. Ceci est
-   démontré par le compte `552400100`, dont le cumul des mouvements part immédiatement à
-   −5 000 000 000 XAF dès la première écriture du 07/11/2025 : une opération tirée avant le début de
-   l'extraction y est remboursée. **Aucune analyse de solde n'est fiable** sans ancrage sur une
-   balance générale.
+1. ~~**Aucun solde d'ouverture.**~~ — **LIMITE LEVÉE, voir §14.** L'extraction des 41 comptes de
+   trésorerie couvre l'historique **intégral** de chaque compte : le solde d'ouverture est nul par
+   construction et le solde est calculable à toute date.
+   Le raisonnement initial était **faux**. J'avais attribué le solde anormal du compte `552400100`
+   à une opération tirée avant le début de l'extraction. L'historique complet montre qu'il n'en est
+   rien : ce solde provient d'un **déversement en double de l'interface Calypso** (§14.2).
 2. **Le référentiel des deals Calypso est absent.** C'est l'équivalent de `MM_CONTRACT` pour la
    période 06/2025 → 09/2026, soit **65 % de la période d'audit**. Nominal, taux, échéance,
    contrepartie et sens des 1 985 deals ne sont connus qu'indirectement.
@@ -1381,6 +1386,131 @@ d'équivalent ailleurs dans l'historique.
 - Les **soldes en balance générale** aux dates d'arrêté n'ont pas été fournis. Pour les comptes créés
   après juin 2022 (comptes de liaison Calypso notamment), le cumul des mouvements tient lieu de
   solde ; pour les autres, l'ancrage reste nécessaire.
+
+---
+
+## 14. Révision — l'historique des 41 comptes est intégral, les soldes sont calculables
+
+La banque a signalé que la quatrième extraction porte l'historique **entier** des 41 comptes de
+trésorerie. Ce point change la portée de plusieurs analyses : il fallait le vérifier, puis en tirer
+les conséquences.
+
+### 14.1 Démonstration de la complétude
+Trois éléments concordants l'établissent :
+
+| Élément de preuve | Constat |
+|---|---|
+| **Comptes revenant exactement à zéro** | `511410100`, `512200100`, `511800100` et `591400100` présentent un solde net de **0,00 XAF** sur toute leur vie. Un historique tronqué ne le permettrait pas. |
+| **Concordance avec l'extraction dédiée** | L'extraction du seul compte `511800100` compte **32 937 lignes** du 16/08/2022 au 31/07/2025, solde 0,00 — **strictement identique** à ce que porte l'extraction des 41 comptes. |
+| **Absence de mur de troncature** | Les dates de première écriture sont échelonnées (2 comptes au 08/06/2022, 3 au 10/06, 1 au 13/06, 2 au 05/08, 3 au 16/08…) et non concentrées sur une date unique. |
+
+**Conséquence** : pour chacun des 41 comptes, le solde d'ouverture est nul par construction et le
+cumul des mouvements constitue le solde exact à toute date. La limite n°1 du §9.1 est levée.
+
+### 14.2 — CORRECTION du §7 — Le solde anormal du compte d'emprunt n'est pas un solde d'ouverture
+
+J'avais écrit au §7.3 que le cumul du compte `552400100` partant à −5 000 000 000 XAF démontrait
+l'existence d'un solde d'ouverture non fourni. **C'était faux.** L'historique intégral montre que
+le compte démarre bien à zéro le 28/09/2022 et que le résidu a une tout autre origine.
+
+Le 07/11/2025, le deal `3186053` produit trois écritures sur le compte d'emprunt au lieu de deux :
+
+| Référence externe | Sens | Montant | Nature |
+|---|---|---:|---|
+| `CLP3186053_23630317_182512` | C | 5 000 000 000 | tirage |
+| `CLP3186053_23630318_182512` | D | 5 000 000 000 | remboursement |
+| `CLP3186053_23630318_182513` | D | 5 000 000 000 | **remboursement en double** |
+
+Le mouvement Calypso **23630318** est déversé **deux fois**, sous deux références Flexcube
+distinctes et deux horodatages différents. Il en résulte un résidu débiteur permanent de
+**5 000 000 000 XAF** sur un compte d'emprunt, qui persiste plus de dix mois — jusqu'à la fin de
+l'extraction.
+
+### 14.3 — CONSTAT NOUVEAU — L'interface Calypso n'est pas idempotente
+
+Ce cas n'est pas isolé. La recherche systématique des mouvements Calypso portant le même
+identifiant de transfert, le même compte, le même sens et le même montant sous plusieurs références
+Flexcube donne :
+
+| | |
+|---|---:|
+| **Mouvements déversés en double** | **178** |
+| **Montant total dupliqué** | **289 631 995 600 XAF** |
+| Période | 29/09/2025 → 15/09/2026 |
+| Comptes touchés | 36 |
+
+Impact sur le solde des comptes les plus affectés :
+
+| Compte | Libellé | Mouvements | Impact sur le solde (XAF) |
+|---|---|---:|---:|
+| `552400100` | Emprunt au jour le jour | 4 | **+30 000 000 000** |
+| `467000188` | Calypso bridge account money market | 15 | −29 685 292 656 |
+| `952100100` / `995000100` | Titres affectés en garantie | 2 | ±16 000 000 000 |
+| `467000186` | Calypso bridge account | 17 | −14 893 700 500 |
+| **`099ACO00001`** | **Banque des États de l'Afrique Centrale** | 7 | **+11 693 426 801** |
+| **`512410100`** | **Obligations du Trésor — transactions** | 6 | **+3 153 680 000** |
+
+**Portée.** L'interface peut rejouer une opération déjà déversée sans la détecter. Deux comptes du
+bilan sont directement touchés : le **nostro de la banque centrale**, surévalué de 11,7 Md XAF, et
+le **portefeuille de titres**, surévalué de 3,2 Md XAF. Aucune écriture d'annulation n'est passée.
+
+Ce défaut constitue par ailleurs une **cause racine** de la dérive des comptes de liaison décrite
+au §13.1 : à eux seuls, les doublons expliquent 44,6 Md XAF sur les 136,5 Md constatés.
+
+*À demander* : le journal de l'interface, le mécanisme de contrôle d'unicité prévu, et le
+rapprochement quotidien entre mouvements émis par Calypso et écritures reçues dans le grand livre.
+
+### 14.4 — CONSTAT NOUVEAU — Soldes contraires à la nature comptable aux dates d'arrêté
+
+Le calcul des soldes aux dates d'arrêté, désormais possible, fait apparaître trois comptes dont le
+solde contredit leur nature :
+
+| Compte | Libellé | Nature | Arrêté | Solde à cette date |
+|---|---|---|---|---:|
+| `511800100` | Créances rattachées — placement | actif | **30/06/2025** | **−1 205 231 891** |
+| `472200106` | Produits perçus d'avance sur bons du Trésor | passif | **30/06/2026** | **+686 724 016** |
+| `559000101` | Dettes rattachées emprunt au jour le jour | passif | **30/06/2026** | **+66 000 000** |
+
+Le premier cas est celui déjà documenté au §12.5 — le contrôle le détecte désormais
+automatiquement à la date d'arrêté.
+
+Le deuxième est nouveau et significatif : un compte de **produits perçus d'avance** devenu
+**débiteur** signifie que l'étalement au résultat a dépassé le produit initialement différé. Le
+compte est créditeur jusqu'au 31/12/2025 (−55,7 M) puis bascule : +323,9 M au 31/03/2026,
+**+686,7 M au 30/06/2026**. Autrement dit, **686,7 M XAF de produits ont été reconnus sans
+contrepartie** à la clôture semestrielle.
+
+### 14.5 — CONSTAT NOUVEAU — Les intérêts courus dépassent une année de coupons
+
+Le calcul du portefeuille et des courus à chaque arrêté donne :
+
+| Date d'arrêté | Portefeuille (XAF) | Courus (XAF) | Courus / portefeuille | Années d'intérêts |
+|---|---:|---:|---:|---:|
+| 31/12/2023 | 71 749 600 000 | 662 336 797 | 0,92 % | 0,15 |
+| 30/06/2024 | 79 310 970 000 | 1 975 466 036 | 2,49 % | 0,42 |
+| 31/12/2024 | 115 432 180 000 | 2 455 219 083 | 2,13 % | 0,35 |
+| 30/06/2025 | 135 921 813 333 | 2 185 349 530 | 1,61 % | 0,27 |
+| 31/12/2025 | 212 912 553 333 | 10 964 366 724 | 5,15 % | 0,86 |
+| **30/06/2026** | **244 098 816 666** | **19 249 608 622** | **7,89 %** | **1,31** |
+
+Rapportées à une année d'intérêts théorique au taux médian du portefeuille (6,00 %), les créances
+rattachées dépassent **douze mois de coupons** au 30/06/2026. Sur un portefeuille de titres à
+coupon annuel, cela signifie que des coupons échus n'ont pas été encaissés, ou que les courus
+correspondants n'ont pas été apurés.
+
+La rupture est nette et datée : le ratio reste entre 0,15 et 0,42 année sous Flexcube, puis passe à
+0,86 au 31/12/2025 et à 1,31 au 30/06/2026 — **après la bascule**. Il convient de déterminer si le
+changement d'outil a altéré le suivi des encaissements de coupons.
+
+### 14.6 Enseignement de méthode, complémentaire du §12.7
+Le §12.7 retenait qu'un constat sur le solde d'un compte doit reposer sur une extraction tous
+modules confondus. Le présent épisode ajoute une seconde condition, symétrique :
+
+> **Avant de conclure qu'un solde d'ouverture manque, il faut vérifier que l'extraction ne porte
+> pas déjà l'historique intégral.** Un solde anormal n'est pas nécessairement la trace d'une
+> donnée absente : il peut être l'anomalie elle-même.
+
+Appliquée ici, cette vérification a transformé une limite supposée en trois constats d'audit.
 
 ---
 

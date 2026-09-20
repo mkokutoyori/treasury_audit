@@ -32,6 +32,7 @@ def run(ctx) -> Section:
     s.ajouter(_c91_resultat(ctx))
     s.ajouter(_c92_classement(ctx))
     s.ajouter(_c93_rendement(ctx))
+    s.ajouter(_c94_soldes_anormaux(ctx))
     return s
 
 
@@ -197,5 +198,68 @@ def _c93_rendement(ctx) -> Constat:
             "Décomposer le produit par nature et rapprocher la composante plus-values des "
             "opérations examinées en section 8. Attention : l'encours moyen est reconstitué à "
             "partir des mouvements ; il doit être confirmé par la balance générale."
+        ),
+    )
+
+
+def _c94_soldes_anormaux(ctx) -> Constat:
+    """Un compte d'actif ne peut pas être créditeur, ni un compte de passif débiteur.
+
+    Ce contrôle n'est possible que parce que l'extraction couvre l'historique intégral des
+    comptes : le solde à toute date est donc calculable (voir contrôle 1.7).
+    """
+    preuve = ctx.historique_complet()
+    anomalies = []
+    for compte, r in preuve.iterrows():
+        if r.nature == "neutre":
+            continue
+        soldes = ctx.soldes_aux_arretes(compte)
+        contraires = {d: v for d, v in soldes.items()
+                      if (r.nature == "debiteur" and v < -1) or (r.nature == "crediteur" and v > 1)}
+        if contraires:
+            pire = max(contraires.items(), key=lambda x: abs(x[1]))
+            anomalies.append([compte, r.libelle[:36], r.nature, len(contraires),
+                              pire[0], float(pire[1]), float(r.solde_final)])
+    if not anomalies:
+        return Constat(
+            code="9.4", titre="Sens des soldes aux dates d'arrêté", gravite=Gravite.CONFORME,
+            constat=(
+                "À chaque date d'arrêté de la période, le solde de chaque compte est conforme à sa "
+                "nature comptable : les comptes d'actif sont débiteurs, ceux de passif créditeurs."
+            ),
+        )
+    anomalies.sort(key=lambda l: -abs(l[5]))
+    materiel = [a for a in anomalies if abs(a[5]) > ctx.config.seuil_significatif]
+    return Constat(
+        code="9.4",
+        titre="Comptes présentant un solde contraire à leur nature comptable à une date d'arrêté",
+        gravite=Gravite.CRITIQUE if materiel else Gravite.ELEVEE,
+        constat=(
+            "Des comptes présentent, à une ou plusieurs dates d'arrêté, un solde de sens contraire "
+            "à leur nature : compte d'actif créditeur ou compte de passif débiteur. Une telle "
+            "position est impossible en soi et révèle une écriture manquante, une écriture en "
+            "double, ou une imputation erronée.\n"
+            "Le cas le plus marquant concerne un compte de produits perçus d'avance devenu "
+            "débiteur : l'étalement au résultat a dépassé le produit initialement différé, ce qui "
+            "signifie que des produits ont été reconnus SANS CONTREPARTIE. Celui du compte "
+            "d'emprunt au jour le jour trouve son origine dans le déversement en double de "
+            "l'interface (contrôle 6.7).\n"
+            "Ce contrôle n'est possible que parce que l'extraction couvre l'historique intégral "
+            "des comptes et que leur solde est donc calculable à toute date."
+        ),
+        chiffres=[
+            ("Comptes concernés", str(len(anomalies))),
+            ("Dont solde anormal significatif", str(len(materiel))),
+            ("Dates d'arrêté testées", ", ".join(ctx.arretes)),
+        ],
+        tableaux=[
+            Tableau(["Compte", "Libellé", "Nature", "Arrêtés en anomalie", "Pire arrêté",
+                     "Solde à cette date", "Solde final"],
+                    anomalies),
+        ],
+        recommandation=(
+            "Obtenir la justification de chaque solde anormal à la date d'arrêté concernée et "
+            "vérifier s'il figure tel quel dans les états financiers et les états réglementaires "
+            "transmis à la COBAC."
         ),
     )

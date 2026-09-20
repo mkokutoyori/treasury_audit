@@ -1072,3 +1072,106 @@ Effet comptable nul mais à documenter.
    résultat par une écriture hors périmètre ? Sinon, incidence sur le résultat, les fonds propres
    et la position de change déclarée à la COBAC.
 3. **[HAUTE]** Doctrine comptable des **215 Sell-Buy-Back** (896 Md réglés).
+
+---
+
+# SESSION 12 — Révision : l'historique des 41 comptes est intégral
+
+**Déclencheur** : la banque signale que la quatrième extraction porte l'historique *entier* des
+41 comptes. Il fallait le vérifier avant d'en tirer parti.
+
+## 12.1 Vérification de la complétude — trois preuves concordantes
+1. **Comptes revenant exactement à zéro** : `511410100`, `512200100`, `511800100`, `591400100`
+   → solde net **0,00 XAF** sur toute leur vie. Un historique tronqué ne le permettrait pas.
+2. **Concordance avec l'extraction dédiée** : `creance_rattaché.csv` = 32 937 lignes,
+   16/08/2022 → 31/07/2025, solde 0,00 — **strictement identique** à ce que porte le fichier des
+   41 comptes pour ce compte.
+3. **Pas de mur de troncature** : dates de 1ʳᵉ écriture échelonnées (2 au 08/06/2022, 3 au 10/06,
+   1 au 13/06, 2 au 05/08, 3 au 16/08…).
+
+→ **Le solde d'ouverture est nul par construction ; le solde est calculable à toute date.**
+
+Au passage, correction d'une erreur de classification : `472200106` et `472200108` sont des
+**produits comptabilisés d'avance**, donc des comptes de **passif** — je les avais rangés en actif.
+
+## 12.2 ⚠ CORRECTION — le solde anormal du compte d'emprunt n'est pas un solde d'ouverture
+J'avais écrit au §7.3 du rapport que le cumul du `552400100` partant à −5 Md prouvait l'existence
+d'un solde d'ouverture non fourni. **C'était faux.** Le compte démarre bien à zéro le 28/09/2022.
+
+Le 07/11/2025, le deal `3186053` produit **trois** écritures au lieu de deux :
+
+| Référence externe | Sens | Montant | Nature |
+|---|---|---:|---|
+| `CLP3186053_23630317_182512` | C | 5 000 000 000 | tirage |
+| `CLP3186053_23630318_182512` | D | 5 000 000 000 | remboursement |
+| `CLP3186053_23630318_182513` | D | 5 000 000 000 | **doublon** |
+
+Le mouvement `23630318` est déversé deux fois, sous deux références Flexcube et deux horodatages.
+→ résidu débiteur permanent de **5 Md** sur un compte d'emprunt, sur plus de dix mois.
+
+## 12.3 ⚠⚠ CONSTAT NOUVEAU — l'interface Calypso n'est pas idempotente
+Recherche systématique : même identifiant de transfert + même compte + même sens + même montant,
+sous plusieurs références Flexcube.
+
+| | |
+|---|---:|
+| Mouvements déversés en double | **178** |
+| Montant total dupliqué | **289 631 995 600 XAF** |
+| Période | 29/09/2025 → 15/09/2026 |
+| Comptes touchés | 36 |
+
+Impacts principaux sur les soldes :
+`552400100` **+30,0 Md** · `467000188` −29,7 Md · `952100100`/`995000100` ±16,0 Md ·
+`467000186` −14,9 Md · **`099ACO00001` (BEAC) +11,7 Md** · **`512410100` (portefeuille) +3,2 Md**
+
+→ Le **nostro BEAC est surévalué de 11,7 Md** et le **portefeuille de 3,2 Md**. Aucune écriture
+d'annulation. C'est aussi une **cause racine** de la dérive des comptes de liaison (§13.1) : les
+doublons expliquent 44,6 Md sur les 136,5 Md constatés.
+
+## 12.4 ⚠ CONSTAT NOUVEAU — soldes contraires à la nature comptable aux arrêtés
+| Compte | Nature | Arrêté | Solde |
+|---|---|---|---:|
+| `511800100` créances rattachées | actif | **30/06/2025** | **−1 205 231 891** |
+| `472200106` produits perçus d'avance | passif | **30/06/2026** | **+686 724 016** |
+| `559000101` dettes rattachées | passif | **30/06/2026** | **+66 000 000** |
+
+Le deuxième est nouveau : un compte de produits perçus d'avance **débiteur** signifie que
+l'étalement au résultat a dépassé le produit différé → **686,7 M de produits reconnus sans
+contrepartie**. Créditeur jusqu'au 31/12/2025 (−55,7 M), il bascule : +323,9 M au 31/03/2026,
++686,7 M au 30/06/2026.
+
+## 12.5 ⚠ CONSTAT NOUVEAU — les courus dépassent une année de coupons
+| Arrêté | Portefeuille | Courus | Ratio | Années d'intérêts |
+|---|---:|---:|---:|---:|
+| 31/12/2023 | 71 749 600 000 | 662 336 797 | 0,92 % | 0,15 |
+| 30/06/2024 | 79 310 970 000 | 1 975 466 036 | 2,49 % | 0,42 |
+| 31/12/2024 | 115 432 180 000 | 2 455 219 083 | 2,13 % | 0,35 |
+| 30/06/2025 | 135 921 813 333 | 2 185 349 530 | 1,61 % | 0,27 |
+| 31/12/2025 | 212 912 553 333 | 10 964 366 724 | 5,15 % | 0,86 |
+| **30/06/2026** | **244 098 816 666** | **19 249 608 622** | **7,89 %** | **1,31** |
+
+Rupture nette et datée **après la bascule**. Sur des titres à coupon annuel, 1,31 année de courus
+signifie des coupons échus non encaissés ou des courus non apurés.
+
+## 12.6 Répercussions sur le script d'audit
+- `data.py` : ajout de `solde(comptes, a_la_date)`, `serie_solde(comptes, frequence)`,
+  `soldes_aux_arretes()`, `arretes`, `historique_complet()`, `mouvements_dupliques`,
+  et du dictionnaire `NATURE_COMPTE` (débiteur / créditeur / neutre).
+- **1.7** réécrit : de « absence de soldes d'ouverture » (anomalie) à « complétude de l'historique
+  et calculabilité des soldes » (conforme, avec les éléments de preuve).
+- **3.7** nouveau : situation du portefeuille et des courus aux arrêtés, testée en années
+  d'intérêts plutôt que par un ratio arbitraire.
+- **6.7** nouveau : idempotence de l'interface Calypso (CRITIQUE).
+- **9.4** nouveau : soldes contraires à la nature comptable aux arrêtés (CRITIQUE).
+- `core.py` : les contrôles conformes affichent désormais leurs chiffres et tableaux — la situation
+  du portefeuille aux arrêtés a une valeur informative même sans anomalie.
+- Limites du rapport mises à jour.
+
+→ **41 anomalies** (contre 39), dont **7 critiques**.
+
+## 12.7 Enseignement de méthode (complète le §12.7 du rapport)
+> **Avant de conclure qu'un solde d'ouverture manque, vérifier que l'extraction ne porte pas déjà
+> l'historique intégral.** Un solde anormal n'est pas nécessairement la trace d'une donnée
+> absente : il peut être l'anomalie elle-même.
+
+Appliquée ici, cette vérification a transformé une limite supposée en trois constats d'audit.

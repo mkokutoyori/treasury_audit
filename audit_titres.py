@@ -18,9 +18,10 @@ from audit.core import Rapport, executer
 from audit.data import Config, Contexte
 
 LIMITES = [
-    "Les extractions ne contiennent que des mouvements : aucun solde d'ouverture n'est fourni. "
-    "Pour les comptes ouverts pendant la période, le cumul des mouvements vaut solde ; pour les "
-    "autres, tout encours reste à ancrer sur la balance générale.",
+    "L'extraction des comptes de trésorerie couvre l'historique INTÉGRAL de chaque compte : le "
+    "solde d'ouverture est nul par construction et le solde est donc calculable à toute date. "
+    "Le contrôle 1.7 en apporte la démonstration. Les soldes énoncés dans ce rapport restent "
+    "néanmoins à confirmer par la balance générale avant toute conclusion définitive.",
     "Le référentiel des deals du nouveau système n'a pas été fourni. Nominal, taux, échéance et "
     "contrepartie des opérations postérieures à la bascule ne sont connus qu'indirectement, par "
     "le libellé des écritures.",

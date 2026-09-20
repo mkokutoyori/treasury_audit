@@ -184,6 +184,19 @@ class Section:
                 out.append(f"  [{c.code}] {c.titre}")
                 for ligne in _paragraphe(c.constat, indent="      "):
                     out.append(ligne)
+                # Un contrôle sans anomalie peut porter une information utile : encours aux
+                # dates d'arrêté, éléments de preuve. On la restitue.
+                if c.chiffres:
+                    out.append("")
+                    largeur = max(len(l) for l, _ in c.chiffres)
+                    for label, valeur in c.chiffres:
+                        out.append(f"        {label.ljust(largeur)} : {valeur}")
+                for tableau in c.tableaux:
+                    rendu = tableau.rendu()
+                    if rendu:
+                        out.append("")
+                        out.extend("        " + l for l in rendu)
+                out.append("")
         if self.erreurs:
             out.append("")
             out.append("  AVERTISSEMENTS D'EXÉCUTION :")

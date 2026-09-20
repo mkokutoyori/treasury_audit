@@ -9,7 +9,8 @@ from __future__ import annotations
 import pandas as pd
 
 from ..core import Constat, Gravite, Section, Tableau, xaf
-from ..data import CPT_COURUS_MM, DATE_BASCULE
+from ..data import (CPT_COURUS_CALYPSO, CPT_COURUS_MM, CPT_PORTEFEUILLE,
+                    CPT_PORTEFEUILLE_CALYPSO, CPT_PORTEFEUILLE_MM, DATE_BASCULE)
 
 SECTION = (3, "Cycle de vie des titres sous Flexcube")
 
@@ -31,6 +32,7 @@ def run(ctx) -> Section:
     s.ajouter(_c34_liquidation_reouverture(ctx, liq))
     s.ajouter(_c35_recalcul_courus(ctx))
     s.ajouter(_c36_apurement_courus(ctx))
+    s.ajouter(_c37_situation_portefeuille(ctx))
     return s
 
 
@@ -338,4 +340,69 @@ def _c36_apurement_courus(ctx) -> Constat:
         tableaux=[Tableau(["Module d'apurement", "Écritures", "Montant XAF"],
                           [[i, int(r.n), float(r.montant)] for i, r in par_module.iterrows()])],
         recommandation="Obtenir le solde du compte en balance générale et la justification du résidu.",
+    )
+
+
+def _c37_situation_portefeuille(ctx) -> Constat:
+    """Encours du portefeuille et des courus à chaque arrêté, et délai d'encaissement implicite.
+
+    Les intérêts courus représentent les coupons acquis mais non encore encaissés. Rapportés
+    à une année d'intérêts théorique — encours multiplié par le taux du portefeuille — ils
+    donnent le délai moyen d'encaissement. Au-delà d'un an, des coupons sont en retard.
+    """
+    taux = float(ctx.contrats_uniques.MAIN_COMP_RATE.median())
+    lignes, alertes = [], []
+    for arrete in ctx.arretes:
+        portefeuille = ctx.solde(CPT_PORTEFEUILLE, a_la_date=arrete)
+        courus = ctx.solde([CPT_COURUS_MM, CPT_COURUS_CALYPSO], a_la_date=arrete)
+        interet_annuel = portefeuille * taux / 100
+        annees = courus / interet_annuel if interet_annuel else 0
+        lignes.append([arrete, portefeuille, courus, round(courus / portefeuille * 100, 2) if portefeuille else 0,
+                       round(annees, 2)])
+        if annees > 1:
+            alertes.append((arrete, annees, courus))
+    if not alertes:
+        return Constat(
+            code="3.7",
+            titre="Situation du portefeuille et des intérêts courus aux dates d'arrêté",
+            gravite=Gravite.CONFORME,
+            constat=(
+                "Encours du portefeuille de titres et des créances rattachées à chaque date "
+                "d'arrêté de la période. Rapportés à une année d'intérêts théorique au taux "
+                f"médian du portefeuille ({taux:.2f} %), les courus restent inférieurs à douze "
+                "mois de coupons : les encaissements suivent donc le rythme des accruals."
+            ),
+            tableaux=[Tableau(
+                ["Date d'arrêté", "Portefeuille XAF", "Courus XAF", "Courus / portef. %",
+                 "Années d'intérêts"], lignes)],
+        )
+    pire = max(alertes, key=lambda a: a[1])
+    return Constat(
+        code="3.7",
+        titre="Accumulation des intérêts courus au-delà d'une année de coupons",
+        gravite=Gravite.ELEVEE,
+        constat=(
+            "Les créances rattachées représentent les coupons acquis mais non encore encaissés. "
+            f"Rapportées à une année d'intérêts théorique au taux médian du portefeuille "
+            f"({taux:.2f} %), elles dépassent douze mois de coupons à certaines dates d'arrêté.\n"
+            "Le portefeuille étant composé de titres à coupon annuel, un encours de courus "
+            "supérieur à une année signifie que des coupons échus n'ont pas été encaissés, ou "
+            "que les courus correspondants n'ont pas été apurés.\n"
+            "La progression du ratio est en outre continue et s'accélère nettement après la "
+            "bascule sur le nouveau système : il convient de déterminer si le changement d'outil "
+            "a altéré le suivi des encaissements de coupons."
+        ),
+        chiffres=[
+            ("Taux médian du portefeuille", f"{taux:.2f} %"),
+            ("Arrêtés au-delà d'une année de coupons", str(len(alertes))),
+            ("Pire arrêté", f"{pire[0]} — {pire[1]:.2f} année(s) d'intérêts, soit {xaf(pire[2])}"),
+        ],
+        tableaux=[Tableau(
+            ["Date d'arrêté", "Portefeuille XAF", "Courus XAF", "Courus / portef. %",
+             "Années d'intérêts"], lignes)],
+        recommandation=(
+            "Établir l'échéancier des coupons attendus et le rapprocher des encaissements "
+            "constatés sur le compte de règlement, à chaque date d'arrêté. Identifier les titres "
+            "dont le coupon est échu et non encaissé."
+        ),
     )

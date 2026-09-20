@@ -29,6 +29,7 @@ def run(ctx) -> Section:
     s.ajouter(_c64_comptes_liaison(ctx))
     s.ajouter(_c65_cancel_rebook(ctx))
     s.ajouter(_c66_tracabilite(ctx))
+    s.ajouter(_c67_doublons_interface(ctx))
     return s
 
 
@@ -283,5 +284,69 @@ def _c66_tracabilite(ctx) -> Constat:
             "Exiger que la nature de l'opération soit portée dans un champ structuré et obligatoire "
             "de l'interface, et non dans un commentaire libre. Dans l'intervalle, exploiter "
             "systématiquement ces commentaires dans les travaux d'audit."
+        ),
+    )
+
+
+def _c67_doublons_interface(ctx) -> Constat:
+    """L'interface doit être idempotente : un mouvement Calypso ne doit être déversé qu'une fois."""
+    doublons = ctx.mouvements_dupliques
+    if doublons.empty:
+        return Constat(
+            code="6.7", titre="Idempotence de l'interface Calypso", gravite=Gravite.CONFORME,
+            constat="Aucun mouvement Calypso n'apparaît plusieurs fois dans le grand livre.",
+        )
+    par_compte = (doublons.groupby(["compte", "libelle"])
+                  .agg(mouvements=("montant", "size"), impact=("impact", "sum"))
+                  .sort_values("impact", key=abs, ascending=False))
+    par_mois = doublons.assign(mois=doublons.date.str[:7]).groupby("mois").agg(
+        mouvements=("montant", "size"), montant=("montant", "sum"))
+    materiels = par_compte[par_compte.impact.abs() > ctx.config.seuil_significatif]
+    return Constat(
+        code="6.7",
+        titre="L'interface Calypso déverse certains mouvements en double dans le grand livre",
+        gravite=Gravite.CRITIQUE,
+        constat=(
+            "Chaque mouvement Calypso porte un identifiant de transfert unique. Or des mouvements "
+            "apparaissent DEUX FOIS dans le grand livre, sous deux références Flexcube "
+            "différentes, le même jour, pour le même compte, le même sens et le même montant. "
+            "L'interface n'est donc pas idempotente : elle peut rejouer une opération déjà "
+            "déversée sans la détecter.\n"
+            "Ce défaut n'est pas théorique : il fausse directement le solde des comptes touchés. "
+            "Le compte de règlement de la banque centrale et le compte de portefeuille figurent "
+            "parmi eux, ce qui signifie que le nostro et la valeur du portefeuille présentés au "
+            "bilan sont affectés. Le phénomène se produit sur toute la période et n'est corrigé "
+            "par aucune écriture d'annulation.\n"
+            "Il constitue par ailleurs une CAUSE RACINE d'autres constats du présent rapport, au "
+            "premier rang desquels la dérive des comptes de liaison (contrôle 6.4) et le solde "
+            "anormal du compte d'emprunt (contrôle 9.4)."
+        ),
+        chiffres=[
+            ("Mouvements déversés en double", str(len(doublons))),
+            ("Montant total dupliqué", xaf(float(doublons.montant.sum()))),
+            ("Période", f"{doublons.date.min()} → {doublons.date.max()}"),
+            ("Comptes touchés", str(doublons.compte.nunique())),
+            ("Dont comptes à impact significatif", str(len(materiels))),
+        ],
+        tableaux=[
+            Tableau(["Compte", "Libellé", "Mouvements", "Impact sur le solde XAF"],
+                    [[i[0], i[1][:38], int(r.mouvements), float(r.impact)]
+                     for i, r in par_compte.iterrows()],
+                    max_lignes=18,
+                    note="Impact = montant dont le solde du compte est faussé par les doublons."),
+            Tableau(["Mois", "Mouvements", "Montant dupliqué XAF"],
+                    [[i, int(r.mouvements), float(r.montant)] for i, r in par_mois.iterrows()],
+                    max_lignes=18),
+            Tableau(["Deal", "Mouvement", "Date", "Compte", "Sens", "Montant XAF"],
+                    [[r.deal, r.mouvement, r.date, r.compte, r.sens, float(r.montant)]
+                     for _, r in doublons.sort_values("montant", ascending=False).head(12).iterrows()],
+                    note="Les douze doublons les plus importants."),
+        ],
+        recommandation=(
+            "Faire corriger l'interface pour qu'elle rejette tout mouvement déjà déversé, en "
+            "s'appuyant sur l'identifiant de transfert. Quantifier l'incidence cumulée sur les "
+            "soldes à chaque date d'arrêté et passer les écritures de correction. Mettre en place "
+            "un contrôle de rapprochement quotidien entre le nombre de mouvements émis par "
+            "Calypso et le nombre d'écritures reçues dans le grand livre."
         ),
     )
