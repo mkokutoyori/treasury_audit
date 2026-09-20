@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from ..core import Constat, Gravite, Section, Tableau, xaf
+from ..core import Constat, Gravite, Section, Tableau, xaf, pct, fois, nb
 from ..data import CPT_PORTEFEUILLE, CPT_PRODUITS, DATE_BASCULE
 
 SECTION = (9, "Résultat, classement comptable et rendement")
@@ -59,7 +59,7 @@ def _c91_resultat(ctx) -> Constat:
     croissances = []
     for a, b in zip(exercices, exercices[1:]):
         if total.get(a, 0):
-            croissances.append(f"{b} : × {total[b] / total[a]:.2f}")
+            croissances.append(f"{b} : {fois(total[b] / total[a], 2)}")
     return Constat(
         code="9.1",
         titre="Progression du résultat de l'activité de titres",
@@ -163,10 +163,10 @@ def _c92_classement(ctx) -> Constat:
             "« placement ». Le bilan a suivi la migration, le compte de résultat ne l'a pas suivi."
         ),
         chiffres=[
-            ("Écritures à imputation cohérente", f"{sum(coherents.values()):,}".replace(",", " ")),
-            ("Écritures à imputation INCOHÉRENTE", f"{total:,}".replace(",", " ")),
+            ("Écritures à imputation cohérente", nb(sum(coherents.values()))),
+            ("Écritures à imputation INCOHÉRENTE", nb(total)),
             ("Cas principal", f"bilan {principal[0][0]} → produit {principal[0][1]} "
-                              f"({principal[1]:,} écritures)".replace(",", " ")),
+                              f"({nb(principal[1])} écritures)"),
             ("Produit enregistré en « placement » depuis la bascule", xaf(montant_mal_impute)),
         ],
         tableaux=[
@@ -194,9 +194,12 @@ def _c93_rendement(ctx) -> Constat:
     if cl.empty:
         return Constat(code="9.3", titre="Rendement implicite du portefeuille", gravite=Gravite.FAIBLE,
                        constat="Écritures de clôture indisponibles.")
+    # L'encours moyen doit être pondéré par les JOURS CALENDAIRES et non par les seuls jours
+    # de mouvement : sans rééchantillonnage quotidien, les périodes de forte activité pèsent
+    # trop lourd et l'encours moyen est surévalué de plus de dix pour cent sur certains exercices.
     encours = (gl[gl.AC_NO.isin(CPT_PORTEFEUILLE)]
-               .sort_values(["TRN_DT", "STMT_DT"]).set_index("TRN_DT_d").SIGNE.cumsum())
-    moyenne = encours.resample("YE").mean()
+               .groupby("TRN_DT_d").SIGNE.sum().sort_index().cumsum())
+    moyenne = encours.resample("D").ffill().resample("YE").mean()
     produits = cl[cl.AC_NO.isin(CPT_PRODUITS)].copy()
     produits["exercice"] = produits.TRN_DT.str[:4]
     par_ex = produits.groupby("exercice").LCY_AMOUNT.sum()
@@ -235,14 +238,14 @@ def _c93_rendement(ctx) -> Constat:
             "constitue pas à lui seul la preuve d'une surévaluation."
         ),
         chiffres=[
-            ("Taux contractuel au 95e centile", f"{borne:.2f} %"),
-            ("Rendement implicite du dernier exercice", f"{lignes[-1][3]:.2f} %" if lignes else "n/d"),
+            ("Taux contractuel au 95e centile", f"{pct(borne, 2)}"),
+            ("Rendement implicite du dernier exercice", f"{pct(lignes[-1][3], 2)}" if lignes else "n/d"),
         ],
         tableaux=[Tableau(["Exercice", "Encours moyen XAF", "Produits XAF", "Rendement %"], lignes)],
         recommandation=(
             "Décomposer le produit par nature et rapprocher la composante plus-values des "
-            "opérations examinées en section 8. Attention : l'encours moyen est reconstitué à "
-            "partir des mouvements ; il doit être confirmé par la balance générale."
+            "opérations examinées en section 8. L'encours moyen est pondéré par les jours "
+            "calendaires ; il reste à confirmer par la balance générale."
         ),
     )
 

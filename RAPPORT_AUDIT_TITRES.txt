@@ -4,7 +4,7 @@
 
   Périmètre        : Département de la trésorerie — gestion des investissements sur les marchés financiers
   Période d'audit  : 2023-09-27 au 2026-06-30
-  Rapport généré le: 20/09/2026 à 08:02
+  Rapport généré le : 20/09/2026 à 09:19
   Référentiel      : Plan Comptable des Établissements de Crédit (PCEC) — CEMAC / COBAC
 
   Ce rapport est produit automatiquement. Chaque constat indique le test exécuté, sa
@@ -30,8 +30,8 @@ SOMMAIRE
 ----------------------------------------------------------------------------------------------------
 
   Section 1 — Intégrité et complétude des données  (4 anomalie(s) / 7 contrôle(s))
-  Section 2 — Référentiel des contrats de marché monétaire  (4 anomalie(s) / 8 contrôle(s))
-  Section 3 — Cycle de vie des titres sous Flexcube  (6 anomalie(s) / 7 contrôle(s))
+  Section 2 — Référentiel des contrats de marché monétaire  (3 anomalie(s) / 8 contrôle(s))
+  Section 3 — Cycle de vie des titres sous Flexcube  (7 anomalie(s) / 8 contrôle(s))
   Section 4 — Contrôle interne et séparation des tâches  (5 anomalie(s) / 5 contrôle(s))
   Section 5 — Migration Flexcube MM vers Calypso  (2 anomalie(s) / 6 contrôle(s))
   Section 6 — Manquements du dispositif Calypso  (7 anomalie(s) / 7 contrôle(s))
@@ -45,8 +45,8 @@ RÉCAPITULATIF DES ANOMALIES PAR GRAVITÉ
 ----------------------------------------------------------------------------------------------------
 
   CRITIQUE   : 7
-  ELEVEE     : 19
-  MOYENNE    : 18
+  ELEVEE     : 18
+  MOYENNE    : 19
   FAIBLE     : 2
   TOTAL      : 46
 
@@ -57,13 +57,10 @@ RÉCAPITULATIF DES ANOMALIES PAR GRAVITÉ
   CRITIQUE  [6.7] L'interface Calypso déverse certains mouvements en double dans le grand livre
   CRITIQUE  [8.2] Le schéma comptable appliqué est celui d'une cession ferme, non celui d'une pension livrée
   CRITIQUE  [9.4] Comptes présentant un solde contraire à leur nature comptable à une date d'arrêté
-  ELEVEE    [10.1] Deals conclus n'ayant produit aucune écriture comptable
-  ELEVEE    [10.2] Deals annulés, en attente ou hypothétiques ayant produit de la comptabilité
-  ELEVEE    [10.4] Saisie des deals par des comptes génériques dans le système amont
   ELEVEE    [2.6] Taux contractuels aberrants au regard des opérations comparables
-  ELEVEE    [2.7] Contrats du référentiel dépourvus d'écriture comptable
   ELEVEE    [3.4] L'annulation d'un contrat ne contre-passe pas les intérêts courus déjà enregistrés
   ELEVEE    [3.7] Accumulation des intérêts courus au-delà d'une année de coupons
+  ELEVEE    [3.8] Transfert massif d'intérêts courus vers un compte d'attente
   ELEVEE    [5.5] Changement de catégorie comptable opéré à la migration
   ELEVEE    [6.2] Le contrôle des quatre yeux de Flexcube est intégralement neutralisé sur le flux Calypso
   ELEVEE    [6.3] Perte de l'information comptable structurée dans les écritures
@@ -76,11 +73,11 @@ RÉCAPITULATIF DES ANOMALIES PAR GRAVITÉ
   ELEVEE    [8.5] Résultat constaté sur des opérations de financement
   ELEVEE    [9.2] Revenus du portefeuille imputés à la mauvaise catégorie comptable
   ELEVEE    [9.3] Rendement implicite très supérieur aux taux contractuels du portefeuille
+  ELEVEE    [10.2] Deals annulés, en attente ou hypothétiques ayant produit de la comptabilité
+  ELEVEE    [10.4] Saisie des deals par des comptes génériques dans le système amont
   MOYENNE   [1.2] Lignes dupliquées dans les extractions
   MOYENNE   [1.4] Opération technique passée un week-end, touchant l'ensemble des comptes du périmètre
   MOYENNE   [1.5] Deux conventions de contre-passation opposées entre les deux systèmes
-  MOYENNE   [10.3] Écritures comptables sans deal correspondant dans le système amont
-  MOYENNE   [10.5] Référentiel des opérateurs non normalisé
   MOYENNE   [2.1] Références de contrat en doublon dans le référentiel
   MOYENNE   [3.1] Titres dénoués après leur échéance contractuelle
   MOYENNE   [3.2] Contrats comptabilisés puis annulés dans la même journée
@@ -94,6 +91,9 @@ RÉCAPITULATIF DES ANOMALIES PAR GRAVITÉ
   MOYENNE   [7.3] Titres restés affectés en garantie au-delà de l'encours emprunté
   MOYENNE   [7.4] Opérations de pension non dénouées à la fin de l'extraction
   MOYENNE   [9.1] Progression du résultat de l'activité de titres
+  MOYENNE   [10.1] Deals conclus sans écriture, sur des portefeuilles pourtant couverts par le périmètre
+  MOYENNE   [10.3] Écritures comptables sans deal correspondant dans le système amont
+  MOYENNE   [10.5] Référentiel des opérateurs non normalisé
   FAIBLE    [1.3] Jours ouvrés sans écriture restant à rapprocher du calendrier des fériés
   FAIBLE    [2.4] Contrats comptabilisés tardivement après leur négociation
 
@@ -121,11 +121,11 @@ conditionnent la fiabilité de toutes les sections suivantes.
 
     Source                    Lignes   Doublons  Part %  Montant XAF      
     ------------------------  -------  --------  ------  -----------------
-    Module MM                 59 446   84        0.14    -28 419 856      
-    Comptes clés              190 467  1 495     0.78    55 446 953 988   
-    Comptes généraux Calypso  143 953  5 383     3.74    12 879 134 365   
-    Grand livre trésorerie    329 884  6 650     2.02    25 164 953 167.88
-    Créances rattachées       32 937   427       1.30    229 892 977.99   
+    Module MM                 59 446   84        0,14    -28 419 856      
+    Comptes clés              190 467  1 495     0,78    55 446 953 988   
+    Comptes généraux Calypso  143 953  5 383     3,74    12 879 134 365   
+    Grand livre trésorerie    329 884  6 650     2,02    25 164 953 167,88
+    Créances rattachées       32 937   427       1,30    229 892 977,99   
 
   Recommandation :
     Faire qualifier ces doublons par l'informatique avant toute reprise des données.
@@ -139,24 +139,27 @@ conditionnent la fiabilité de toutes les sections suivantes.
   des codes produit inhabituels, avec des montants négatifs compensés par des montants positifs
   identiques.
   Ce profil est celui d'une REPRISE TECHNIQUE DE SOLDES — renumérotation ou migration interne.
-  L'effet comptable net est nul, mais l'opération touche l'ensemble des comptes du périmètre pour
-  des montants significatifs, en dehors de toute journée comptable ordinaire, et n'a pas
-  d'équivalent ailleurs dans l'historique.
+  L'effet comptable net est QUASI nul au regard des masses déplacées, mais il ne l'est pas
+  exactement : il subsiste -589 588 XAF sur les comptes du périmètre, montant sans commune mesure
+  avec l'opération mais qui reste à justifier. L'opération touche l'ensemble des comptes du
+  périmètre pour des montants significatifs, en dehors de toute journée comptable ordinaire, et n'a
+  pas d'équivalent ailleurs dans l'historique.
 
-    Dates concernées          : 2023-06-10, 2023-06-11
-    Écritures                 : 184
-    Dont montants négatifs    : 28
-    Effet net sur les comptes : -589 588 XAF
-    Comptes touchés           : 14
+    Dates concernées                   : 2023-06-10, 2023-06-11
+    Écritures                          : 184
+    Dont montants négatifs             : 28
+    Montants déplacés (valeur absolue) : 86 353 497 523 XAF
+    Effet net résiduel sur les comptes : -589 588 XAF
+    Comptes touchés                    : 14
 
     Date        Module  Produit  Opérateur    Écritures  Montant XAF       
     ----------  ------  -------  -----------  ---------  ------------------
-    2023-06-10  DE      h099     ADMINUSER1   14         -993 159 649.90   
-    2023-06-10  DE      i099     ADMINUSER1   14         -41 679 363 890.20
+    2023-06-10  DE      h099     ADMINUSER1   14         -993 159 649,90   
+    2023-06-10  DE      i099     ADMINUSER1   14         -41 679 363 890,20
     2023-06-10  DE      p099     ADMINUSER1   14         993 159 652       
     2023-06-10  DE      z099     ADMINUSER1   18         42 671 173 985    
-    2023-06-10  MM      OTAP     SYSTEM       56         8 024 555.44      
-    2023-06-10  MM      TBTR     SYSTEM       3          294 791.67        
+    2023-06-10  MM      OTAP     SYSTEM       56         8 024 555,44      
+    2023-06-10  MM      TBTR     SYSTEM       3          294 791,67        
     2023-06-11  MM      OTAP     SYSTEM       56         8 024 532         
     2023-06-11  MM      TBTR     SYSTEM       3          294 795           
     2023-06-11  RE      ACPO     RANDY030EOD  6          1 672             
@@ -180,10 +183,10 @@ conditionnent la fiabilité de toutes les sections suivantes.
     Source                  Lignes   Montants négatifs  Cumul XAF         
     ----------------------  -------  -----------------  ------------------
     Module MM               59 446   378                -17 867 999 564   
-    Flux Calypso            194 938  0                  0.00              
+    Flux Calypso            194 938  0                  0,00              
     Comptes clés            190 467  45                 -31 489 903 573   
-    Grand livre trésorerie  329 884  754                -94 600 621 460.46
-    Créances rattachées     32 937   244                -1 036 405 121.59 
+    Grand livre trésorerie  329 884  754                -94 600 621 460,46
+    Créances rattachées     32 937   244                -1 036 405 121,59 
 
   Recommandation :
     Retenir cette convention dans tout rapprochement entre les deux systèmes et dans toute requête
@@ -193,24 +196,21 @@ conditionnent la fiabilité de toutes les sections suivantes.
 [1.3] Jours ouvrés sans écriture restant à rapprocher du calendrier des fériés
   Gravité : FAIBLE
 
-  Des jours ouvrés ne portent aucune écriture. Les fêtes à date fixe et celles dérivées de Pâques
-  sont identifiées automatiquement ; les dates restantes correspondent vraisemblablement aux fêtes
-  musulmanes, qui sont mobiles et ne peuvent pas être calculées. Elles sont donc présentées pour
-  confirmation et non comme anomalies.
+  Des jours ouvrés ne portent aucune écriture. Les fêtes à date fixe, celles dérivées de Pâques et
+  les reports au lundi sont identifiés automatiquement. Pour chacune des dates restantes, une
+  hypothèse de rattachement est proposée : pont accolé à un férié calculé, ou fête musulmane, dont
+  la date est mobile et ne peut pas être calculée. Ces dates sont présentées pour confirmation et
+  non comme anomalies.
 
-    Jours ouvrés sans écriture          : 30
-    Expliqués par le calendrier calculé : 23
-    À confirmer                         : 7
+    Jours ouvrés sans écriture          : 21
+    Expliqués par le calendrier calculé : 18
+    À confirmer                         : 3
 
-    Jour ouvré sans écriture
-    ------------------------
-    09/06/2022              
-    07/07/2022              
-    26/12/2022              
-    02/01/2023              
-    10/02/2025              
-    19/05/2025              
-    20/03/2026              
+    Jour ouvré sans écriture  Hypothèse de rattachement                            
+    ------------------------  -----------------------------------------------------
+    10/02/2025                pont : veille du férié du 2025-02-11                 
+    19/05/2025                pont : veille du férié du 2025-05-20                 
+    20/03/2026                fête musulmane probable (date mobile, non calculable)
 
   Recommandation :
     Rapprocher ces dates du calendrier officiel des jours fériés de l'exercice.
@@ -226,13 +226,13 @@ CONTRÔLES SANS ANOMALIE
 
         Source        Lignes   Écritures  Déséquilibrées  Montant  Somme D-C
         ------------  -------  ---------  --------------  -------  ---------
-        Module MM     59 446   23 707     0               0.00     0.00     
-        Flux Calypso  194 938  95 868     0               0.00     0.00     
+        Module MM     59 446   23 707     0               0,00     0,00     
+        Flux Calypso  194 938  95 868     0               0,00     0,00     
 
   [1.6] Couverture temporelle de l'extraction
       L'extraction couvre 2022-06-08 à 2026-09-18 et déborde donc la période d'audit dans les deux
-      sens : 26 414 écritures antérieures  qui permettent d'établir les soldes d'ouverture  et 46
-      738 écritures postérieures  utiles au titre des événements postérieurs à la clôture. Les unes
+      sens : 26 414 écritures antérieures, qui permettent d'établir les soldes d'ouverture, et 46
+      738 écritures postérieures, utiles au titre des événements postérieurs à la clôture. Les unes
       comme les autres sont exclues des agrégats de la période.
 
   [1.7] Complétude de l'historique et calculabilité des soldes
@@ -246,7 +246,7 @@ CONTRÔLES SANS ANOMALIE
       durablement un solde contredisant sa nature comptable, hormis les cas qui font l'objet de
       constats distincts.
       L'extraction dédiée du compte 511800100 (32 937 lignes) est IDENTIQUE à ce que contient
-      l'extraction des comptes de trésorerie  ligne pour ligne et au solde près.
+      l'extraction des comptes de trésorerie, ligne pour ligne et au solde près.
 
         Comptes du périmètre                                : 41
         Première écriture de l'extraction                   : 2022-06-08
@@ -255,10 +255,10 @@ CONTRÔLES SANS ANOMALIE
 
         Compte     Libellé                                 Période                  Écritures  Solde final
         ---------  --------------------------------------  -----------------------  ---------  -----------
-        511410100  OBLIGATIONS DU TRESOR ASSIMILABLES PLA  2022-08-16 → 2025-06-16  980        0.00       
-        511800100  CREANCES RATTACHEES - PLACEMENT         2022-08-16 → 2025-07-31  32 937     0.00       
-        512200100  BONS DE TRESOR - TRANSACTION            2022-08-05 → 2025-06-16  228        0.00       
-        591400100  PROV DEPRECIATION DES OBLIGATIONS ET B  2025-06-16 → 2025-06-17  68         0.00       
+        511410100  OBLIGATIONS DU TRESOR ASSIMILABLES PLA  2022-08-16 → 2025-06-16  980        0,00       
+        511800100  CREANCES RATTACHEES - PLACEMENT         2022-08-16 → 2025-07-31  32 937     0,00       
+        512200100  BONS DE TRESOR - TRANSACTION            2022-08-05 → 2025-06-16  228        0,00       
+        591400100  PROV DEPRECIATION DES OBLIGATIONS ET B  2025-06-16 → 2025-06-17  68         0,00       
         Comptes dont le retour exact à zéro atteste la complétude de l'historique.
 
 
@@ -271,7 +271,7 @@ contrats antérieurs relèvent d'exercices déjà audités. Unicité des référ
 codification et des dates, cohérence interne des montants d'intérêt, plausibilité des taux et
 rapprochement avec la comptabilité.
 
-  8 contrôle(s) exécuté(s) — 4 anomalie(s), 4 sans anomalie.
+  8 contrôle(s) exécuté(s) — 3 anomalie(s), 5 sans anomalie.
 
 ----------------------------------------------------------------------------------------------------
 [2.6] Taux contractuels aberrants au regard des opérations comparables
@@ -292,36 +292,19 @@ rapprochement avec la comptabilité.
 
     Référence         Produit  Exercice  Taux %  Médiane groupe %  Nominal        Contrepartie              
     ----------------  -------  --------  ------  ----------------  -------------  --------------------------
-    099TBTR250590003  TBTR     2 025     54.32   6.50              2 500 000 000  ETAT DU CAMEROUN          
-    099TBTR233340002  TBTR     2 023     8.37    5.90              1 000 000 000  ETAT DE GUINEE EQUATORIALE
+    099TBTR250590003  TBTR     2025      54,32   6,50              2 500 000 000  ETAT DU CAMEROUN          
+    099TBTR233340002  TBTR     2023      8,37    5,90              1 000 000 000  ETAT DE GUINEE EQUATORIALE
 
     Produit  2023  2024  2025
     -------  ----  ----  ----
-    BTTR           6.25      
-    OTAP     5.90  5.90  6.00
-    TBTR     5.90  6.25  6.50
+    BTTR           6,25      
+    OTAP     5,90  5,90  6,00
+    TBTR     5,90  6,25  6,50
     Taux médians de référence par produit et exercice.
 
   Recommandation :
     Obtenir les confirmations de marché de ces opérations, recalculer les intérêts comptabilisés et
     mesurer l'incidence sur le résultat.
-
-----------------------------------------------------------------------------------------------------
-[2.7] Contrats du référentiel dépourvus d'écriture comptable
-  Gravité : ELEVEE
-
-  Des contrats figurent au référentiel sans qu'aucune écriture comptable ne leur corresponde. Un
-  contrat enregistré mais non comptabilisé n'est ni provisionné, ni suivi en intérêts courus, ni
-  présenté au bilan : soit l'opération n'a jamais existé et le référentiel doit être purgé, soit
-  elle existe et la comptabilité est incomplète.
-
-    Contrats sans écriture    : 0
-    Nominal concerné          : 0 XAF
-    Écritures MM sans contrat : 168
-
-  Recommandation :
-    Demander le statut de ces contrats dans Flexcube (annulés, non autorisés, repris) et confirmer
-    qu'aucun engagement n'est resté hors comptabilité.
 
 ----------------------------------------------------------------------------------------------------
 [2.1] Références de contrat en doublon dans le référentiel
@@ -407,6 +390,15 @@ CONTRÔLES SANS ANOMALIE
         OTAP     365   341     
         TBTR     360   74      
 
+  [2.7] Rapprochement du référentiel et de la comptabilité
+      Les 416 contrats comptabilisés pendant la période portent tous des écritures, et toute
+      écriture du module de marché monétaire se rattache à un contrat du référentiel. Le
+      rapprochement est complet dans les deux sens.
+
+        Contrats de la période : 416
+        Contrats sans écriture : 0
+        Écritures sans contrat : 0
+
   [2.8] Structure du portefeuille par contrepartie
       Le portefeuille est exposé à quatre souverains de la CEMAC. Cette concentration n'est pas une
       anomalie : elle résulte d'une DÉCISION DE POLITIQUE DE RISQUE de la banque, qui a restreint
@@ -424,10 +416,10 @@ CONTRÔLES SANS ANOMALIE
 
         Contrepartie                Contrats  Nominal XAF      Part %
         --------------------------  --------  ---------------  ------
-        ETAT DU CAMEROUN            180       581 699 410 000  57.10 
-        ETAT DU GABON               132       303 555 123 333  29.80 
-        ETAT DU CONGO               67        103 363 300 000  10.20 
-        ETAT DE GUINEE EQUATORIALE  37        29 488 440 000   2.90  
+        ETAT DU CAMEROUN            180       581 699 410 000  57,14 
+        ETAT DU GABON               132       303 555 123 333  29,82 
+        ETAT DU CONGO               67        103 363 300 000  10,15 
+        ETAT DE GUINEE EQUATORIALE  37        29 488 440 000   2,90  
 
 
 ====================================================================================================
@@ -441,7 +433,7 @@ Le dénouement anticipé et le dénouement au pair ne sont pas traités comme de
 traduit la gestion de la liquidité par revente de titres, le second découle de la nature souveraine
 des actifs, cédés au nominal.
 
-  7 contrôle(s) exécuté(s) — 6 anomalie(s), 1 sans anomalie.
+  8 contrôle(s) exécuté(s) — 7 anomalie(s), 1 sans anomalie.
 
 ----------------------------------------------------------------------------------------------------
 [3.4] L'annulation d'un contrat ne contre-passe pas les intérêts courus déjà enregistrés
@@ -451,75 +443,116 @@ des actifs, cédés au nominal.
   mais NE CONTRE-PASSE PAS les intérêts courus déjà enregistrés : aucune écriture de sens inverse
   n'est passée dans le module sur le compte de créances rattachées.
   Le couru d'un contrat annulé — donc d'une opération qui n'a jamais existé — reste ainsi à l'actif,
-  et le produit correspondant au compte de résultat, jusqu'à ce qu'une écriture manuelle vienne
-  éventuellement l'apurer.
-  Le rapprochement entre les courus enregistrés et les apurements ultérieurs identifiables montre
-  que cet apurement est INCOHÉRENT : certains contrats ne sont jamais apurés, d'autres le sont pour
-  un montant supérieur au couru enregistré, fréquemment le double exact.
+  et le produit correspondant au compte de résultat. Son sort dépend ensuite d'écritures manuelles,
+  dont le contrôle 3.8 montre qu'elles sont de natures diverses et ne constituent pas toutes un
+  apurement.
+  Le montant unitaire est faible, mais le principe ne l'est pas : une opération annulée ne doit
+  laisser aucune trace au compte de résultat.
 
-    Contrats annulés le jour même           : 47
-    Dont portant des intérêts courus        : 38
-    Courus enregistrés sur contrats annulés : 24 483 539 XAF
-    Contre-passations par la liquidation    : 0
-    Contrats jamais apurés                  : 4 — 2 920 531 XAF
-    Contrats sur-apurés                     : 20 — 266 435 070 XAF
+    Contrats annulés le jour même           : 29
+    Dont portant des intérêts courus        : 21
+    Courus enregistrés sur contrats annulés : 16 406 021 XAF
+    CONTRE-PASSATIONS PAR LA LIQUIDATION    : 0
 
-    Contrat annulé    Couru enregistré  Apurement identifié  Résidu     
-    ----------------  ----------------  -------------------  -----------
-    099OTAP240650003  2 213 115         0.00                 2 213 115  
-    099OTAP242550002  525 956           0.00                 525 956    
-    099OTAP232580004  134 200           0.00                 134 200    
-    099OTAP232890001  47 260            0.00                 47 260     
-    099OTAP222980002  100 684.93        173 288              -72 603.07 
-    099OTAP232560003  131 507           205 656              -74 149    
-    099OTAP232570005  136 986           211 452              -74 466    
-    099OTAP232580008  205 479           410 958              -205 479   
-    099OTAP233620005  236 301           472 602              -236 301   
-    099OTAP233630003  246 575           493 150              -246 575   
-    099OTAP232560005  301 370           602 740              -301 370   
-    099OTAP232570007  301 370           602 740              -301 370   
-    099OTAP233040001  92 586            483 682              -391 096   
-    099OTAP223620010  263 013.70        690 411              -427 397.30
-    099OTAP230950002  345 205.48        920 547              -575 341.52
-    099OTAP233030004  315 068           945 204              -630 136   
-    099OTAP232620002  301 370           1 095 891            -794 521   
-    099OTAP232610001  230 137           1 230 822            -1 000 685 
-    ... et 6 autre(s) ligne(s)
+    Contrat annulé    Date        Écritures de couru  Couru enregistré XAF
+    ----------------  ----------  ------------------  --------------------
+    099OTAP232820001  2023-10-09  1                   7 479 452           
+    099OTAP240650003  2024-03-05  1                   2 213 115           
+    099OTAP241710004  2024-06-19  1                   897 586             
+    099OTAP240640005  2024-03-04  2                   819 672             
+    099OTAP242550002  2024-09-11  1                   525 956             
+    099OTAP240950002  2024-04-04  1                   512 295             
+    099OTAP241710002  2024-06-19  1                   491 803             
+    099OTAP242070003  2024-07-25  2                   450 820             
+    099OTAP242490001  2024-09-05  1                   450 820             
+    099OTAP242490002  2024-09-05  1                   430 328             
+    099OTAP233030010  2023-10-30  2                   376 712             
+    099OTAP233030004  2023-10-30  2                   315 068             
+    099OTAP233630003  2023-12-29  1                   246 575             
+    099OTAP233620005  2023-12-28  2                   236 301             
+    099OTAP241710001  2024-06-19  1                   191 257             
+    099OTAP241710003  2024-06-19  1                   170 765             
+    099OTAP241920003  2024-07-10  2                   157 104             
+    099OTAP241920006  2024-07-10  2                   150 273             
+    ... et 3 autre(s) ligne(s)
 
   Recommandation :
     Faire paramétrer la contre-passation automatique des intérêts courus lors de l'annulation d'un
-    contrat. Obtenir la justification des apurements supérieurs au couru enregistré et corriger les
-    contrats jamais apurés.
+    contrat, afin que l'opération ne laisse aucun résidu.
 
 ----------------------------------------------------------------------------------------------------
 [3.7] Accumulation des intérêts courus au-delà d'une année de coupons
   Gravité : ELEVEE
 
   Les créances rattachées représentent les coupons acquis mais non encore encaissés. Rapportées à
-  une année d'intérêts au taux médian du portefeuille (6.00 %), elles dépassent douze mois de
+  une année d'intérêts au taux médian du portefeuille (6,00 %), elles dépassent douze mois de
   coupons à certaines dates d'arrêté.
   Le portefeuille étant composé de titres à coupon annuel, un encours de courus supérieur à une
   année signifie que des coupons échus n'ont pas été encaissés, ou que les courus correspondants
   n'ont pas été apurés.
-  La progression est continue et s'accélère nettement après la bascule : il convient de déterminer
-  si le changement d'outil a altéré le suivi des encaissements de coupons.
+  La progression n'est pas régulière : jusqu'au dernier arrêté précédant la bascule, le ratio reste
+  compris entre 0,15 et 0,42 année de coupons ; il passe ensuite de 0,27 à 1,31 sur les arrêtés
+  postérieurs. La rupture coïncide avec le changement d'outil : il convient de déterminer si celui-
+  ci a altéré le suivi des encaissements de coupons.
 
-    Taux médian du portefeuille            : 6.00 %
+    Taux médian du portefeuille            : 6,00 %
     Arrêtés au-delà d'une année de coupons : 1
-    Pire arrêté                            : 2026-06-30 — 1.31 année(s), soit 19 249 608 622 XAF
+    Pire arrêté                            : 2026-06-30 — 1,31 année(s), soit 19 249 608 622 XAF
 
     Date d'arrêté  Portefeuille XAF  Courus XAF      Courus / portef. %  Années d'intérêts
     -------------  ----------------  --------------  ------------------  -----------------
-    2023-12-31     71 749 600 000    662 336 797     0.92                0.15             
-    2024-06-30     79 310 970 000    1 975 466 036   2.49                0.42             
-    2024-12-31     115 432 180 000   2 455 219 083   2.13                0.35             
-    2025-06-30     135 921 813 333   2 185 349 530   1.61                0.27             
-    2025-12-31     212 912 553 333   10 964 366 724  5.15                0.86             
-    2026-06-30     244 098 816 666   19 249 608 622  7.89                1.31             
+    2023-12-31     71 749 600 000    662 336 797     0,92                0,15             
+    2024-06-30     79 310 970 000    1 975 466 036   2,49                0,42             
+    2024-12-31     115 432 180 000   2 455 219 083   2,13                0,35             
+    2025-06-30     135 921 813 333   2 185 349 530   1,61                0,27             
+    2025-12-31     212 912 553 333   10 964 366 724  5,15                0,86             
+    2026-06-30     244 098 816 666   19 249 608 622  7,89                1,31             
 
   Recommandation :
     Établir l'échéancier des coupons attendus et le rapprocher des encaissements constatés sur le
     compte de règlement, à chaque date d'arrêté.
+
+----------------------------------------------------------------------------------------------------
+[3.8] Transfert massif d'intérêts courus vers un compte d'attente
+  Gravité : ELEVEE
+
+  Sur une période de deux semaines, une série d'écritures manuelles a fait transiter des intérêts
+  courus entre le compte de créances rattachées et un COMPTE D'ATTENTE — « COMPTE ATTENTE FINCON
+  DEBITEUR » (466000107). Les écritures sont libellées comme des reprises de contrat.
+  L'opération n'est pas un simple aller : les montants sortent du compte de créances rattachées puis
+  y reviennent en partie, laissant un résidu net. Le volume brut est donc très supérieur à l'effet
+  net, et seul ce dernier compte.
+  Un compte d'attente est par nature temporaire : y loger des créances rattachées, même brièvement,
+  soustrait ces montants au suivi normal du portefeuille. Le compte destinataire ne figure dans
+  AUCUNE des extractions fournies : il est donc impossible de vérifier qu'il a été apuré.
+
+    Écritures                                       : 271
+    Période                                         : 2024-03-29 → 2024-04-11
+    Contrats concernés                              : 141
+    Compte d'attente destinataire                   : 466000107 COMPTE ATTENTE FINCON DEBITEUR
+    Sorties du compte de créances rattachées        : 1 872 901 140 XAF
+    Retours au compte de créances rattachées        : 1 562 116 612 XAF
+    EFFET NET sur les créances rattachées           : -310 784 528 XAF
+    Lignes du compte d'attente dans les extractions : 0
+
+    Date        Écritures  Montant brut XAF
+    ----------  ---------  ----------------
+    2024-03-29  134        769 464 749     
+    2024-04-01  8          619 685 163     
+    2024-04-09  104        1 561 801 103   
+    2024-04-11  25         484 066 737     
+
+    Saisie        Validation    Écritures  Montant brut XAF
+    ------------  ------------  ---------  ----------------
+    BINEID00087   MBATOHID0012  191        2 255 532 368   
+    CHOHOS00066   MBATOHID0012  20         216 923 113     
+    IHOYID000023  MBATOHID0012  9          19 963 056      
+    NDJOCKOS0067  MBATOHID0012  51         942 599 215     
+
+  Recommandation :
+    Obtenir l'historique complet du compte d'attente destinataire et vérifier qu'il est soldé. Faire
+    expliquer la finalité de cette opération et l'autorisation dont elle a fait l'objet. Vérifier le
+    solde de ce compte à chaque date d'arrêté traversée.
 
 ----------------------------------------------------------------------------------------------------
 [3.1] Titres dénoués après leur échéance contractuelle
@@ -614,7 +647,8 @@ des actifs, cédés au nominal.
   est en soi légitime, mais il emporte deux conséquences.
   D'abord, les VOLUMES BRUTS du module ne représentent pas des flux économiques. Toute analyse de
   volumétrie, de rotation du portefeuille ou de flux de trésorerie doit être menée en net, après
-  neutralisation de ces couples.
+  neutralisation de ces couples : l'écart est considérable, le volume brut porté par ces
+  enchaînements dépassant de plusieurs dizaines de fois le flux net correspondant.
   Ensuite, la CHAÎNE DES INTÉRÊTS COURUS peut se rompre entre le contrat clôturé et celui qui le
   remplace : le couru accumulé sur le premier doit être soit encaissé, soit repris sur le second. Le
   contrôle 3.4 mesure ce risque.
@@ -623,7 +657,11 @@ des actifs, cédés au nominal.
     Dont réouverture pour un montant inférieur (remboursement partiel) : 86
     Dont réouverture pour un montant supérieur (complément)            : 141
     Dont réouverture à l'identique                                     : 32
-    Flux bruts sur le compte de règlement (module MM)                  : 0 XAF
+    Contrats clôturés impliqués / contrats réouverts                   : 259 / 241
+    Volume BRUT porté par ces enchaînements                            : 1 213 821 593 333 XAF
+    Flux NET réellement décaissé ou encaissé                           : -33 784 286 667 XAF
+    Facteur de surévaluation du volume                                 : × 35,9
+    Part de ces enchaînements dans le volume MM de la période          : 58,8 %
 
     Contrat clôturé   Date        Montant liquidé  Nb rachats  Montant racheté  Écart           Contrepartie    
     ----------------  ----------  ---------------  ----------  ---------------  --------------  ----------------
@@ -659,7 +697,7 @@ des actifs, cédés au nominal.
   période couverte comprend deux années bissextiles, 2024 et 2028 : ignorer cette distinction
   introduirait un biais systématique de 0,27 %. Le contrat est réputé conforme si l'une des trois
   conventions restitue le montant comptabilisé à la tolérance retenue près.
-  RÉSULTAT D'ENSEMBLE. L'écart global n'est que de -0.74 %, ce qui atteste la justesse du moteur
+  RÉSULTAT D'ENSEMBLE. L'écart global n'est que de -0,74 %, ce qui atteste la justesse du moteur
   d'accrual. Les écarts sont donc individuels et non systémiques.
   CLASSEMENT DES ÉCARTS. Chaque contrat en écart est rattaché à une cause probable, afin d'orienter
   les vérifications :
@@ -676,7 +714,7 @@ des actifs, cédés au nominal.
     Contrats testés                      : 465
     Courus comptabilisés                 : 9 772 608 725 XAF
     Courus recalculés                    : 9 844 982 264 XAF
-    Écart global                         : -0.74 %
+    Écart global                         : -0,74 %
     Convention dominante                 : exact/exact (198 contrats)
     Tolérance retenue                    : 10%
     Contrats en écart au-delà de 5 M XAF : 11
@@ -684,12 +722,12 @@ des actifs, cédés au nominal.
 
     Classe d'anomalie                         Contrats  Écart cumulé XAF  Nominal concerné XAF
     ----------------------------------------  --------  ----------------  --------------------
-    contre-passations partielles              79        -72 574 191.45    153 935 470 000     
-    écart inexpliqué                          22        56 577 299.54     54 820 863 333      
-    conforme                                  342       -45 379 363.89    669 896 400 000     
-    aucun couru enregistré                    2         -15 579 452.05    3 700 000 000       
-    couru unique, période non représentative  13        8 153 029.98      37 285 350 000      
-    sous-évaluation inexpliquée               7         -3 570 860.48     22 336 840 000      
+    contre-passations partielles              79        -72 574 191,45    153 935 470 000     
+    écart inexpliqué                          22        56 577 299,54     54 820 863 333      
+    conforme                                  342       -45 379 363,89    669 896 400 000     
+    aucun couru enregistré                    2         -15 579 452,05    3 700 000 000       
+    couru unique, période non représentative  13        8 153 029,98      37 285 350 000      
+    sous-évaluation inexpliquée               7         -3 570 860,48     22 336 840 000      
     Répartition de l'ensemble des contrats testés.
 
     Convention restituant le montant  Contrats
@@ -700,17 +738,17 @@ des actifs, cédés au nominal.
 
     Référence         Classe                                    Nominal         Taux %  Jours  Base         Attendu        Comptabilisé  Écart         
     ----------------  ----------------------------------------  --------------  ------  -----  -----------  -------------  ------------  --------------
-    099OTAP250500001  écart inexpliqué                          4 533 333 333   6.00    118    exact/360    89 155 555.55  109 545 205   20 389 649.45 
-    099OTAP233030007  contre-passations partielles              10 000 000 000  5.50    26     exact/365    39 178 082.19  25 616 438    -13 561 644.19
-    099OTAP241240006  aucun couru enregistré                    2 700 000 000   6.00    27     exact/365    11 983 561.64  0.00          -11 983 561.64
-    099OTAP242260001  contre-passations partielles              5 000 000 000   5.50    29     exact/exact  21 789 617.49  10 519 126    -11 270 491.49
-    099OTAP240320006  contre-passations partielles              9 000 000 000   5.90    34     exact/exact  49 327 868.85  39 172 131    -10 155 737.85
-    099OTAP232760001  contre-passations partielles              2 500 000 000   5.60    143    exact/exact  54 793 771.99  46 762 033    -8 031 738.99 
-    099OTAP233030008  contre-passations partielles              5 000 000 000   5.50    24     exact/exact  18 082 191.78  10 547 945    -7 534 246.78 
-    099OTAP233280004  contre-passations partielles              5 000 000 000   5.90    5      exact/360    4 097 222.22   11 315 068    7 217 845.78  
-    099OTAP232820001  couru unique, période non représentative  3 000 000 000   7.00    1      exact/360    583 333.33     7 479 452     6 896 118.67  
-    099OTAP243340003  écart inexpliqué                          1 600 000 000   6.25    200    exact/360    55 555 555.56  62 146 119    6 590 563.44  
-    099OTAP233280003  contre-passations partielles              5 000 000 000   5.90    6      exact/360    4 916 666.67   11 315 068    6 398 401.33  
+    099OTAP250500001  écart inexpliqué                          4 533 333 333   6,00    118    exact/360    89 155 555,55  109 545 205   20 389 649,45 
+    099OTAP233030007  contre-passations partielles              10 000 000 000  5,50    26     exact/365    39 178 082,19  25 616 438    -13 561 644,19
+    099OTAP241240006  aucun couru enregistré                    2 700 000 000   6,00    27     exact/365    11 983 561,64  0,00          -11 983 561,64
+    099OTAP242260001  contre-passations partielles              5 000 000 000   5,50    29     exact/exact  21 789 617,49  10 519 126    -11 270 491,49
+    099OTAP240320006  contre-passations partielles              9 000 000 000   5,90    34     exact/exact  49 327 868,85  39 172 131    -10 155 737,85
+    099OTAP232760001  contre-passations partielles              2 500 000 000   5,60    143    exact/exact  54 793 771,99  46 762 033    -8 031 738,99 
+    099OTAP233030008  contre-passations partielles              5 000 000 000   5,50    24     exact/exact  18 082 191,78  10 547 945    -7 534 246,78 
+    099OTAP233280004  contre-passations partielles              5 000 000 000   5,90    5      exact/360    4 097 222,22   11 315 068    7 217 845,78  
+    099OTAP232820001  couru unique, période non représentative  3 000 000 000   7,00    1      exact/360    583 333,33     7 479 452     6 896 118,67  
+    099OTAP243340003  écart inexpliqué                          1 600 000 000   6,25    200    exact/360    55 555 555,56  62 146 119    6 590 563,44  
+    099OTAP233280003  contre-passations partielles              5 000 000 000   5,90    6      exact/360    4 916 666,67   11 315 068    6 398 401,33  
     Contrats en écart significatif, classés par cause probable.
 
   Recommandation :
@@ -722,10 +760,10 @@ des actifs, cédés au nominal.
 CONTRÔLES SANS ANOMALIE
 
   [3.6] Apurement des créances rattachées par encaissement des coupons
-      Le compte est intégralement apuré : 32 136 débits pour 801 crédits  solde net nul. Les coupons
-      sont encaissés en trésorerie  l'apurement étant passé par écriture manuelle en module DE et
+      Le compte est intégralement apuré : 32 136 débits pour 801 crédits, solde net nul. Les coupons
+      sont encaissés en trésorerie, l'apurement étant passé par écriture manuelle en module DE et
       non par l'événement automatique du module MM. Le contrôle des quatre yeux est respecté (0
-      auto-validation  0 sans validateur).
+      auto-validation, 0 sans validateur).
 
         Module d'apurement  Écritures  Montant XAF   
         ------------------  ---------  --------------
@@ -769,15 +807,15 @@ opérations sur un nombre restreint d'opérateurs.
 [4.1] Contrôle des quatre yeux neutralisé pour les flux automatiques
   Gravité : MOYENNE
 
-  438 427 écritures sur 512 826 (85.5 %) portent le même identifiant en saisie et en validation.
+  438 427 écritures sur 512 826 (85,5 %) portent le même identifiant en saisie et en validation.
   L'analyse détaillée est plus nuancée qu'il n'y paraît : cette auto-validation est le fait des
-  COMPTES TECHNIQUES  pas des opérateurs. Aucun utilisateur nominatif ne s'auto-valide. Le principe
+  COMPTES TECHNIQUES, pas des opérateurs. Aucun utilisateur nominatif ne s'auto-valide. Le principe
   des quatre yeux est donc respecté par les opérateurs humains, mais il est STRUCTURELLEMENT
   NEUTRALISÉ pour les flux automatiques — au premier rang desquels l'interface Calypso, dont la
   totalité des écritures est saisie et validée par un compte unique.
 
     Écritures contrôlées         : 512 826
-    Saisie = validation          : 438 427 (85.5 %)
+    Saisie = validation          : 438 427 (85,5 %)
     Dont utilisateurs nominatifs : 0
 
     Compte technique auto-validant  Écritures
@@ -802,20 +840,20 @@ opérations sur un nombre restreint d'opérateurs.
 [4.3] Poids des comptes techniques dans la comptabilisation
   Gravité : MOYENNE
 
-  Les comptes techniques concentrent 84.3 % des écritures du périmètre. Un compte technique n'est
+  Les comptes techniques concentrent 84,3 % des écritures du périmètre. Un compte technique n'est
   rattaché à aucune personne physique : la responsabilité de l'écriture ne peut donc être établie,
   et le contrôle des quatre yeux ne peut s'appliquer. Le risque est d'autant plus élevé que certains
   de ces comptes servent aussi à des saisies manuelles.
 
-    Écritures par compte technique : 432 276 (84.3 %)
+    Écritures par compte technique : 432 276 (84,3 %)
 
     Compte technique  Écritures  Montant XAF         
     ----------------  ---------  --------------------
     CALYPSOUSR        194 938    93 336 843 229 450  
-    ADMINUSER1        150 928    1 832 478 721 143.90
-    SYSTEM            74 526     162 925 621 989.16  
-    FLEXSWITCH        9 902      2 031 160 114 671.66
-    PRIMUSUSR         1 425      84 946 922 828.50   
+    ADMINUSER1        150 928    1 832 478 721 143,90
+    SYSTEM            74 526     162 925 621 989,16  
+    FLEXSWITCH        9 902      2 031 160 114 671,66
+    PRIMUSUSR         1 425      84 946 922 828,50   
     PROCESSMAKER      286        177 583 978 906     
     MIGRATION         130        164 353 282 505     
     ONLINETAXPAY      81         105 896 688 773     
@@ -855,20 +893,20 @@ opérations sur un nombre restreint d'opérateurs.
     0      20         499 243 869       
     1      2          503 972 223       
     2      73         126 627 543 782   
-    8      34         25 612 222 531.90 
+    8      34         25 612 222 531,90 
     9      121        59 915 326 529    
-    10     148        122 194 344 932.75
-    11     158        135 135 713 142.73
-    12     255        219 379 416 539.33
-    13     236        200 120 063 975.96
-    14     365        193 282 318 944.52
-    15     288        298 716 466 277.14
-    16     430        330 775 931 289.62
-    17     445        417 473 387 856.98
-    18     277        192 040 155 510.29
-    19     216        264 989 833 891.16
+    10     148        122 194 344 932,75
+    11     158        135 135 713 142,73
+    12     255        219 379 416 539,33
+    13     236        200 120 063 975,96
+    14     365        193 282 318 944,52
+    15     288        298 716 466 277,14
+    16     430        330 775 931 289,62
+    17     445        417 473 387 856,98
+    18     277        192 040 155 510,29
+    19     216        264 989 833 891,16
     20     168        25 061 996 694    
-    21     222        11 483 636 596.11 
+    21     222        11 483 636 596,11 
     22     108        4 782 685 144     
     23     25         408 381 396       
     Répartition horaire de l'ensemble des saisies sur titres.
@@ -900,9 +938,9 @@ opérations sur un nombre restreint d'opérateurs.
     Opérateur     Écritures  Montant XAF       
     ------------  ---------  ------------------
     BINEID00087   954        1 085 547 804 321 
-    CHEICHEID059  1 173      801 758 983 430.83
+    CHEICHEID059  1 173      801 758 983 430,83
     NDJOCKOS0067  183        341 511 548 138   
-    FADILAID0005  88         25 617 549 635.69 
+    FADILAID0005  88         25 617 549 635,69 
     ELANGUEID060  12         16 100 313 792    
     DOUMAOS00039  2          2 400 000 000     
 
@@ -1028,8 +1066,8 @@ classement comptable retenu.
     2024-06-30     1 975 466 036            
     2024-12-31     2 455 219 083            
     2025-06-30     -1 205 231 891           
-    2025-12-31     0.00                     
-    2026-06-30     0.00                     
+    2025-12-31     0,00                     
+    2026-06-30     0,00                     
     Le solde du compte de courus à chaque arrêté : un compte d'actif ne peut être négatif.
 
     Date        Compte       Libellé                             Sens  Montant XAF    Saisie        Validation  
@@ -1074,14 +1112,14 @@ CONTRÔLES SANS ANOMALIE
 
   [5.1] Rapprochement des positions migrées
       Le portefeuille sorti de Flexcube et le portefeuille réintroduit dans Calypso se rapprochent à
-      0.0012 % près, sur un nombre identique de positions. La migration des nominaux est donc
+      0,0012 % près, sur un nombre identique de positions. La migration des nominaux est donc
       correctement exécutée.
 
         Positions sorties de Flexcube  : 65
         Positions entrées dans Calypso : 68
         Montant sorti                  : 126 688 763 333 XAF
         Montant entré                  : 126 690 278 772 XAF
-        Écart                          : 1 515 439 XAF (0.0012 %)
+        Écart                          : 1 515 439 XAF (0,0012 %)
 
         Sens               Compte     Montant XAF      Lignes
         -----------------  ---------  ---------------  ------
@@ -1105,10 +1143,10 @@ CONTRÔLES SANS ANOMALIE
 
         Compte     Libellé                                   Lignes  Solde XAF  Dernier mouvement
         ---------  ----------------------------------------  ------  ---------  -----------------
-        511410100  OBLIGATIONS DU TRESOR ASSIMILABLES PLACE  980     0.00       2025-06-16       
-        512200100  BONS DE TRESOR - TRANSACTION              228     0.00       2025-06-16       
-        511800100  CREANCES RATTACHEES - PLACEMENT           32 937  0.00       2025-07-31       
-        591400100  PROV DEPRECIATION DES OBLIGATIONS ET BON  68      0.00       2025-06-17       
+        511410100  OBLIGATIONS DU TRESOR ASSIMILABLES PLACE  980     0,00       2025-06-16       
+        512200100  BONS DE TRESOR - TRANSACTION              228     0,00       2025-06-16       
+        511800100  CREANCES RATTACHEES - PLACEMENT           32 937  0,00       2025-07-31       
+        591400100  PROV DEPRECIATION DES OBLIGATIONS ET BON  68      0,00       2025-06-17       
 
   [5.6] Continuité chronologique de la bascule
       Le module d'origine s'arrête le 2025-06-16 et le nouveau dispositif démarre le 2025-06-16 : la
@@ -1178,8 +1216,8 @@ suspens.
 
     Fin de trimestre  Solde cumulé 467000188
     ----------------  ----------------------
-    30/06/2025        0.00                  
-    30/09/2025        0.00                  
+    30/06/2025        0,00                  
+    30/09/2025        0,00                  
     31/12/2025        -5 000 000 000        
     31/03/2026        -93 902 460 379       
     30/06/2026        -94 451 445 974       
@@ -1366,15 +1404,19 @@ suspens.
   d'activité — serait sans signification. Les analyses doivent être conduites en net. Cette
   convention est en outre OPPOSÉE à celle de Flexcube, qui contre-passe par un montant négatif : les
   deux systèmes ne peuvent pas être agrégés sans retraitement.
+  La mesure de l'écart se fait sur UN COMPTE et non sur l'ensemble des jambes : additionner toutes
+  les jambes d'écritures équilibrées donnerait zéro par construction et ne dirait rien. Le compte de
+  produits d'intérêt sert donc de témoin.
 
-    Volume brut des événements récurrents : 3 868 809 479 492 XAF
-    Volume net réel                       : 0 XAF
-    Facteur de surévaluation              : non calculable
+    Compte témoin de la mesure      : 733400100 REVENUS D OBLIGATIONS ET BONS ASSIM
+    Volume brut passé sur ce compte : 1 916 395 498 540 XAF
+    Effet net réel sur le résultat  : 16 082 009 834 XAF
+    Facteur de surévaluation        : × 119
 
     Événement        Nb débits  Nb crédits  Total débits       Total crédits      Net 
     ---------------  ---------  ----------  -----------------  -----------------  ----
-    ACCRUAL          40 108     40 108      1 908 276 309 368  1 908 276 309 368  0.00
-    PREM_DISC_YIELD  39 945     39 945      26 128 430 378     26 128 430 378     0.00
+    ACCRUAL          40 108     40 108      1 908 276 309 368  1 908 276 309 368  0,00
+    PREM_DISC_YIELD  39 945     39 945      26 128 430 378     26 128 430 378     0,00
 
   Recommandation :
     Documenter cette convention dans les procédures d'analyse et ne publier aucune statistique de
@@ -1442,15 +1484,15 @@ rattachement des charges d'intérêt, le niveau de collatéralisation et le dén
     Deal     Tirage      Remboursement  Durée (j)  Jours de couru  Montant         Intérêt réglé
     -------  ----------  -------------  ---------  --------------  --------------  -------------
     3349072  2025-12-23  2026-03-31     98         0               90 000 000 000  50 500 000   
-    3831830  2026-04-30  2026-05-07     7          0               60 000 000 000  28 933 333.50
-    3270201  2025-11-28  2025-12-04     6          0               65 000 000 000  30 333 333.50
+    3831830  2026-04-30  2026-05-07     7          0               60 000 000 000  28 933 333,50
+    3270201  2025-11-28  2025-12-04     6          0               65 000 000 000  30 333 333,50
     3410714  2026-01-09  2026-01-15     6          0               80 000 000 000  38 500 000   
     3440496  2026-01-16  2026-01-22     6          0               80 000 000 000  38 500 000   
     3461387  2026-01-23  2026-01-29     6          0               80 000 000 000  38 500 000   
     3490796  2026-01-30  2026-02-05     6          0               80 000 000 000  38 500 000   
     3524796  2026-02-06  2026-02-12     6          0               75 000 000 000  36 093 750   
     3573017  2026-02-20  2026-02-26     6          0               75 000 000 000  36 093 750   
-    3602585  2026-02-27  2026-03-05     6          0               75 000 000 000  35 364 583.50
+    3602585  2026-02-27  2026-03-05     6          0               75 000 000 000  35 364 583,50
     3658647  2026-03-13  2026-03-19     6          0               72 000 000 000  33 600 000   
 
   Recommandation :
@@ -1483,16 +1525,18 @@ rattachement des charges d'intérêt, le niveau de collatéralisation et le dén
   Des opérations de pension ne présentent aucun remboursement à la fin de la période extraite, ou
   sont remboursées pour un montant différent du tirage. Ces situations doivent être rapprochées des
   encours réels auprès de la banque centrale.
+  Les mouvements déversés en double par l'interface (contrôle 6.7) ont été neutralisés avant ce test
+  : les conserver ferait apparaître des remboursements supérieurs aux tirages, anomalies apparentes
+  qui relèvent en réalité du défaut d'interface et non de la gestion des pensions.
 
     Opérations sans remboursement                    : 1
     Montant tiré non remboursé                       : 50 000 000 000 XAF
-    Opérations remboursées pour un montant différent : 2
+    Opérations remboursées pour un montant différent : 0
+    Mouvements en double neutralisés avant le test   : 4
 
-    Deal     Tirage      Montant tiré    Remboursé       Contrepartie
-    -------  ----------  --------------  --------------  ------------
-    3854201  2026-05-11  50 000 000 000                  BEAC        
-    3186053  2025-11-07  5 000 000 000   10 000 000 000  UBCM        
-    4184571  2026-08-04  25 000 000 000  50 000 000 000  BEAC        
+    Deal     Tirage      Montant tiré    Remboursé  Contrepartie
+    -------  ----------  --------------  ---------  ------------
+    3854201  2026-05-11  50 000 000 000             BEAC        
 
   Recommandation :
     Rapprocher des relevés de la banque centrale à la date d'arrêté.
@@ -1837,7 +1881,7 @@ implicite du portefeuille.
 
     Compte     Libellé                               Nature     Arrêtés en anomalie  Pire arrêté  Solde à cette date  Solde final
     ---------  ------------------------------------  ---------  -------------------  -----------  ------------------  -----------
-    511800100  CREANCES RATTACHEES - PLACEMENT       debiteur   1                    2025-06-30   -1 205 231 891      0.00       
+    511800100  CREANCES RATTACHEES - PLACEMENT       debiteur   1                    2025-06-30   -1 205 231 891      0,00       
     472200106  PRODUITS PERCU DAVANCE SUR BON DE TR  crediteur  1                    2026-06-30   686 724 016         718 339 497
     559000101  DETTES RATTACHEES PRET EMPRUNT AU JR  crediteur  1                    2026-06-30   66 000 000          66 000 000 
 
@@ -1920,20 +1964,20 @@ implicite du portefeuille.
   Ce contrôle est un indicateur analytique : il signale une zone à investiguer, il ne constitue pas
   à lui seul la preuve d'une surévaluation.
 
-    Taux contractuel au 95e centile         : 7.00 %
-    Rendement implicite du dernier exercice : 16.90 %
+    Taux contractuel au 95e centile         : 7,00 %
+    Rendement implicite du dernier exercice : 15,07 %
 
     Exercice  Encours moyen XAF   Produits XAF      Rendement %
     --------  ------------------  ----------------  -----------
-    2022      14 212 308 510.27   1 186 470 170.02  8.35       
-    2023      44 401 595 700.61   5 484 939 170     12.35      
-    2024      87 037 769 043.48   11 422 825 031    13.12      
-    2025      127 618 806 363.20  21 562 142 054    16.90      
+    2022      11 686 210 134,23   1 186 470 170,02  10,15      
+    2023      36 393 720 277,72   5 484 939 170     15,07      
+    2024      87 850 725 737,70   11 422 825 031    13,00      
+    2025      143 126 905 963,74  21 562 142 054    15,07      
 
   Recommandation :
     Décomposer le produit par nature et rapprocher la composante plus-values des opérations
-    examinées en section 8. Attention : l'encours moyen est reconstitué à partir des mouvements ; il
-    doit être confirmé par la balance générale.
+    examinées en section 8. L'encours moyen est pondéré par les jours calendaires ; il reste à
+    confirmer par la balance générale.
 
 ----------------------------------------------------------------------------------------------------
 [9.1] Progression du résultat de l'activité de titres
@@ -1947,20 +1991,20 @@ implicite du portefeuille.
   valorisation, et quelle part de la reconnaissance de plus-values sur des opérations dont la nature
   de cession est discutée en section 8 ?
 
-    Croissance du résultat : 2023 : × 4.18 ; 2024 : × 1.95 ; 2025 : × 1.85
+    Croissance du résultat : 2023 : × 4,18 ; 2024 : × 1,95 ; 2025 : × 1,85
 
     Nature   Compte     Libellé                               2022              2023           2024            2025          
     -------  ---------  ------------------------------------  ----------------  -------------  --------------  --------------
-    CHARGE   601100100  INT. SUR OPS MARCHE MONETAIRE - OPS   0.00              0.00           0.00            -520 308 336  
-    CHARGE   625000105  COMMISSIONS PAYES SUR ACHAT DE DEVIS  0.00              0.00           0.00            -4 691 336    
+    CHARGE   601100100  INT. SUR OPS MARCHE MONETAIRE - OPS   0,00              0,00           0,00            -520 308 336  
+    CHARGE   625000105  COMMISSIONS PAYES SUR ACHAT DE DEVIS  0,00              0,00           0,00            -4 691 336    
     PRODUIT  725000100  COMM GEST PORTF TITRE CPTE DE TIERS   411 966           3 933 775      6 402 500       632 600       
-    PRODUIT  727000102  REFACT COMMISSIONS REFINANCEMENT BEA  156 673 648.33    355 118 791    382 454 122     640 098 457   
-    PRODUIT  729000125  COMMISSIONS DE SERVICE HORS CEMAC     136 835 301.84    351 251 193    266 879 362     652 212 323   
-    PRODUIT  733200100  REVENUS DE BONS DU TRESOR             400 732 331.86    208 334 751    873 177 474     1 268 828 550 
-    PRODUIT  733400100  REVENUS D OBLIGATIONS ET BONS ASSIM   237 349 993.16    1 948 298 718  4 493 601 922   9 391 787 162 
-    PRODUIT  734200100  REVENUS DE BONS DU TRESOR             0.00              0.00           7 519 237       42 928 009    
+    PRODUIT  727000102  REFACT COMMISSIONS REFINANCEMENT BEA  156 673 648,33    355 118 791    382 454 122     640 098 457   
+    PRODUIT  729000125  COMMISSIONS DE SERVICE HORS CEMAC     136 835 301,84    351 251 193    266 879 362     652 212 323   
+    PRODUIT  733200100  REVENUS DE BONS DU TRESOR             400 732 331,86    208 334 751    873 177 474     1 268 828 550 
+    PRODUIT  733400100  REVENUS D OBLIGATIONS ET BONS ASSIM   237 349 993,16    1 948 298 718  4 493 601 922   9 391 787 162 
+    PRODUIT  734200100  REVENUS DE BONS DU TRESOR             0,00              0,00           7 519 237       42 928 009    
     PRODUIT  734400100  REV D OBLIGATIONS ET BONS ASSIMILES   548 387 845       3 328 305 701  6 048 526 398   10 858 598 333
-                        RÉSULTAT NET                          1 480 391 086.19  6 195 242 929  12 078 561 015  22 330 085 762
+                        RÉSULTAT NET                          1 480 391 086,19  6 195 242 929  12 078 561 015  22 330 085 762
 
   Recommandation :
     Obtenir la décomposition du produit net bancaire de l'activité par nature (intérêts courus,
@@ -1976,52 +2020,6 @@ livre : deals non aboutis ayant néanmoins produit de la comptabilité, écritur
 séparation des tâches dans le système amont et qualité du référentiel des opérateurs.
 
   5 contrôle(s) exécuté(s) — 5 anomalie(s), 0 sans anomalie.
-
-----------------------------------------------------------------------------------------------------
-[10.1] Deals conclus n'ayant produit aucune écriture comptable
-  Gravité : ELEVEE
-
-  Le rapprochement croise le statut de chaque deal dans le système amont avec sa présence dans le
-  grand livre.
-  Une part importante des deals ABOUTIS — validés ou arrivés à échéance — ne se retrouve dans aucune
-  écriture comptable. Plusieurs explications sont possibles et doivent être départagées :
-  l'opération ne génère pas d'écriture dans le périmètre de comptes extrait ; son déversement a
-  échoué ; ou elle relève d'un portefeuille dont les écritures ne transitent pas par ce périmètre —
-  notamment le change, dont les comptes ne sont pas tous couverts.
-  Ce contrôle ne conclut donc pas à une anomalie, mais il délimite une zone que l'établissement doit
-  justifier : un deal conclu doit produire une trace comptable quelque part.
-
-    Deals au référentiel du système amont : 3 480
-    Deals retrouvés en comptabilité       : 1 900
-    Deals aboutis                         : 3 229
-    Dont sans écriture comptable          : 1 355 (42 %)
-
-    Statut du deal     Sans comptabilité  Avec comptabilité  Total  Part %
-    -----------------  -----------------  -----------------  -----  ------
-    CANCELED           56                 22                 78     28.20 
-    HYPO_TRADE         160                1                  161    0.60  
-    LIMIT_CHECK        2                  0                  2      0.00  
-    MATURED            830                1 026              1 856  55.30 
-    PENDING            3                  1                  4      25.00 
-    PENDING_AUTHORIZE  2                  1                  3      33.30 
-    TRADE_ENTERED      2                  1                  3      33.30 
-    VERIFIED           525                848                1 373  61.80 
-
-    Portefeuille              Deals aboutis sans écriture
-    ------------------------  ---------------------------
-    ABCM_FX.Trading.Spot      323                        
-    ABCM_FI.Sales             310                        
-    ABCM_FX.Sales             310                        
-    ABCM_MM.FundTransfer      300                        
-    ABCM_FVOCI.Bond           61                         
-    ABCM_MM.Plmt.Tkn.Secured  46                         
-    ABCM_FVOCI.Bills          4                          
-    ABCM_FX.Trading.Fwd       1                          
-
-  Recommandation :
-    Obtenir la cartographie des portefeuilles dont les écritures transitent par le périmètre
-    extrait, afin de distinguer l'absence normale de l'échec de déversement. Mettre en place un
-    rapprochement quotidien du nombre de deals conclus et du nombre de deals comptabilisés.
 
 ----------------------------------------------------------------------------------------------------
 [10.2] Deals annulés, en attente ou hypothétiques ayant produit de la comptabilité
@@ -2051,30 +2049,30 @@ séparation des tâches dans le système amont et qualité du référentiel des 
 
     Deal     Statut             Portefeuille          Contrepartie     Écritures  Volume XAF      Solde bilan résiduel  Impact résultat
     -------  -----------------  --------------------  ---------------  ---------  --------------  --------------------  ---------------
-    2947262  CANCELED           ABCM_FX.Trading.Spot  BEAC             32         31 485 936 000  0.00                  -0.00          
-    4325815  PENDING_AUTHORIZE  ABCM_FVOCI.Bond       SGCM             8          14 609 863 012  0.00                  -0.00          
-    3035341  CANCELED           ABCM_FI.Sales         RETLCUSTCM       4          12 000 000 000  0.00                  -0.00          
-    2713310  CANCELED           ABCM_BSB.Bond         UBCM             4          4 522 191 780   0.00                  -0.00          
-    4326398  PENDING            ABCM_MM.FundTransfer  ACCESS CAMEROON  4          1 907 153 628   0.00                  -0.00          
-    4338783  TRADE_ENTERED      ABCM_MM.FundTransfer  ACCESS CAMEROON  6          1 692 687 000   0.00                  -0.00          
-    3473877  CANCELED           ABCM_FI.Sales         RETLCUSTCM       16         748 146 272     0.00                  -0.00          
-    3884347  CANCELED           ABCM_FI.Sales         RETLCUSTCM       12         487 684 152     0.00                  -0.00          
-    4309072  CANCELED           ABCM_FI.Sales         RETLCUSTCM       12         183 040 000     0.00                  -0.00          
-    3387350  CANCELED           ABCM_FVOCI.Bond       ACCESS CAMEROON  12         167 449 972     0.00                  -0.00          
-    3387349  CANCELED           ABCM_FI.Sales         ACCESS CAMEROON  4          158 089 972     0.00                  -0.00          
+    2947262  CANCELED           ABCM_FX.Trading.Spot  BEAC             32         31 485 936 000  0,00                  -0,00          
+    4325815  PENDING_AUTHORIZE  ABCM_FVOCI.Bond       SGCM             8          14 609 863 012  0,00                  -0,00          
+    3035341  CANCELED           ABCM_FI.Sales         RETLCUSTCM       4          12 000 000 000  0,00                  -0,00          
+    2713310  CANCELED           ABCM_BSB.Bond         UBCM             4          4 522 191 780   0,00                  -0,00          
+    4326398  PENDING            ABCM_MM.FundTransfer  ACCESS CAMEROON  4          1 907 153 628   0,00                  -0,00          
+    4338783  TRADE_ENTERED      ABCM_MM.FundTransfer  ACCESS CAMEROON  6          1 692 687 000   0,00                  -0,00          
+    3473877  CANCELED           ABCM_FI.Sales         RETLCUSTCM       16         748 146 272     0,00                  -0,00          
+    3884347  CANCELED           ABCM_FI.Sales         RETLCUSTCM       12         487 684 152     0,00                  -0,00          
+    4309072  CANCELED           ABCM_FI.Sales         RETLCUSTCM       12         183 040 000     0,00                  -0,00          
+    3387350  CANCELED           ABCM_FVOCI.Bond       ACCESS CAMEROON  12         167 449 972     0,00                  -0,00          
+    3387349  CANCELED           ABCM_FI.Sales         ACCESS CAMEROON  4          158 089 972     0,00                  -0,00          
     3574284  HYPO_TRADE         ABCM_FI.Sales         RETLCUSTCM       4          120 143 100     71 550                71 550         
     3098462  CANCELED           ABCM_FVOCI.Bond       ACCESS CAMEROON  20         111 404 068     11 300                11 300         
-    3373183  CANCELED           ABCM_FI.Sales         RETLCUSTCM       14         89 947 624      0.00                  -0.00          
-    3412280  CANCELED           ABCM_FI.Sales         RETLCUSTCM       14         85 033 640      0.00                  -0.00          
-    3474140  CANCELED           ABCM_FI.Sales         RETLCUSTCM       12         82 397 208      0.00                  -0.00          
+    3373183  CANCELED           ABCM_FI.Sales         RETLCUSTCM       14         89 947 624      0,00                  -0,00          
+    3412280  CANCELED           ABCM_FI.Sales         RETLCUSTCM       14         85 033 640      0,00                  -0,00          
+    3474140  CANCELED           ABCM_FI.Sales         RETLCUSTCM       12         82 397 208      0,00                  -0,00          
     ... et 10 autre(s) ligne(s)
 
     Date d'arrêté  Deals à solde résiduel  Impact bilan XAF
     -------------  ----------------------  ----------------
-    2023-12-31     0                       0.00            
-    2024-06-30     0                       0.00            
-    2024-12-31     0                       0.00            
-    2025-06-30     0                       0.00            
+    2023-12-31     0                       0,00            
+    2024-06-30     0                       0,00            
+    2024-12-31     0                       0,00            
+    2025-06-30     0                       0,00            
     2025-12-31     1                       22 600          
     2026-06-30     2                       82 850          
     Résidu porté par ces deals à chaque date d'arrêté.
@@ -2145,6 +2143,75 @@ séparation des tâches dans le système amont et qualité du référentiel des 
     Obtenir le journal d'audit applicatif du système amont, qui trace la validation de chaque deal
     et son auteur. Supprimer l'usage des comptes génériques pour la saisie des opérations. Rendre le
     champ trader obligatoire et contrôlé.
+
+----------------------------------------------------------------------------------------------------
+[10.1] Deals conclus sans écriture, sur des portefeuilles pourtant couverts par le périmètre
+  Gravité : MOYENNE
+
+  Le rapprochement croise le statut de chaque deal du système amont avec sa présence dans le grand
+  livre.
+  Le test doit d'abord écarter un faux positif évident : les portefeuilles de change et de transfert
+  de fonds alimentent des comptes qui ne font pas partie du périmètre extrait. Leurs deals n'ont
+  donc AUCUNE raison d'y apparaître, et les compter comme manquants n'aurait aucun sens.
+  Le contrôle isole donc les portefeuilles réellement couverts — ceux dont plus de la moitié des
+  deals produisent une écriture dans le périmètre — et ne conclut que sur ceux-là. Sur ce périmètre
+  resserré, une fraction des deals conclus reste sans écriture comptable et doit être justifiée : un
+  deal validé ou arrivé à échéance doit produire une trace comptable.
+
+    Deals au référentiel du système amont           : 3 480
+    Deals aboutis                                   : 3 229
+    Portefeuilles couverts par le périmètre extrait : ABCM_FX.Trading.Spot, ABCM_FVOCI.Bond, ABCM_MM.Plmt.Tkn.Secured, ABCM_FX.Trading.Fwd, ABCM_FVOCI.Bills, ABCM_BSB.Bond
+    Portefeuilles hors périmètre (écartés du test)  : ABCM_MM.FundTransfer, ABCM_FI.Sales, ABCM_FX.Sales
+    Deals aboutis sur portefeuilles couverts        : 1 903
+    DONT SANS ÉCRITURE                              : 435 (23 %)
+
+    Portefeuille              Deals aboutis  Comptabilisés  Couverture %
+    ------------------------  -------------  -------------  ------------
+    ABCM_FX.Trading.Spot      896            573            64,00       
+    ABCM_FVOCI.Bond           652            591            90,60       
+    ABCM_MM.FundTransfer      521            221            42,40       
+    ABCM_FI.Sales             495            185            37,40       
+    ABCM_FX.Sales             310            0              0,00        
+    ABCM_MM.Plmt.Tkn.Secured  170            124            72,90       
+    ABCM_FX.Trading.Fwd       116            115            99,10       
+    ABCM_FVOCI.Bills          67             63             94,00       
+    ABCM_BSB.Bond             2              2              100,00      
+    La couverture révèle quels portefeuilles alimentent le périmètre extrait.
+
+    Statut du deal     Sans comptabilité  Avec comptabilité  Total  Part %
+    -----------------  -----------------  -----------------  -----  ------
+    CANCELED           56                 22                 78     28,20 
+    HYPO_TRADE         160                1                  161    0,60  
+    LIMIT_CHECK        2                  0                  2      0,00  
+    MATURED            830                1 026              1 856  55,30 
+    PENDING            3                  1                  4      25,00 
+    PENDING_AUTHORIZE  2                  1                  3      33,30 
+    TRADE_ENTERED      2                  1                  3      33,30 
+    VERIFIED           525                848                1 373  61,80 
+
+    Deal     Portefeuille          Contrepartie     Statut    Date de négociation
+    -------  --------------------  ---------------  --------  -------------------
+    4326347  ABCM_FVOCI.Bond       SGCM             VERIFIED  2026-09-07         
+    4324989  ABCM_FVOCI.Bond       ACCESS CAMEROON  MATURED   2026-09-06         
+    4324963  ABCM_FVOCI.Bond       ACCESS CAMEROON  MATURED   2026-09-06         
+    4311090  ABCM_FX.Trading.Spot  BEAC             VERIFIED  2026-09-04         
+    4309119  ABCM_FX.Trading.Spot  BEAC             VERIFIED  2026-09-03         
+    4306994  ABCM_FX.Trading.Spot  BEAC             VERIFIED  2026-09-02         
+    4295246  ABCM_FX.Trading.Spot  BEAC             VERIFIED  2026-08-31         
+    4294536  ABCM_FVOCI.Bond       ACCESS CAMEROON  MATURED   2026-08-28         
+    4289589  ABCM_FX.Trading.Spot  BEAC             VERIFIED  2026-08-28         
+    4282282  ABCM_FX.Trading.Spot  BEAC             VERIFIED  2026-08-27         
+    4275022  ABCM_FX.Trading.Spot  BEAC             VERIFIED  2026-08-26         
+    4274691  ABCM_FX.Trading.Spot  BEAC             VERIFIED  2026-08-26         
+    4266999  ABCM_FX.Trading.Spot  BEAC             VERIFIED  2026-08-24         
+    4266987  ABCM_FX.Trading.Spot  BEAC             VERIFIED  2026-08-24         
+    4255919  ABCM_FX.Trading.Spot  BEAC             VERIFIED  2026-08-20         
+    Deals conclus sans écriture, sur portefeuille couvert.
+
+  Recommandation :
+    Justifier, deal par deal, l'absence d'écriture sur les portefeuilles couverts. Mettre en place
+    un rapprochement quotidien entre le nombre de deals conclus et le nombre de deals comptabilisés,
+    par portefeuille.
 
 ----------------------------------------------------------------------------------------------------
 [10.3] Écritures comptables sans deal correspondant dans le système amont

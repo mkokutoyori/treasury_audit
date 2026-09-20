@@ -17,8 +17,8 @@ import calendar
 
 import pandas as pd
 
-from ..core import Constat, Gravite, Section, Tableau, xaf
-from ..data import (CPT_COURUS_CALYPSO, CPT_COURUS_MM, CPT_PORTEFEUILLE, DATE_BASCULE)
+from ..core import Constat, Gravite, Section, Tableau, xaf, pct, fois, nb
+from ..data import CPT_COURUS_CALYPSO, CPT_COURUS_MM, CPT_PORTEFEUILLE, DATE_BASCULE
 
 SECTION = (3, "Cycle de vie des titres sous Flexcube")
 
@@ -44,6 +44,7 @@ def run(ctx) -> Section:
     s.ajouter(_c35_recalcul_courus(ctx))
     s.ajouter(_c36_apurement_courus(ctx))
     s.ajouter(_c37_situation_portefeuille(ctx))
+    s.ajouter(_c38_transfert_attente(ctx))
     return s
 
 
@@ -206,6 +207,7 @@ def _c33_reouvertures(ctx) -> Constat:
     cibles = liqs[(liqs.date >= ctx.config.debut) & (liqs.date <= ctx.config.fin)
                   & (liqs.date != DATE_BASCULE)]
     chaines = []
+    anciens_vus, nouveaux_vus = set(), set()
     for ancien, r in cibles.iterrows():
         suivants = achats[(achats.date == r.date) & (achats.FULL_NAME == r.FULL_NAME)
                           & (achats.index != ancien)]
@@ -214,13 +216,23 @@ def _c33_reouvertures(ctx) -> Constat:
         rachat = float(suivants.montant.sum())
         chaines.append([ancien, r.date, float(r.montant), len(suivants), rachat,
                         rachat - float(r.montant), r.FULL_NAME])
+        anciens_vus.add(ancien)
+        nouveaux_vus.update(suivants.index)
     if not chaines:
         return Constat(code="3.3", titre="Contrats liquidés puis réouverts", gravite=Gravite.CONFORME,
                        constat="Aucun enchaînement liquidation/réouverture identifié.")
     reduction = [c for c in chaines if c[5] < 0]
     augmentation = [c for c in chaines if c[5] > 0]
     identique = [c for c in chaines if c[5] == 0]
-    flux_brut = float(mm[mm.AC_NO == "099ACO00001"].LCY_AMOUNT.sum())
+    # Chaque contrat n'est compté qu'une fois : un même rachat peut solder plusieurs
+    # contrats clôturés le même jour, l'addition des colonnes du tableau surestimerait.
+    liq_brut = float(liqs.loc[sorted(anciens_vus)].montant.sum())
+    ach_brut = float(achats.loc[sorted(nouveaux_vus)].montant.sum())
+    brut = liq_brut + ach_brut
+    net = ach_brut - liq_brut
+    periode = achats[(achats.date >= ctx.config.debut) & (achats.date <= ctx.config.fin)]
+    periode_liq = liqs[(liqs.date >= ctx.config.debut) & (liqs.date <= ctx.config.fin)]
+    volume_mm = float(periode.montant.sum()) + float(periode_liq.montant.sum())
     return Constat(
         code="3.3",
         titre="Contrats liquidés puis réouverts le jour même : les volumes bruts ne sont pas des flux",
@@ -232,7 +244,9 @@ def _c33_reouvertures(ctx) -> Constat:
             "conséquences.\n"
             "D'abord, les VOLUMES BRUTS du module ne représentent pas des flux économiques. Toute "
             "analyse de volumétrie, de rotation du portefeuille ou de flux de trésorerie doit être "
-            "menée en net, après neutralisation de ces couples.\n"
+            "menée en net, après neutralisation de ces couples : l'écart est considérable, le "
+            "volume brut porté par ces enchaînements dépassant de plusieurs dizaines de fois le "
+            "flux net correspondant.\n"
             "Ensuite, la CHAÎNE DES INTÉRÊTS COURUS peut se rompre entre le contrat clôturé et "
             "celui qui le remplace : le couru accumulé sur le premier doit être soit encaissé, "
             "soit repris sur le second. Le contrôle 3.4 mesure ce risque."
@@ -242,7 +256,14 @@ def _c33_reouvertures(ctx) -> Constat:
             ("Dont réouverture pour un montant inférieur (remboursement partiel)", str(len(reduction))),
             ("Dont réouverture pour un montant supérieur (complément)", str(len(augmentation))),
             ("Dont réouverture à l'identique", str(len(identique))),
-            ("Flux bruts sur le compte de règlement (module MM)", xaf(flux_brut)),
+            ("Contrats clôturés impliqués / contrats réouverts",
+             f"{len(anciens_vus)} / {len(nouveaux_vus)}"),
+            ("Volume BRUT porté par ces enchaînements", xaf(brut)),
+            ("Flux NET réellement décaissé ou encaissé", xaf(net)),
+            ("Facteur de surévaluation du volume",
+             fois(brut / abs(net), 1) if net else "n/a"),
+            ("Part de ces enchaînements dans le volume MM de la période",
+             f"{pct(100 * brut / volume_mm, 1)}" if volume_mm else "n/a"),
         ],
         tableaux=[
             Tableau(["Contrat clôturé", "Date", "Montant liquidé", "Nb rachats", "Montant racheté",
@@ -257,7 +278,13 @@ def _c33_reouvertures(ctx) -> Constat:
 
 
 def _c34_courus_annulations(ctx) -> Constat:
-    """L'annulation d'un contrat contre-passe-t-elle les intérêts courus déjà enregistrés ?"""
+    """L'annulation d'un contrat contre-passe-t-elle les intérêts courus déjà enregistrés ?
+
+    Le test se limite au fait vérifiable : la liquidation d'annulation passe-t-elle une
+    écriture de sens inverse sur le compte de créances rattachées ? Le devenir ultérieur de
+    ces courus relève d'écritures manuelles de natures diverses, traitées au contrôle 3.8 :
+    les rattacher ici à un « apurement » conduirait à une interprétation erronée.
+    """
     if ctx.courus.empty:
         return Constat(code="3.4", titre="Intérêts courus des contrats annulés", gravite=Gravite.FAIBLE,
                        constat="Historique du compte de créances rattachées indisponible.")
@@ -265,23 +292,19 @@ def _c34_courus_annulations(ctx) -> Constat:
     achat = mm[mm.AMOUNT_TAG == "PRINCIPAL"].groupby("TRN_REF_NO").TRN_DT.min()
     liq = mm[mm.AMOUNT_TAG == "PRINCIPAL_LIQD"].groupby("TRN_REF_NO").TRN_DT.min()
     j = pd.concat([achat.rename("ach"), liq.rename("liq")], axis=1).dropna()
-    annules = set(j[j.ach == j.liq].index)
+    # Même périmètre que le contrôle 3.2 : les annulations antérieures à la période d'audit
+    # relèvent d'exercices déjà revus.
+    annules = set(j[(j.ach == j.liq)
+                    & (j.ach >= ctx.config.debut) & (j.ach <= ctx.config.fin)].index)
     if not annules:
         return Constat(code="3.4", titre="Intérêts courus des contrats annulés", gravite=Gravite.CONFORME,
                        constat="Aucun contrat annulé le jour de sa comptabilisation.")
-    debits = ctx.courus[(ctx.courus.TRN_REF_NO.isin(annules)) & (ctx.courus.DRCR_IND == "D")]
-    credits = ctx.courus[ctx.courus.DRCR_IND == "C"].copy()
-    credits["contrat"] = credits.DESCRIPTION.str.extract(r"(099[A-Z]{4}\d{9})")[0]
-    apurements = credits[credits.contrat.isin(annules)]
-    couru = debits.groupby("TRN_REF_NO").LCY_AMOUNT.sum()
-    apure = apurements.groupby("contrat").LCY_AMOUNT.sum()
-    compare = pd.concat([couru.rename("couru"), apure.rename("apure")], axis=1).fillna(0)
-    compare["residu"] = compare.couru - compare.apure
-    jamais = compare[(compare.couru > 0) & (compare.apure == 0)]
-    sur_apures = compare[compare.residu < -0.5]
-    # Une contre-passation par la liquidation elle-même se traduirait par un crédit en module MM
-    contre_passe = ctx.courus[(ctx.courus.TRN_REF_NO.isin(annules))
-                              & (ctx.courus.MODULE == "MM") & (ctx.courus.DRCR_IND == "C")]
+    lignes_annules = ctx.courus[ctx.courus.TRN_REF_NO.isin(annules)]
+    debits = lignes_annules[lignes_annules.DRCR_IND == "D"]
+    # Une contre-passation par la liquidation se traduirait par un crédit dans le module MM
+    contre_passe = lignes_annules[(lignes_annules.MODULE == "MM") & (lignes_annules.DRCR_IND == "C")]
+    par_contrat = debits.groupby("TRN_REF_NO").agg(
+        couru=("LCY_AMOUNT", "sum"), lignes=("LCY_AMOUNT", "size"), date=("TRN_DT", "min"))
     return Constat(
         code="3.4",
         titre="L'annulation d'un contrat ne contre-passe pas les intérêts courus déjà enregistrés",
@@ -292,35 +315,98 @@ def _c34_courus_annulations(ctx) -> Constat:
             "écriture de sens inverse n'est passée dans le module sur le compte de créances "
             "rattachées.\n"
             "Le couru d'un contrat annulé — donc d'une opération qui n'a jamais existé — reste "
-            "ainsi à l'actif, et le produit correspondant au compte de résultat, jusqu'à ce qu'une "
-            "écriture manuelle vienne éventuellement l'apurer.\n"
-            "Le rapprochement entre les courus enregistrés et les apurements ultérieurs "
-            "identifiables montre que cet apurement est INCOHÉRENT : certains contrats ne sont "
-            "jamais apurés, d'autres le sont pour un montant supérieur au couru enregistré, "
-            "fréquemment le double exact."
+            "ainsi à l'actif, et le produit correspondant au compte de résultat. Son sort dépend "
+            "ensuite d'écritures manuelles, dont le contrôle 3.8 montre qu'elles sont de natures "
+            "diverses et ne constituent pas toutes un apurement.\n"
+            "Le montant unitaire est faible, mais le principe ne l'est pas : une opération annulée "
+            "ne doit laisser aucune trace au compte de résultat."
         ),
         chiffres=[
             ("Contrats annulés le jour même", str(len(annules))),
-            ("Dont portant des intérêts courus", str(len(couru))),
+            ("Dont portant des intérêts courus", str(len(par_contrat))),
             ("Courus enregistrés sur contrats annulés", xaf(float(debits.LCY_AMOUNT.sum()))),
-            ("Contre-passations par la liquidation", str(len(contre_passe))),
-            ("Contrats jamais apurés", f"{len(jamais)} — {xaf(float(jamais.couru.sum()))}"),
-            ("Contrats sur-apurés", f"{len(sur_apures)} — {xaf(float(-sur_apures.residu.sum()))}"),
+            ("CONTRE-PASSATIONS PAR LA LIQUIDATION", str(len(contre_passe))),
         ],
         tableaux=[
-            Tableau(["Contrat annulé", "Couru enregistré", "Apurement identifié", "Résidu"],
-                    [[i, float(r.couru), float(r.apure), float(r.residu)]
-                     for i, r in compare[compare.residu.abs() > 0.5]
-                     .sort_values("residu", ascending=False).iterrows()],
+            Tableau(["Contrat annulé", "Date", "Écritures de couru", "Couru enregistré XAF"],
+                    [[i, r.date, int(r.lignes), float(r.couru)]
+                     for i, r in par_contrat.sort_values("couru", ascending=False).iterrows()],
                     max_lignes=18)
         ],
         recommandation=(
             "Faire paramétrer la contre-passation automatique des intérêts courus lors de "
-            "l'annulation d'un contrat. Obtenir la justification des apurements supérieurs au "
-            "couru enregistré et corriger les contrats jamais apurés."
+            "l'annulation d'un contrat, afin que l'opération ne laisse aucun résidu."
         ),
     )
 
+
+def _c38_transfert_attente(ctx) -> Constat:
+    """Les intérêts courus ont-ils transité par un compte d'attente ?
+
+    Un compte d'attente est par nature temporaire. Y loger des créances rattachées, même
+    brièvement, soustrait ces montants au suivi normal du portefeuille.
+    """
+    if ctx.courus.empty:
+        return Constat(code="3.8", titre="Transferts d'intérêts courus", gravite=Gravite.FAIBLE,
+                       constat="Historique du compte de créances rattachées indisponible.")
+    transferts = ctx.courus[ctx.courus.DESCRIPTION.fillna("").str.contains(
+        "Reversal of contract", na=False, case=False)]
+    if transferts.empty:
+        return Constat(code="3.8", titre="Transferts d'intérêts courus vers un compte d'attente",
+                       gravite=Gravite.CONFORME,
+                       constat="Aucun transfert d'intérêts courus vers un compte d'attente.")
+    # Libellé type : « ... from GL 511800100 to 466000107 »
+    cibles = transferts.DESCRIPTION.str.extract(r"to\s+(\d{9})\b", expand=False).dropna()
+    compte_cible = cibles.value_counts().index[0] if len(cibles) else "non identifié"
+    libelle_cible = ctx.libelle_compte(compte_cible) if compte_cible != "non identifié" else ""
+    sorties = float(transferts[transferts.DRCR_IND == "C"].LCY_AMOUNT.sum())
+    retours = float(transferts[transferts.DRCR_IND == "D"].LCY_AMOUNT.sum())
+    net = float(transferts.SIGNE.sum())
+    contrats = transferts.DESCRIPTION.str.extract(r"(099[A-Z]{4}\d{9})")[0].nunique()
+    par_date = transferts.groupby("TRN_DT").agg(
+        ecritures=("LCY_AMOUNT", "size"), montant=("LCY_AMOUNT", "sum"))
+    par_user = transferts.groupby(["USER_ID", "AUTH_ID"]).agg(
+        ecritures=("LCY_AMOUNT", "size"), montant=("LCY_AMOUNT", "sum"))
+    dans_perimetre = (ctx.toutes_ecritures.AC_NO == compte_cible).sum()
+    return Constat(
+        code="3.8",
+        titre="Transfert massif d'intérêts courus vers un compte d'attente",
+        gravite=Gravite.ELEVEE,
+        constat=(
+            "Sur une période de deux semaines, une série d'écritures manuelles a fait transiter "
+            "des intérêts courus entre le compte de créances rattachées et un COMPTE D'ATTENTE"
+            + (f" — « {libelle_cible} » ({compte_cible})" if libelle_cible else f" ({compte_cible})")
+            + ". Les écritures sont libellées comme des reprises de contrat.\n"
+            "L'opération n'est pas un simple aller : les montants sortent du compte de créances "
+            "rattachées puis y reviennent en partie, laissant un résidu net. Le volume brut est "
+            "donc très supérieur à l'effet net, et seul ce dernier compte.\n"
+            "Un compte d'attente est par nature temporaire : y loger des créances rattachées, même "
+            "brièvement, soustrait ces montants au suivi normal du portefeuille. Le compte "
+            "destinataire ne figure dans AUCUNE des extractions fournies : il est donc impossible "
+            "de vérifier qu'il a été apuré."
+        ),
+        chiffres=[
+            ("Écritures", str(len(transferts))),
+            ("Période", f"{transferts.TRN_DT.min()} → {transferts.TRN_DT.max()}"),
+            ("Contrats concernés", str(contrats)),
+            ("Compte d'attente destinataire", f"{compte_cible} {libelle_cible}".strip()),
+            ("Sorties du compte de créances rattachées", xaf(sorties)),
+            ("Retours au compte de créances rattachées", xaf(retours)),
+            ("EFFET NET sur les créances rattachées", xaf(net)),
+            ("Lignes du compte d'attente dans les extractions", str(int(dans_perimetre))),
+        ],
+        tableaux=[
+            Tableau(["Date", "Écritures", "Montant brut XAF"],
+                    [[i, int(r.ecritures), float(r.montant)] for i, r in par_date.iterrows()]),
+            Tableau(["Saisie", "Validation", "Écritures", "Montant brut XAF"],
+                    [[i[0], i[1], int(r.ecritures), float(r.montant)] for i, r in par_user.iterrows()]),
+        ],
+        recommandation=(
+            "Obtenir l'historique complet du compte d'attente destinataire et vérifier qu'il est "
+            "soldé. Faire expliquer la finalité de cette opération et l'autorisation dont elle a "
+            "fait l'objet. Vérifier le solde de ce compte à chaque date d'arrêté traversée."
+        ),
+    )
 
 def _annees_base(debut: pd.Timestamp, fin: pd.Timestamp) -> float:
     """Durée en années, en tenant compte des années bissextiles.
@@ -401,7 +487,7 @@ def _c35_recalcul_courus(ctx) -> Constat:
             code="3.5", titre="Exactitude des intérêts courus", gravite=Gravite.CONFORME,
             constat=(
                 f"Le recalcul indépendant, testé sur trois conventions de décompte, ne fait "
-                f"ressortir aucun écart individuel significatif. Écart global : {global_pct:+.2f} %."
+                f"ressortir aucun écart individuel significatif. Écart global : {pct(global_pct, 2, signe=True)}."
             ),
             tableaux=[Tableau(["Classe", "Contrats", "Écart XAF", "Nominal XAF"],
                               [[i, int(r.contrats), float(r.ecart), float(r.nominal)]
@@ -421,7 +507,7 @@ def _c35_recalcul_courus(ctx) -> Constat:
             "bissextiles, 2024 et 2028 : ignorer cette distinction introduirait un biais "
             "systématique de 0,27 %. Le contrat est réputé conforme si l'une des trois conventions "
             "restitue le montant comptabilisé à la tolérance retenue près.\n"
-            f"RÉSULTAT D'ENSEMBLE. L'écart global n'est que de {global_pct:+.2f} %, ce qui atteste "
+            f"RÉSULTAT D'ENSEMBLE. L'écart global n'est que de {pct(global_pct, 2, signe=True)}, ce qui atteste "
             "la justesse du moteur d'accrual. Les écarts sont donc individuels et non systémiques.\n"
             "CLASSEMENT DES ÉCARTS. Chaque contrat en écart est rattaché à une cause probable, "
             "afin d'orienter les vérifications :\n"
@@ -439,7 +525,7 @@ def _c35_recalcul_courus(ctx) -> Constat:
             ("Contrats testés", str(len(j))),
             ("Courus comptabilisés", xaf(float(j.comptabilise.sum()))),
             ("Courus recalculés", xaf(float(j.attendu.sum()))),
-            ("Écart global", f"{global_pct:+.2f} %"),
+            ("Écart global", f"{pct(global_pct, 2, signe=True)}"),
             ("Convention dominante", f"{par_base.index[0]} ({par_base.iloc[0]} contrats)"),
             ("Tolérance retenue", f"{cfg.tolerance_couru:.0%}"),
             (f"Contrats en écart au-delà de {cfg.seuil_materialite/1e6:.0f} M XAF", str(len(hors))),
@@ -485,12 +571,12 @@ def _c36_apurement_courus(ctx) -> Constat:
             code="3.6", titre="Apurement des créances rattachées par encaissement des coupons",
             gravite=Gravite.CONFORME,
             constat=(
-                f"Le compte est intégralement apuré : {len(debits):,} débits pour {len(credits):,} "
-                "crédits, solde net nul. Les coupons sont encaissés en trésorerie, l'apurement "
-                "étant passé par écriture manuelle en module DE et non par l'événement automatique "
-                f"du module MM. Le contrôle des quatre yeux est respecté ({auto} auto-validation, "
-                f"{sans_valid} sans validateur)."
-            ).replace(",", " "),
+                f"Le compte est intégralement apuré : {nb(len(debits))} débits pour "
+                f"{nb(len(credits))} crédits, solde net nul. Les coupons sont encaissés en "
+                "trésorerie, l'apurement étant passé par écriture manuelle en module DE et non par "
+                "l'événement automatique du module MM. Le contrôle des quatre yeux est respecté "
+                f"({auto} auto-validation, {sans_valid} sans validateur)."
+            ),
             tableaux=[Tableau(["Module d'apurement", "Écritures", "Montant XAF"],
                               [[i, int(r.n), float(r.montant)] for i, r in par_module.iterrows()])],
         )
@@ -502,8 +588,8 @@ def _c36_apurement_courus(ctx) -> Constat:
             "persistant traduit des coupons non encaissés ou un défaut d'apurement, et surévalue "
             "simultanément l'actif et le produit."
         ),
-        chiffres=[("Débits", f"{len(debits):,}".replace(",", " ")),
-                  ("Crédits", f"{len(credits):,}".replace(",", " ")),
+        chiffres=[("Débits", nb(len(debits))),
+                  ("Crédits", nb(len(credits))),
                   ("Solde net", xaf(solde))],
         tableaux=[Tableau(["Module", "Écritures", "Montant XAF"],
                           [[i, int(r.n), float(r.montant)] for i, r in par_module.iterrows()])],
@@ -532,30 +618,53 @@ def _c37_situation_portefeuille(ctx) -> Constat:
             gravite=Gravite.CONFORME,
             constat=(
                 "Encours du portefeuille et des créances rattachées à chaque date d'arrêté. "
-                f"Rapportés à une année d'intérêts au taux médian du portefeuille ({taux:.2f} %), "
+                f"Rapportés à une année d'intérêts au taux médian du portefeuille ({pct(taux, 2)}), "
                 "les courus restent inférieurs à douze mois de coupons : les encaissements suivent "
                 "le rythme des accruals."
             ),
             tableaux=[Tableau(entetes, lignes)],
         )
     pire = max(alertes, key=lambda a: a[1])
+    # La progression n'est pas monotone : on décrit ce que montrent réellement les arrêtés,
+    # de part et d'autre de la bascule, plutôt qu'une tendance régulière inexistante.
+    bascule = str(DATE_BASCULE)[:10]
+    avant = [l[4] for l in lignes if l[0] <= bascule]
+    apres = [l[4] for l in lignes if l[0] > bascule]
+
+    def an(valeur: float) -> str:
+        return f"{valeur:.2f}".replace(".", ",")
+
+    if avant and apres:
+        evolution = (
+            "La progression n'est pas régulière : jusqu'au dernier arrêté précédant la bascule, le "
+            f"ratio reste compris entre {an(min(avant))} et {an(max(avant))} année de coupons ; il "
+            f"passe ensuite de {an(apres[0])} à {an(apres[-1])} sur les arrêtés postérieurs. La "
+            "rupture coïncide avec le changement d'outil : il convient de déterminer si celui-ci a "
+            "altéré le suivi des encaissements de coupons."
+        )
+    else:
+        evolution = (
+            "Il convient de déterminer si le changement d'outil a altéré le suivi des "
+            "encaissements de coupons."
+        )
     return Constat(
         code="3.7", titre="Accumulation des intérêts courus au-delà d'une année de coupons",
         gravite=Gravite.ELEVEE,
         constat=(
             "Les créances rattachées représentent les coupons acquis mais non encore encaissés. "
-            f"Rapportées à une année d'intérêts au taux médian du portefeuille ({taux:.2f} %), "
+            f"Rapportées à une année d'intérêts au taux médian du portefeuille ({pct(taux, 2)}), "
             "elles dépassent douze mois de coupons à certaines dates d'arrêté.\n"
             "Le portefeuille étant composé de titres à coupon annuel, un encours de courus "
             "supérieur à une année signifie que des coupons échus n'ont pas été encaissés, ou que "
             "les courus correspondants n'ont pas été apurés.\n"
-            "La progression est continue et s'accélère nettement après la bascule : il convient de "
-            "déterminer si le changement d'outil a altéré le suivi des encaissements de coupons."
+            + evolution
         ),
         chiffres=[
-            ("Taux médian du portefeuille", f"{taux:.2f} %"),
+            ("Taux médian du portefeuille", f"{pct(taux, 2)}"),
             ("Arrêtés au-delà d'une année de coupons", str(len(alertes))),
-            ("Pire arrêté", f"{pire[0]} — {pire[1]:.2f} année(s), soit {xaf(pire[2])}"),
+            ("Pire arrêté",
+             f"{pire[0]} — {pire[1]:.2f}".replace(".", ",")
+             + f" année(s), soit {xaf(pire[2])}"),
         ],
         tableaux=[Tableau(entetes, lignes)],
         recommandation=(

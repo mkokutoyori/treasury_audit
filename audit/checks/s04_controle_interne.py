@@ -1,7 +1,7 @@
 """Section 4 — Contrôle interne et séparation des tâches sur les opérations de titres."""
 from __future__ import annotations
 
-from ..core import Constat, Gravite, Section, Tableau, xaf
+from ..core import Constat, Gravite, Section, Tableau, xaf, pct, nb
 import pandas as pd
 
 from ..data import COMPTES_TECHNIQUES, CPT_TITRES, DATE_BASCULE
@@ -40,10 +40,10 @@ def _c41_quatre_yeux(ctx) -> Constat:
     par_tech = auto[auto.USER_ID.isin(COMPTES_TECHNIQUES)].USER_ID.value_counts()
     gravite = Gravite.ELEVEE if len(humains_auto) else Gravite.MOYENNE
     constat = (
-        f"{len(auto):,} écritures sur {len(df):,} ({part:.1f} %) portent le même identifiant en "
-        "saisie et en validation. L'analyse détaillée est plus nuancée qu'il n'y paraît : cette "
+        f"{nb(len(auto))} écritures sur {nb(len(df))} ({pct(part, 1)}) portent le même identifiant "
+        "en saisie et en validation. L'analyse détaillée est plus nuancée qu'il n'y paraît : cette "
         "auto-validation est le fait des COMPTES TECHNIQUES, pas des opérateurs. "
-    ).replace(",", " ")
+    )
     if humains_auto.empty:
         constat += (
             "Aucun utilisateur nominatif ne s'auto-valide. Le principe des quatre yeux est donc "
@@ -53,9 +53,9 @@ def _c41_quatre_yeux(ctx) -> Constat:
         )
     else:
         constat += (
-            f"En revanche, {len(humains_auto):,} écritures sont auto-validées par des utilisateurs "
-            "NOMINATIFS, ce qui constitue une défaillance directe du contrôle."
-        ).replace(",", " ")
+            f"En revanche, {nb(len(humains_auto))} écritures sont auto-validées par des "
+            "utilisateurs NOMINATIFS, ce qui constitue une défaillance directe du contrôle."
+        )
     tableaux = [
         Tableau(["Compte technique auto-validant", "Écritures"],
                 [[i, int(n)] for i, n in par_tech.head(10).items()])
@@ -73,9 +73,9 @@ def _c41_quatre_yeux(ctx) -> Constat:
         gravite=gravite,
         constat=constat,
         chiffres=[
-            ("Écritures contrôlées", f"{len(df):,}".replace(",", " ")),
-            ("Saisie = validation", f"{len(auto):,} ({part:.1f} %)".replace(",", " ")),
-            ("Dont utilisateurs nominatifs", f"{len(humains_auto):,}".replace(",", " ")),
+            ("Écritures contrôlées", nb(len(df))),
+            ("Saisie = validation", f"{nb(len(auto))} ({pct(part, 1)})"),
+            ("Dont utilisateurs nominatifs", nb(len(humains_auto))),
         ],
         tableaux=tableaux,
         recommandation=(
@@ -109,7 +109,7 @@ def _c42_sans_validateur(ctx) -> Constat:
             "étalement continu sur toute la période exclut l'incident ponctuel."
         ),
         chiffres=[
-            ("Écritures sans validateur", f"{len(sans):,}".replace(",", " ")),
+            ("Écritures sans validateur", nb(len(sans))),
             ("Montant cumulé", xaf(float(sans.LCY_AMOUNT.sum()))),
             ("Période", f"{sans.TRN_DT.min()} → {sans.TRN_DT.max()}"),
             ("Modules concernés", ", ".join(sorted(sans.MODULE.dropna().unique()))),
@@ -137,13 +137,13 @@ def _c43_comptes_techniques(ctx) -> Constat:
         titre="Poids des comptes techniques dans la comptabilisation",
         gravite=Gravite.MOYENNE,
         constat=(
-            f"Les comptes techniques concentrent {part:.1f} % des écritures du périmètre. Un "
+            f"Les comptes techniques concentrent {pct(part, 1)} des écritures du périmètre. Un "
             "compte technique n'est rattaché à aucune personne physique : la responsabilité de "
             "l'écriture ne peut donc être établie, et le contrôle des quatre yeux ne peut "
             "s'appliquer. Le risque est d'autant plus élevé que certains de ces comptes servent "
             "aussi à des saisies manuelles."
         ),
-        chiffres=[("Écritures par compte technique", f"{len(tech):,} ({part:.1f} %)".replace(",", " "))],
+        chiffres=[("Écritures par compte technique", f"{nb(len(tech))} ({pct(part, 1)})")],
         tableaux=[Tableau(["Compte technique", "Écritures", "Montant XAF"],
                           [[i, int(r.n), float(r.montant)] for i, r in par.sort_values("n", ascending=False).iterrows()])],
         recommandation=(
@@ -207,8 +207,8 @@ def _c44_horaires(ctx) -> Constat:
                if bascule else "")
         ),
         chiffres=[
-            ("Écritures titres saisies par un opérateur", f"{len(humains):,}".replace(",", " ")),
-            (f"Dont en soirée ({cfg.heure_fermeture} h – 24 h)", f"{len(soiree):,}".replace(",", " ")),
+            ("Écritures titres saisies par un opérateur", nb(len(humains))),
+            (f"Dont en soirée ({cfg.heure_fermeture} h – 24 h)", nb(len(soiree))),
             ("Dont nocturnes (0 h – 6 h)", str(len(nuit))),
             ("Dates concernées", ", ".join(dates)),
             ("Montant des saisies nocturnes", xaf(float(nuit.LCY_AMOUNT.sum()))),

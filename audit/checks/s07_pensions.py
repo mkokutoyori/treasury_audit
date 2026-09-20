@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from ..core import Constat, Gravite, Section, Tableau, xaf
+from ..core import Constat, Gravite, Section, Tableau, xaf, pct
 from ..data import CPT_COLLATERAL, CPT_REPO_CHARGE, CPT_REPO_DETTES, CPT_REPO_PASSIF
 
 SECTION = (7, "Pensions livrées auprès de la banque centrale")
@@ -28,13 +28,22 @@ def run(ctx) -> Section:
 
 
 def _operations(ctx) -> pd.DataFrame:
-    """Une ligne par opération : tirage, remboursement, durée."""
+    """Une ligne par opération : tirage, remboursement, durée.
+
+    Les mouvements déversés en double par l'interface (contrôle 6.7) sont neutralisés :
+    les conserver ferait apparaître des remboursements supérieurs aux tirages, c'est-à-dire
+    des anomalies qui n'en sont pas et qui relèvent en réalité du défaut d'interface.
+    """
     calypso = ctx.calypso_enrichi
     if calypso.empty:
         return pd.DataFrame()
     repo = calypso[calypso.AC_NO == CPT_REPO_PASSIF]
     if repo.empty:
         return pd.DataFrame()
+    doublons = ctx.mouvements_dupliques
+    if not doublons.empty:
+        # Ne garder qu'une occurrence de chaque mouvement déversé plusieurs fois
+        repo = repo.drop_duplicates(subset=["DEAL", "MOUVEMENT", "AC_NO", "DRCR_IND", "LCY_AMOUNT"])
     tirage = repo[repo.DRCR_IND == "C"].groupby("DEAL").agg(
         date_tirage=("TRN_DT", "min"), montant=("LCY_AMOUNT", "sum"), emetteur=("EMETTEUR", "first"))
     rembours = repo[repo.DRCR_IND == "D"].groupby("DEAL").agg(
@@ -166,7 +175,7 @@ def _c73_collateral(ctx) -> Constat:
             ("Collatéral net mobilisé", xaf(mobilise)),
             ("Encours emprunté", xaf(emprunte)),
             ("Sur-collatéralisation", xaf(sur)),
-            ("Taux de couverture", f"{ratio:.0f} %"),
+            ("Taux de couverture", f"{pct(ratio, 0)}"),
         ],
         recommandation=(
             "Rapprocher des états de collatéral de la banque centrale et obtenir l'exigence de "
@@ -183,6 +192,8 @@ def _c74_non_denouees(ctx) -> Constat:
     ouvertes = ops[ops.date_rembours.isna()]
     ecarts = ops.dropna(subset=["rembourse"])
     ecarts = ecarts[(ecarts.montant - ecarts.rembourse).abs() > 0.5]
+    neutralises = len(ctx.mouvements_dupliques[ctx.mouvements_dupliques.compte == CPT_REPO_PASSIF]) \
+        if not ctx.mouvements_dupliques.empty else 0
     if ouvertes.empty and ecarts.empty:
         return Constat(code="7.4", titre="Dénouement des pensions", gravite=Gravite.CONFORME,
                        constat="Toutes les opérations sont dénouées pour leur montant exact.")
@@ -193,12 +204,17 @@ def _c74_non_denouees(ctx) -> Constat:
         constat=(
             "Des opérations de pension ne présentent aucun remboursement à la fin de la période "
             "extraite, ou sont remboursées pour un montant différent du tirage. Ces situations "
-            "doivent être rapprochées des encours réels auprès de la banque centrale."
+            "doivent être rapprochées des encours réels auprès de la banque centrale.\n"
+            "Les mouvements déversés en double par l'interface (contrôle 6.7) ont été neutralisés "
+            "avant ce test : les conserver ferait apparaître des remboursements supérieurs aux "
+            "tirages, anomalies apparentes qui relèvent en réalité du défaut d'interface et non "
+            "de la gestion des pensions."
         ),
         chiffres=[
             ("Opérations sans remboursement", str(len(ouvertes))),
             ("Montant tiré non remboursé", xaf(float(ouvertes.montant.sum()))),
             ("Opérations remboursées pour un montant différent", str(len(ecarts))),
+            ("Mouvements en double neutralisés avant le test", str(neutralises)),
         ],
         tableaux=[
             Tableau(["Deal", "Tirage", "Montant tiré", "Remboursé", "Contrepartie"],

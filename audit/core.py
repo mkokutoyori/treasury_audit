@@ -6,6 +6,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Iterable, Sequence
 
+import pandas as pd
+
 LARGEUR = 100
 
 
@@ -60,25 +62,59 @@ class Tableau:
 
 
 def _fmt(valeur: object) -> str:
-    """Formate une cellule : les nombres sont alignés et séparés par des espaces fines."""
+    """Formate une cellule : milliers séparés par une espace, décimales après une virgule.
+
+    Les valeurs manquantes — None, NaN, NaT, pd.NA — sont rendues par une cellule vide :
+    un « nan » dans un rapport d'audit n'apprend rien au lecteur et fausse la lecture.
+    """
     if valeur is None:
         return ""
     if isinstance(valeur, bool):
         return "oui" if valeur else "non"
+    try:
+        manquant = bool(pd.isna(valeur))
+    except (TypeError, ValueError):
+        manquant = False
+    if manquant:
+        return ""
     if isinstance(valeur, int):
         return f"{valeur:,}".replace(",", " ")
     if isinstance(valeur, float):
-        if valeur != valeur:  # NaN
-            return ""
         if abs(valeur - round(valeur)) < 1e-9 and abs(valeur) >= 1000:
             return f"{int(round(valeur)):,}".replace(",", " ")
-        return f"{valeur:,.2f}".replace(",", " ")
-    return str(valeur)
+        entier, _, decimales = f"{valeur:,.2f}".partition(".")
+        return entier.replace(",", " ") + "," + decimales
+    texte = str(valeur)
+    return "" if texte in ("nan", "NaT", "None", "<NA>") else texte
+
+
+def cle_code(code: str) -> tuple[int, ...]:
+    """Tri numérique des codes de contrôle : 2.6 avant 10.2, et non l'inverse."""
+    try:
+        return tuple(int(p) for p in code.split("."))
+    except ValueError:
+        return (9_999,)
 
 
 def xaf(montant: float) -> str:
     """Montant en XAF, formaté pour le rapport."""
     return f"{montant:,.0f} XAF".replace(",", " ")
+
+
+def nb(valeur: float) -> str:
+    """Entier avec séparateur de milliers en espace, sans toucher aux virgules décimales."""
+    return f"{valeur:,.0f}".replace(",", " ")
+
+
+def pct(valeur: float, decimales: int = 1, signe: bool = False) -> str:
+    """Pourcentage à la française : virgule décimale, espace avant le signe %."""
+    gabarit = f"{{:+.{decimales}f}}" if signe else f"{{:.{decimales}f}}"
+    return gabarit.format(valeur).replace(".", ",") + " %"
+
+
+def fois(valeur: float, decimales: int = 0) -> str:
+    """Facteur multiplicatif : « × 35,9 »."""
+    return "\u00d7 " + f"{{:.{decimales}f}}".format(valeur).replace(".", ",")
 
 
 @dataclass
@@ -171,7 +207,7 @@ class Section:
             f"  {len(self.constats)} contrôle(s) exécuté(s) — "
             f"{len(self.anomalies)} anomalie(s), {len(conformes)} sans anomalie."
         )
-        for constat in sorted(self.anomalies, key=lambda c: (Gravite.rang(c.gravite), c.code)):
+        for constat in sorted(self.anomalies, key=lambda c: (Gravite.rang(c.gravite), cle_code(c.code))):
             out.append("")
             out.append("-" * LARGEUR)
             out.extend(constat.rendu())
@@ -180,7 +216,7 @@ class Section:
             out.append("-" * LARGEUR)
             out.append("CONTRÔLES SANS ANOMALIE")
             out.append("")
-            for c in sorted(conformes, key=lambda c: c.code):
+            for c in sorted(conformes, key=lambda c: cle_code(c.code)):
                 out.append(f"  [{c.code}] {c.titre}")
                 for ligne in _paragraphe(c.constat, indent="      "):
                     out.append(ligne)
@@ -224,7 +260,7 @@ class Rapport:
             "",
             f"  Périmètre        : {self.perimetre}",
             f"  Période d'audit  : {self.periode}",
-            f"  Rapport généré le: {horodatage}",
+            f"  Rapport généré le : {horodatage}",
             f"  Référentiel      : Plan Comptable des Établissements de Crédit (PCEC) — CEMAC / COBAC",
             "",
             "  Ce rapport est produit automatiquement. Chaque constat indique le test exécuté, sa",
@@ -266,7 +302,7 @@ class Rapport:
                 out.append(f"  {g.ljust(10)} : {compte.get(g, 0)}")
         out.append(f"  {'TOTAL'.ljust(10)} : {len(anomalies)}")
         out.append("")
-        ranges = sorted(anomalies, key=lambda x: (Gravite.rang(x[1].gravite), x[1].code))
+        ranges = sorted(anomalies, key=lambda x: (Gravite.rang(x[1].gravite), cle_code(x[1].code)))
         for section, c in ranges:
             out.append(f"  {c.gravite.ljust(9)} [{c.code}] {c.titre}")
         return out

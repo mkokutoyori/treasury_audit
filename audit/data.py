@@ -152,6 +152,27 @@ class Contexte:
                   & (df.BOOKING_DATE_d <= self.config.fin)]
 
     @cached_property
+    def plan_de_comptes(self) -> pd.DataFrame:
+        """Référentiel des comptes généraux, encodé en CP1252."""
+        chemin = os.path.join(RACINE, "gltm_master.csv")
+        if not os.path.exists(chemin):
+            return pd.DataFrame(columns=["GL_CODE", "GL_DESC"])
+        return pd.read_csv(chemin, dtype=str, keep_default_na=False, na_values=[""],
+                           encoding="cp1252")
+
+    def libelle_compte(self, code: str) -> str:
+        """Libellé d'un compte général, depuis le plan de comptes ou les écritures."""
+        plan = self.plan_de_comptes
+        if not plan.empty:
+            ligne = plan[plan.GL_CODE == code]
+            if len(ligne):
+                return str(ligne.GL_DESC.iloc[0]).strip()
+        dans_ecritures = self.toutes_ecritures[self.toutes_ecritures.AC_NO == code]
+        if len(dans_ecritures):
+            return str(dans_ecritures.AC_GL_DESC.iloc[0]).strip()
+        return ""
+
+    @cached_property
     def deals_calypso(self) -> pd.DataFrame:
         """Référentiel des deals extrait directement de Calypso.
 

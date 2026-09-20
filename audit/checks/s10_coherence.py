@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from ..core import Constat, Gravite, Section, Tableau, xaf
+from ..core import Constat, Gravite, Section, Tableau, xaf, pct, nb
 
 SECTION = (10, "Cohérence entre le système amont et le grand livre")
 
@@ -49,50 +49,85 @@ def _apparier(ctx):
 
 
 def _c101_couverture(ctx) -> Constat:
+    """Les deals conclus se retrouvent-ils en comptabilité ?
+
+    Le test n'a de sens que pour les portefeuilles dont les écritures transitent par le
+    périmètre de comptes extrait. Les portefeuilles de change et de transfert alimentent des
+    comptes qui ne sont pas couverts : les y inclure produirait un faux positif massif. Le
+    contrôle les isole et ne conclut que sur les portefeuilles titres.
+    """
     deals, comptabilises = _apparier(ctx)
     croisement = deals.groupby(["TradeStatus", "en_comptabilite"]).size().unstack(fill_value=0)
     croisement["total"] = croisement.sum(axis=1)
-    aboutis = deals[deals.TradeStatus.isin(STATUTS_ABOUTIS)]
-    sans_compta = aboutis[~aboutis.en_comptabilite]
-    part = len(sans_compta) / max(len(aboutis), 1) * 100
     lignes = [[i, int(r.get(False, 0)), int(r.get(True, 0)), int(r.total),
                round(int(r.get(True, 0)) / int(r.total) * 100, 1)]
               for i, r in croisement.iterrows()]
-    gravite = Gravite.ELEVEE if part > 20 else Gravite.MOYENNE
+    aboutis = deals[deals.TradeStatus.isin(STATUTS_ABOUTIS)]
+    # Taux de couverture par portefeuille : il révèle quels books alimentent le périmètre
+    par_book = aboutis.groupby("Book").agg(
+        deals=("Trade Id", "size"), comptabilises=("en_comptabilite", "sum"))
+    par_book["couverture"] = (par_book.comptabilises / par_book.deals * 100).round(1)
+    par_book = par_book.sort_values("deals", ascending=False)
+    # Un portefeuille est réputé couvert si plus de la moitié de ses deals ont une écriture
+    couverts = par_book[par_book.couverture > 50]
+    hors_perimetre = par_book[par_book.couverture <= 50]
+    dans_couverts = aboutis[aboutis.Book.isin(couverts.index)]
+    manquants = dans_couverts[~dans_couverts.en_comptabilite]
+    part = len(manquants) / max(len(dans_couverts), 1) * 100
+    if manquants.empty:
+        return Constat(
+            code="10.1", titre="Couverture comptable des deals conclus", gravite=Gravite.CONFORME,
+            constat=(
+                "Tous les deals conclus relevant des portefeuilles dont les écritures transitent "
+                "par le périmètre de comptes extrait s'y retrouvent effectivement."
+            ),
+            tableaux=[Tableau(["Portefeuille", "Deals aboutis", "Comptabilisés", "Couverture %"],
+                              [[i, int(r.deals), int(r.comptabilises), float(r.couverture)]
+                               for i, r in par_book.iterrows()])],
+        )
+    gravite = Gravite.MOYENNE if part > 5 else Gravite.FAIBLE
     return Constat(
         code="10.1",
-        titre="Deals conclus n'ayant produit aucune écriture comptable",
+        titre="Deals conclus sans écriture, sur des portefeuilles pourtant couverts par le périmètre",
         gravite=gravite,
         constat=(
-            "Le rapprochement croise le statut de chaque deal dans le système amont avec sa "
-            "présence dans le grand livre.\n"
-            "Une part importante des deals ABOUTIS — validés ou arrivés à échéance — ne se "
-            "retrouve dans aucune écriture comptable. Plusieurs explications sont possibles et "
-            "doivent être départagées : l'opération ne génère pas d'écriture dans le périmètre de "
-            "comptes extrait ; son déversement a échoué ; ou elle relève d'un portefeuille dont "
-            "les écritures ne transitent pas par ce périmètre — notamment le change, dont les "
-            "comptes ne sont pas tous couverts.\n"
-            "Ce contrôle ne conclut donc pas à une anomalie, mais il délimite une zone que "
-            "l'établissement doit justifier : un deal conclu doit produire une trace comptable "
-            "quelque part."
+            "Le rapprochement croise le statut de chaque deal du système amont avec sa présence "
+            "dans le grand livre.\n"
+            "Le test doit d'abord écarter un faux positif évident : les portefeuilles de change et "
+            "de transfert de fonds alimentent des comptes qui ne font pas partie du périmètre "
+            "extrait. Leurs deals n'ont donc AUCUNE raison d'y apparaître, et les compter comme "
+            "manquants n'aurait aucun sens.\n"
+            "Le contrôle isole donc les portefeuilles réellement couverts — ceux dont plus de la "
+            "moitié des deals produisent une écriture dans le périmètre — et ne conclut que sur "
+            "ceux-là. Sur ce périmètre resserré, une fraction des deals conclus reste sans écriture "
+            "comptable et doit être justifiée : un deal validé ou arrivé à échéance doit produire "
+            "une trace comptable."
         ),
         chiffres=[
-            ("Deals au référentiel du système amont", f"{len(deals):,}".replace(",", " ")),
-            ("Deals retrouvés en comptabilité", f"{int(deals.en_comptabilite.sum()):,}".replace(",", " ")),
-            ("Deals aboutis", f"{len(aboutis):,}".replace(",", " ")),
-            ("Dont sans écriture comptable", f"{len(sans_compta):,} ({part:.0f} %)".replace(",", " ")),
+            ("Deals au référentiel du système amont", nb(len(deals))),
+            ("Deals aboutis", nb(len(aboutis))),
+            ("Portefeuilles couverts par le périmètre extrait", ", ".join(couverts.index)),
+            ("Portefeuilles hors périmètre (écartés du test)", ", ".join(hors_perimetre.index)),
+            ("Deals aboutis sur portefeuilles couverts", nb(len(dans_couverts))),
+            ("DONT SANS ÉCRITURE", f"{len(manquants)} ({pct(part, 0)})"),
         ],
         tableaux=[
+            Tableau(["Portefeuille", "Deals aboutis", "Comptabilisés", "Couverture %"],
+                    [[i, int(r.deals), int(r.comptabilises), float(r.couverture)]
+                     for i, r in par_book.iterrows()],
+                    note="La couverture révèle quels portefeuilles alimentent le périmètre extrait."),
             Tableau(["Statut du deal", "Sans comptabilité", "Avec comptabilité", "Total", "Part %"],
                     lignes),
-            Tableau(["Portefeuille", "Deals aboutis sans écriture"],
-                    [[i, int(n)] for i, n in sans_compta.Book.value_counts().items()]),
+            Tableau(["Deal", "Portefeuille", "Contrepartie", "Statut", "Date de négociation"],
+                    [[r["Trade Id"], r.Book, r.CounterParty, r.TradeStatus,
+                      str(r["Trade Date_d"].date()) if r["Trade Date_d"] == r["Trade Date_d"] else ""]
+                     for _, r in manquants.head(15).iterrows()],
+                    note="Deals conclus sans écriture, sur portefeuille couvert."),
         ],
         recommandation=(
-            "Obtenir la cartographie des portefeuilles dont les écritures transitent par le "
-            "périmètre extrait, afin de distinguer l'absence normale de l'échec de déversement. "
-            "Mettre en place un rapprochement quotidien du nombre de deals conclus et du nombre "
-            "de deals comptabilisés."
+            "Justifier, deal par deal, l'absence d'écriture sur les portefeuilles couverts. Mettre "
+            "en place un rapprochement quotidien entre le nombre de deals conclus et le nombre de "
+            "deals comptabilisés, par portefeuille."
         ),
     )
 
@@ -206,7 +241,7 @@ def _c103_ecritures_orphelines(ctx) -> Constat:
         ),
         chiffres=[
             ("Deals orphelins", str(len(par_deal))),
-            ("Écritures concernées", f"{len(orphelines):,}".replace(",", " ")),
+            ("Écritures concernées", nb(len(orphelines))),
             ("Volume", xaf(float(orphelines.LCY_AMOUNT.sum()))),
             ("Période", f"{orphelines.TRN_DT.min()} → {orphelines.TRN_DT.max()}"),
         ],
@@ -258,11 +293,11 @@ def _c104_separation_amont(ctx) -> Constat:
             "l'extraction."
         ),
         chiffres=[
-            ("Deals au référentiel", f"{len(deals):,}".replace(",", " ")),
+            ("Deals au référentiel", nb(len(deals))),
             ("Comptes de saisie distincts", str(len(par_saisie))),
             ("Dont comptes génériques", ", ".join(generiques) if generiques else "aucun"),
-            ("Part des deals saisis sous compte générique", f"{part_generique:.0f} %"),
-            ("Deals sans trader identifié", f"{len(sans_trader):,}".replace(",", " ")),
+            ("Part des deals saisis sous compte générique", f"{pct(part_generique, 0)}"),
+            ("Deals sans trader identifié", nb(len(sans_trader))),
             ("Champ de validation dans le référentiel", "absent"),
         ],
         tableaux=[

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from ..core import Constat, Gravite, Section, Tableau, xaf
+from ..core import Constat, Gravite, Section, Tableau, xaf, pct
 from ..data import (CPT_BEAC, CPT_COURUS_CALYPSO, CPT_COURUS_MM,
                     CPT_PORTEFEUILLE_CALYPSO, CPT_PORTEFEUILLE_MM, CPT_PROVISION, DATE_BASCULE)
 
@@ -52,7 +52,7 @@ def _c51_rapprochement_positions(ctx) -> Constat:
         gravite=Gravite.CONFORME if conforme else Gravite.ELEVEE,
         constat=(
             "Le portefeuille sorti de Flexcube et le portefeuille réintroduit dans Calypso se "
-            f"rapprochent à {part:.4f} % près, sur un nombre identique de positions. La migration "
+            f"rapprochent à {pct(part, 4)} près, sur un nombre identique de positions. La migration "
             "des nominaux est donc correctement exécutée."
             if conforme else
             "Le portefeuille sorti de Flexcube et celui réintroduit dans Calypso ne se rapprochent "
@@ -64,7 +64,7 @@ def _c51_rapprochement_positions(ctx) -> Constat:
             ("Positions entrées dans Calypso", str(len(entree))),
             ("Montant sorti", xaf(m_sortie)),
             ("Montant entré", xaf(m_entree)),
-            ("Écart", f"{xaf(ecart)} ({part:.4f} %)"),
+            ("Écart", f"{xaf(ecart)} ({pct(part, 4)})"),
         ],
         tableaux=[Tableau(["Sens", "Compte", "Montant XAF", "Lignes"], detail)],
         recommandation=(

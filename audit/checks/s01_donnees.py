@@ -9,7 +9,7 @@ import datetime as dt
 
 import pandas as pd
 
-from ..core import Constat, Gravite, Section, Tableau, xaf
+from ..core import Constat, Gravite, Section, Tableau, xaf, nb
 
 
 SECTION = (1, "Intégrité et complétude des données")
@@ -38,6 +38,9 @@ def feries(annee: int) -> set[str]:
     """
     fixes = [(1, 1), (2, 11), (5, 1), (5, 20), (8, 15), (12, 25)]
     jours = {dt.date(annee, m, j) for m, j in fixes}
+    # Une fête à date fixe tombant un week-end est chômée le lundi suivant : sans cette règle,
+    # le 26/12 ou le 02/01 ressortiraient à tort comme jours ouvrés sans écriture.
+    jours |= {d + dt.timedelta(days=7 - d.weekday()) for d in list(jours) if d.weekday() >= 5}
     p = _paques(annee)
     jours |= {p - dt.timedelta(days=2), p + dt.timedelta(days=1), p + dt.timedelta(days=39)}
     return {d.strftime("%Y-%m-%d") for d in jours}
@@ -141,14 +144,17 @@ def _c12_doublons(ctx) -> Constat:
             "rapport travaillent sur une base dédoublonnée ; le risque porte donc sur les "
             "exploitations tierces de ces fichiers."
         ),
-        chiffres=[("Total des lignes dupliquées", f"{total:,}".replace(",", " "))],
+        chiffres=[("Total des lignes dupliquées", nb(total))],
         tableaux=[Tableau(["Source", "Lignes", "Doublons", "Part %", "Montant XAF"], lignes)],
         recommandation="Faire qualifier ces doublons par l'informatique avant toute reprise des données.",
     )
 
 
 def _c13_calendrier(ctx) -> Constat:
+    # Le test porte sur la période d'audit : un jour vide dans les mois qui la précèdent ou
+    # la suivent ne dit rien de la continuité comptable de l'exercice revu.
     df = ctx.grand_livre
+    df = df[(df.TRN_DT >= ctx.config.debut) & (df.TRN_DT <= ctx.config.fin)]
     jours = pd.to_datetime(sorted(df.TRN_DT.dropna().unique()))
     ouvres = pd.date_range(jours.min(), jours.max(), freq="B")
     manquants = sorted(set(ouvres) - set(jours))
@@ -157,6 +163,16 @@ def _c13_calendrier(ctx) -> Constat:
         calendrier |= feries(annee)
     a_confirmer = [d for d in manquants if d.strftime("%Y-%m-%d") not in calendrier]
     expliques = len(manquants) - len(a_confirmer)
+
+    def rapprochement(jour) -> str:
+        """Hypothèse de rattachement d'une date restée inexpliquée."""
+        for ecart in (1, 2, 3):
+            for sens in (-1, 1):
+                voisin = (jour + pd.Timedelta(days=sens * ecart)).strftime("%Y-%m-%d")
+                if voisin in calendrier:
+                    cote = "veille" if sens > 0 else "lendemain"
+                    return f"pont : {cote} du férié du {voisin}"
+        return "fête musulmane probable (date mobile, non calculable)"
     if not a_confirmer:
         return Constat(
             code="1.3", titre="Continuité du calendrier comptable", gravite=Gravite.CONFORME,
@@ -170,18 +186,20 @@ def _c13_calendrier(ctx) -> Constat:
         titre="Jours ouvrés sans écriture restant à rapprocher du calendrier des fériés",
         gravite=Gravite.FAIBLE,
         constat=(
-            "Des jours ouvrés ne portent aucune écriture. Les fêtes à date fixe et celles dérivées "
-            "de Pâques sont identifiées automatiquement ; les dates restantes correspondent "
-            "vraisemblablement aux fêtes musulmanes, qui sont mobiles et ne peuvent pas être "
-            "calculées. Elles sont donc présentées pour confirmation et non comme anomalies."
+            "Des jours ouvrés ne portent aucune écriture. Les fêtes à date fixe, celles dérivées "
+            "de Pâques et les reports au lundi sont identifiés automatiquement. Pour chacune des "
+            "dates restantes, une hypothèse de rattachement est proposée : pont accolé à un férié "
+            "calculé, ou fête musulmane, dont la date est mobile et ne peut pas être calculée. Ces "
+            "dates sont présentées pour confirmation et non comme anomalies."
         ),
         chiffres=[
             ("Jours ouvrés sans écriture", str(len(manquants))),
             ("Expliqués par le calendrier calculé", str(expliques)),
             ("À confirmer", str(len(a_confirmer))),
         ],
-        tableaux=[Tableau(["Jour ouvré sans écriture"],
-                          [[d.strftime("%d/%m/%Y")] for d in a_confirmer], max_lignes=25)],
+        tableaux=[Tableau(["Jour ouvré sans écriture", "Hypothèse de rattachement"],
+                          [[d.strftime("%d/%m/%Y"), rapprochement(d)] for d in a_confirmer],
+                          max_lignes=25)],
         recommandation="Rapprocher ces dates du calendrier officiel des jours fériés de l'exercice.",
     )
 
@@ -200,6 +218,14 @@ def _c14_migration_technique(ctx) -> Constat:
     # signent une reprise technique de soldes.
     neg = weekend[weekend.LCY_AMOUNT < 0]
     net = float(weekend.SIGNE.sum())
+    brut = float(weekend.LCY_AMOUNT.abs().sum())
+    residu = (
+        "L'effet comptable net est QUASI nul au regard des masses déplacées, mais il ne l'est pas "
+        f"exactement : il subsiste {xaf(net)} sur les comptes du périmètre, montant sans commune "
+        "mesure avec l'opération mais qui reste à justifier. "
+        if abs(net) > 1 else
+        "L'effet comptable net est exactement nul. "
+    )
     return Constat(
         code="1.4",
         titre="Opération technique passée un week-end, touchant l'ensemble des comptes du périmètre",
@@ -210,15 +236,16 @@ def _c14_migration_technique(ctx) -> Constat:
             "écritures manuelles passées sous des codes produit inhabituels, avec des montants "
             "négatifs compensés par des montants positifs identiques.\n"
             "Ce profil est celui d'une REPRISE TECHNIQUE DE SOLDES — renumérotation ou migration "
-            "interne. L'effet comptable net est nul, mais l'opération touche l'ensemble des comptes "
-            "du périmètre pour des montants significatifs, en dehors de toute journée comptable "
-            "ordinaire, et n'a pas d'équivalent ailleurs dans l'historique."
+            f"interne. {residu}L'opération touche l'ensemble des comptes du périmètre pour des "
+            "montants significatifs, en dehors de toute journée comptable ordinaire, et n'a pas "
+            "d'équivalent ailleurs dans l'historique."
         ),
         chiffres=[
             ("Dates concernées", ", ".join(dates)),
-            ("Écritures", f"{len(weekend):,}".replace(",", " ")),
+            ("Écritures", nb(len(weekend))),
             ("Dont montants négatifs", str(len(neg))),
-            ("Effet net sur les comptes", xaf(net)),
+            ("Montants déplacés (valeur absolue)", xaf(brut)),
+            ("Effet net résiduel sur les comptes", xaf(net)),
             ("Comptes touchés", str(weekend.AC_NO.nunique())),
         ],
         tableaux=[
@@ -276,11 +303,11 @@ def _c16_couverture(ctx) -> Constat:
         gravite=Gravite.CONFORME,
         constat=(
             f"L'extraction couvre {df.TRN_DT.min()} à {df.TRN_DT.max()} et déborde donc la période "
-            f"d'audit dans les deux sens : {len(avant):,} écritures antérieures, qui permettent "
-            f"d'établir les soldes d'ouverture, et {len(hors):,} écritures postérieures, utiles au "
+            f"d'audit dans les deux sens : {nb(len(avant))} écritures antérieures, qui permettent "
+            f"d'établir les soldes d'ouverture, et {nb(len(hors))} écritures postérieures, utiles au "
             "titre des événements postérieurs à la clôture. Les unes comme les autres sont exclues "
             "des agrégats de la période."
-        ).replace(",", " "),
+        ),
     )
 
 
@@ -301,10 +328,10 @@ def _c17_soldes_ouverture(ctx) -> Constat:
         dans_gl = ctx.grand_livre[ctx.grand_livre.AC_NO == "511800100"]
         if len(dedie) == len(dans_gl) and abs(dedie.SIGNE.sum() - dans_gl.SIGNE.sum()) < 1:
             concordance = (
-                f"L'extraction dédiée du compte 511800100 ({len(dedie):,} lignes) est "
+                f"L'extraction dédiée du compte 511800100 ({nb(len(dedie))} lignes) est "
                 "IDENTIQUE à ce que contient l'extraction des comptes de trésorerie, ligne "
                 "pour ligne et au solde près."
-            ).replace(",", " ")
+            )
     return Constat(
         code="1.7",
         titre="Complétude de l'historique et calculabilité des soldes",

@@ -6,7 +6,7 @@ zones que l'audit ne peut plus couvrir depuis Flexcube.
 """
 from __future__ import annotations
 
-from ..core import Constat, Gravite, Section, Tableau, xaf
+from ..core import Constat, Gravite, Section, Tableau, xaf, pct, nb, fois
 from ..data import CPT_LIAISON, DATE_BASCULE
 
 SECTION = (6, "Manquements du dispositif Calypso")
@@ -58,7 +58,7 @@ def _c61_absence_referentiel(ctx) -> Constat:
         chiffres=[
             ("Dernière négociation au référentiel", derniere_negociation.strftime("%d/%m/%Y")),
             ("Date de bascule", DATE_BASCULE),
-            ("Deals Calypso sans contrat dans le core banking", f"{deals:,}".replace(",", " ")),
+            ("Deals Calypso sans contrat dans le core banking", nb(deals)),
         ],
         recommandation=(
             "Obtenir l'extraction du référentiel des deals Calypso (nominal, taux, dates, sens, "
@@ -90,8 +90,8 @@ def _c62_validation(ctx) -> Constat:
             "l'existence d'une séparation des tâches sur les opérations postérieures à la bascule."
         ),
         chiffres=[
-            ("Écritures Calypso", f"{len(calypso):,}".replace(",", " ")),
-            ("Saisie = validation", f"{auto:,} ({part:.0f} %)".replace(",", " ")),
+            ("Écritures Calypso", nb(len(calypso))),
+            ("Saisie = validation", f"{nb(auto)} ({pct(part, 0)})"),
             ("Comptes utilisés", ", ".join(users.index[:5])),
         ],
         recommandation=(
@@ -209,8 +209,15 @@ def _c65_cancel_rebook(ctx) -> Constat:
         return Constat(code="6.5", titre="Méthode de contre-passation Calypso", gravite=Gravite.FAIBLE,
                        constat="Événements récurrents non identifiés.")
     par_ev = recurrents.groupby(["EV", "DRCR_IND"]).LCY_AMOUNT.agg(["size", "sum"]).unstack(fill_value=0)
-    brut = float(recurrents.LCY_AMOUNT.sum())
-    net = float(recurrents.SIGNE.sum())
+    # Sommer toutes les jambes donnerait zéro par construction : une écriture est équilibrée.
+    # Le facteur de surévaluation se mesure donc SUR UN COMPTE, ici le compte de produits
+    # d'intérêt, où le brut est le cumul des passages et le net l'effet réel sur le résultat.
+    compte_temoin = (recurrents[recurrents.AC_NO.str.startswith(("733", "734"))]
+                     .AC_NO.value_counts())
+    temoin = compte_temoin.index[0] if len(compte_temoin) else None
+    sur_temoin = recurrents[recurrents.AC_NO == temoin] if temoin else recurrents.iloc[0:0]
+    brut = float(sur_temoin.LCY_AMOUNT.sum())
+    net = float(-sur_temoin.SIGNE.sum())
     lignes = []
     for ev_nom in par_ev.index:
         d = float(par_ev.loc[ev_nom, ("sum", "D")]) if ("sum", "D") in par_ev.columns else 0.0
@@ -229,12 +236,16 @@ def _c65_cancel_rebook(ctx) -> Constat:
             "Toute statistique établie sur les montants bruts du flux Calypso — charge, produit, "
             "volume d'activité — serait sans signification. Les analyses doivent être conduites en "
             "net. Cette convention est en outre OPPOSÉE à celle de Flexcube, qui contre-passe par "
-            "un montant négatif : les deux systèmes ne peuvent pas être agrégés sans retraitement."
+            "un montant négatif : les deux systèmes ne peuvent pas être agrégés sans retraitement.\n"
+            "La mesure de l'écart se fait sur UN COMPTE et non sur l'ensemble des jambes : "
+            "additionner toutes les jambes d'écritures équilibrées donnerait zéro par construction "
+            "et ne dirait rien. Le compte de produits d'intérêt sert donc de témoin."
         ),
         chiffres=[
-            ("Volume brut des événements récurrents", xaf(brut)),
-            ("Volume net réel", xaf(net)),
-            ("Facteur de surévaluation", f"× {brut / abs(net):.0f}" if abs(net) > 1 else "non calculable"),
+            ("Compte témoin de la mesure", f"{temoin} {ctx.libelle_compte(temoin)}" if temoin else "n/d"),
+            ("Volume brut passé sur ce compte", xaf(brut)),
+            ("Effet net réel sur le résultat", xaf(net)),
+            ("Facteur de surévaluation", fois(brut / abs(net)) if abs(net) > 1 else "non calculable"),
         ],
         tableaux=[Tableau(["Événement", "Nb débits", "Nb crédits", "Total débits", "Total crédits", "Net"], lignes)],
         recommandation=(
@@ -274,9 +285,10 @@ def _c66_tracabilite(ctx) -> Constat:
             "sans lien avec une opération identifiable."
         ),
         chiffres=[
-            ("Écritures Calypso dans le périmètre", f"{len(gl_calypso):,}".replace(",", " ")),
-            ("Dont libellé structuré (deal identifiable)", f"{len(calypso):,} ({part_structure:.0f} %)".replace(",", " ")),
-            ("Dont commentaire libre renseigné", f"{len(avec):,}".replace(",", " ")),
+            ("Écritures Calypso dans le périmètre", nb(len(gl_calypso))),
+            ("Dont libellé structuré (deal identifiable)",
+             f"{nb(len(calypso))} ({pct(part_structure, 0)})"),
+            ("Dont commentaire libre renseigné", nb(len(avec))),
         ],
         tableaux=[Tableau(["Commentaire libre le plus fréquent", "Occurrences"],
                           [[str(i)[:70], int(n)] for i, n in exemples.items()])],

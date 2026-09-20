@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from ..core import Constat, Gravite, Section, Tableau, xaf
+from ..core import Constat, Gravite, Section, Tableau, xaf, pct
 from ..data import CPT_REPO_CHARGE, CPT_REPO_PASSIF
 
 SECTION = (8, "Opérations de cession-rétrocession (Sell-Buy-Back)")
@@ -142,7 +142,7 @@ def _c81_identification(ctx, commentes, paires) -> Constat:
             ("Montant réglé cumulé", xaf(float(regle.sum()))),
             ("Période", f"{commentes.TRN_DT.min()} → {commentes.TRN_DT.max()}"),
             ("Aller-retours détectés par la signature économique", str(len(paires))),
-            ("Dont NON commentés", f"{len(non_commentees)} ({part_manquee:.0f} % manqués par le libellé)"),
+            ("Dont NON commentés", f"{len(non_commentees)} ({pct(part_manquee, 0)} manqués par le libellé)"),
             ("Deals commentés absents du référentiel Calypso", str(absents)),
             ("Statuts des deals commentés", ", ".join(f"{i} : {n}" for i, n in statuts.items())),
         ],

@@ -271,7 +271,7 @@ def _c25b_taux_aberrants(ctx) -> Constat:
         ecart_type_robuste = max((groupe.MAIN_COMP_RATE - mediane).abs().median(), 0.25)
         hors = groupe[(groupe.MAIN_COMP_RATE - mediane).abs() > 5 * ecart_type_robuste]
         for r in hors.itertuples():
-            aberrants.append([r.CONTRACT_REF_NO, produit, int(exercice), float(r.MAIN_COMP_RATE),
+            aberrants.append([r.CONTRACT_REF_NO, produit, str(int(exercice)), float(r.MAIN_COMP_RATE),
                               float(mediane), float(r.AMOUNT), r.FULL_NAME])
     if not aberrants:
         return Constat(
@@ -316,45 +316,67 @@ def _c25b_taux_aberrants(ctx) -> Constat:
 
 
 def _c26_orphelins(ctx) -> Constat:
-    """Un contrat au référentiel sans écriture comptable, ou l'inverse."""
-    contrats = set(ctx.contrats_periode.CONTRACT_REF_NO)
+    """Un contrat au référentiel sans écriture comptable, ou l'inverse.
+
+    Les deux sens du rapprochement n'ont pas le même périmètre. Les contrats sont examinés
+    sur la période d'audit ; les écritures, elles, se rattachent à des contrats de toutes
+    époques. Comparer les écritures aux seuls contrats de la période produirait un faux
+    positif : le rapprochement inverse se fait donc sur le référentiel complet.
+    """
+    contrats_periode = ctx.contrats_periode
+    tous_contrats = set(ctx.contrats_uniques.CONTRACT_REF_NO)
     ecritures = set(ctx.grand_livre[ctx.grand_livre.MODULE == "MM"].TRN_REF_NO)
-    sans_ecriture = ctx.contrats_periode[~ctx.contrats_periode.CONTRACT_REF_NO.isin(ecritures)]
-    sans_contrat = ecritures - contrats
+    sans_ecriture = contrats_periode[~contrats_periode.CONTRACT_REF_NO.isin(ecritures)]
+    sans_contrat = sorted(ecritures - tous_contrats)
     if sans_ecriture.empty and not sans_contrat:
         return Constat(
-            code="2.7", titre="Rapprochement référentiel / comptabilité", gravite=Gravite.CONFORME,
-            constat="Tout contrat du référentiel porte des écritures, et toute écriture MM se rattache à un contrat.",
+            code="2.7", titre="Rapprochement du référentiel et de la comptabilité",
+            gravite=Gravite.CONFORME,
+            constat=(
+                f"Les {len(contrats_periode)} contrats comptabilisés pendant la période portent "
+                "tous des écritures, et toute écriture du module de marché monétaire se rattache "
+                "à un contrat du référentiel. Le rapprochement est complet dans les deux sens."
+            ),
+            chiffres=[
+                ("Contrats de la période", str(len(contrats_periode))),
+                ("Contrats sans écriture", "0"),
+                ("Écritures sans contrat", "0"),
+            ],
         )
+    chiffres = [
+        ("Contrats de la période", str(len(contrats_periode))),
+        ("Contrats sans écriture comptable", str(len(sans_ecriture))),
+        ("Nominal concerné", xaf(float(sans_ecriture.AMOUNT.sum()))),
+        ("Écritures sans contrat au référentiel", str(len(sans_contrat))),
+    ]
+    tableaux = []
+    if not sans_ecriture.empty:
+        tableaux.append(Tableau(
+            ["Référence", "Nominal", "Taux %", "Négociation", "Échéance", "Contrepartie"],
+            [[r.CONTRACT_REF_NO, float(r.AMOUNT), float(r.MAIN_COMP_RATE),
+              r.TRADE_DATE, r.MATURITY_DATE, r.FULL_NAME]
+             for r in sans_ecriture.sort_values("AMOUNT", ascending=False).itertuples()],
+            max_lignes=20))
+    if sans_contrat:
+        tableaux.append(Tableau(["Référence d'écriture sans contrat"],
+                                [[r] for r in sans_contrat], max_lignes=20))
     return Constat(
         code="2.7",
-        titre="Contrats du référentiel dépourvus d'écriture comptable",
+        titre=("Contrats du référentiel dépourvus d'écriture comptable"
+               if not sans_ecriture.empty else "Écritures sans contrat au référentiel"),
         gravite=Gravite.ELEVEE,
         constat=(
-            "Des contrats figurent au référentiel sans qu'aucune écriture comptable ne leur "
-            "corresponde. Un contrat enregistré mais non comptabilisé n'est ni provisionné, ni "
-            "suivi en intérêts courus, ni présenté au bilan : soit l'opération n'a jamais existé "
-            "et le référentiel doit être purgé, soit elle existe et la comptabilité est incomplète."
+            "Un contrat enregistré mais non comptabilisé n'est ni suivi en intérêts courus ni "
+            "présenté au bilan : soit l'opération n'a jamais existé et le référentiel doit être "
+            "purgé, soit elle existe et la comptabilité est incomplète.\n"
+            "Symétriquement, une écriture qui ne se rattache à aucun contrat rompt la piste "
+            "d'audit : rien ne permet d'en vérifier les caractéristiques."
         ),
-        chiffres=[
-            ("Contrats sans écriture", str(len(sans_ecriture))),
-            ("Nominal concerné", xaf(float(sans_ecriture.AMOUNT.sum()))),
-            ("Écritures MM sans contrat", str(len(sans_contrat))),
-        ],
-        tableaux=[
-            Tableau(
-                ["Référence", "Nominal", "Taux %", "Négociation", "Échéance", "Contrepartie"],
-                [
-                    [r.CONTRACT_REF_NO, float(r.AMOUNT), float(r.MAIN_COMP_RATE),
-                     r.TRADE_DATE, r.MATURITY_DATE, r.FULL_NAME]
-                    for r in sans_ecriture.sort_values("AMOUNT", ascending=False).itertuples()
-                ],
-                max_lignes=20,
-            )
-        ],
+        chiffres=chiffres,
+        tableaux=tableaux,
         recommandation=(
-            "Demander le statut de ces contrats dans Flexcube (annulés, non autorisés, repris) et "
-            "confirmer qu'aucun engagement n'est resté hors comptabilité."
+            "Demander le statut des contrats concernés dans Flexcube — annulés, non autorisés, "
+            "repris — et confirmer qu'aucun engagement n'est resté hors comptabilité."
         ),
     )
 
@@ -410,7 +432,7 @@ def _c27_concentration(ctx) -> Constat:
         ],
         tableaux=[
             Tableau(["Contrepartie", "Contrats", "Nominal XAF", "Part %"],
-                    [[i, int(r.contrats), float(r.nominal), round(float(r.part), 1)]
+                    [[i, int(r.contrats), float(r.nominal), round(float(r.part), 2)]
                      for i, r in par_cpty.iterrows()])
         ],
         recommandation=(
