@@ -16,7 +16,8 @@ def run(ctx) -> Section:
         objet=(
             "Contrôles sur la piste d'audit applicative : respect du principe des quatre yeux, "
             "écritures dépourvues de validateur, poids des comptes techniques, horaires de saisie "
-            "et concentration des opérations sur un nombre restreint d'opérateurs."
+            "et concentration des opérations sur un nombre restreint d'opérateurs. Tous les "
+            "contrôles de la section sont restreints aux écritures de la période d'audit."
         ),
     )
     s.ajouter(_c41_quatre_yeux(ctx))
@@ -33,7 +34,7 @@ def _humains(df):
 
 
 def _c41_quatre_yeux(ctx) -> Constat:
-    df = ctx.toutes_ecritures
+    df = ctx.dans_periode(ctx.toutes_ecritures)
     auto = df[df.USER_ID == df.AUTH_ID]
     humains_auto = _humains(auto)
     part = len(auto) / max(len(df), 1) * 100
@@ -87,13 +88,14 @@ def _c41_quatre_yeux(ctx) -> Constat:
 
 
 def _c42_sans_validateur(ctx) -> Constat:
-    df = ctx.toutes_ecritures
+    df = ctx.dans_periode(ctx.toutes_ecritures)
     sans = df[df.AUTH_ID.isna()]
     if sans.empty:
         return Constat(
             code="4.2", titre="Écritures sans validateur", gravite=Gravite.CONFORME,
             constat="Toute écriture porte un identifiant de validation.",
         )
+    modules = ", ".join(sorted(sans.MODULE.dropna().unique()))
     par = sans.groupby(["USER_ID", "MODULE"]).agg(
         n=("LCY_AMOUNT", "size"), montant=("LCY_AMOUNT", "sum"),
         debut=("TRN_DT", "min"), fin=("TRN_DT", "max"))
@@ -104,8 +106,8 @@ def _c42_sans_validateur(ctx) -> Constat:
         constat=(
             "Des écritures ne portent aucun identifiant de validation. Il ne s'agit pas d'une "
             "auto-validation — le champ est vide. Ces écritures ont donc été comptabilisées sans "
-            "qu'aucun second intervenant ne les approuve, et elles relèvent majoritairement du "
-            "module d'écriture directe, celui qui permet les passations les plus libres. Leur "
+            "qu'aucun second intervenant ne les approuve. Elles émanent toutes du même compte et "
+            f"du seul module {modules}, celui qui permet les passations les plus libres. Leur "
             "étalement continu sur toute la période exclut l'incident ponctuel."
         ),
         chiffres=[
@@ -128,7 +130,7 @@ def _c42_sans_validateur(ctx) -> Constat:
 
 
 def _c43_comptes_techniques(ctx) -> Constat:
-    df = ctx.toutes_ecritures
+    df = ctx.dans_periode(ctx.toutes_ecritures)
     tech = df[df.USER_ID.isin(COMPTES_TECHNIQUES)]
     par = tech.groupby("USER_ID").agg(n=("LCY_AMOUNT", "size"), montant=("LCY_AMOUNT", "sum"))
     part = len(tech) / max(len(df), 1) * 100
@@ -161,7 +163,7 @@ def _c44_horaires(ctx) -> Constat:
     une salle de marché ; une saisie en pleine nuit l'est.
     """
     cfg = ctx.config
-    gl = ctx.grand_livre.copy()
+    gl = ctx.dans_periode(ctx.grand_livre).copy()
     heures = gl.STMT_DT.str.slice(11, 13)
     gl["heure"] = pd.to_numeric(heures, errors="coerce")
     titres = gl[gl.AC_NO.isin(CPT_TITRES)]
@@ -190,6 +192,20 @@ def _c44_horaires(ctx) -> Constat:
         heure_min=("heure", "min"), heure_max=("heure", "max"))
     dates = sorted(nuit.TRN_DT.unique())
     bascule = [d for d in dates if d == DATE_BASCULE]
+    # Une date nocturne qui coïncide avec le transfert d'intérêts courus vers le compte
+    # d'attente (contrôle 3.8) n'est pas un fait isolé : les deux constats se recoupent.
+    if not ctx.courus.empty:
+        jours_38 = set(ctx.courus[ctx.courus.DESCRIPTION.fillna("").str.contains(
+            "Reversal of contract", na=False, case=False)].TRN_DT.unique())
+    else:
+        jours_38 = set()
+    croisees = [d for d in dates if d in jours_38]
+    renvoi = ""
+    if croisees:
+        quand = ", ".join(pd.Timestamp(d).strftime("%d/%m/%Y") for d in croisees)
+        renvoi = (f" Une autre — {quand} — relève du transfert d'intérêts courus vers le compte "
+                  "d'attente décrit au contrôle 3.8 : les deux constats portent sur la même "
+                  "opération et doivent être instruits ensemble.")
     return Constat(
         code="4.4",
         titre="Saisies nocturnes sur les comptes de titres",
@@ -203,8 +219,9 @@ def _c44_horaires(ctx) -> Constat:
             "En revanche, des écritures ont été passées en PLEINE NUIT, avant 6 h du matin, par "
             "des opérateurs nominatifs. Ces saisies échappent à toute supervision hiérarchique et "
             "se concentrent sur un très petit nombre de dates."
-            + (f" L'une d'elles correspond à la bascule vers le nouveau système, ce qui l'explique."
+            + (" L'une d'elles correspond à la bascule vers le nouveau système, ce qui l'explique."
                if bascule else "")
+            + renvoi
         ),
         chiffres=[
             ("Écritures titres saisies par un opérateur", nb(len(humains))),
@@ -239,7 +256,7 @@ def _c45_concentration(ctx) -> Constat:
     d'opérateurs nominatifs est donc ATTENDU et non anormal ; ce qui compte est que la
     validation soit assurée par des personnes distinctes.
     """
-    mm = ctx.grand_livre[ctx.grand_livre.MODULE == "MM"]
+    mm = ctx.dans_periode(ctx.grand_livre[ctx.grand_livre.MODULE == "MM"])
     humains = _humains(mm)
     if humains.empty:
         return Constat(code="4.5", titre="Répartition des saisies sur titres", gravite=Gravite.CONFORME,

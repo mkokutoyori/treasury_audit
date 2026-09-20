@@ -477,6 +477,21 @@ def _c35_recalcul_courus(ctx) -> Constat:
         return "écart inexpliqué" if r.ecart > 0 else "sous-évaluation inexpliquée"
 
     j["classe"] = j.apply(_classer, axis=1)
+    # Années bissextiles réellement traversées par les périodes d'accrual testées : le texte
+    # doit décrire les données, non une liste figée.
+    bissextiles = sorted({
+        a for d, fin_ in zip(j.depart, j.fin)
+        for a in range(d.year, fin_.year + 1)
+        if a % 4 == 0 and (a % 100 != 0 or a % 400 == 0)
+    })
+    if len(bissextiles) > 1:
+        mention = ("comprend les années bissextiles "
+                   + ", ".join(str(a) for a in bissextiles[:-1])
+                   + f" et {bissextiles[-1]}")
+    elif bissextiles:
+        mention = f"comprend l'année bissextile {bissextiles[0]}"
+    else:
+        mention = "ne comprend aucune année bissextile"
     global_pct = (j.comptabilise.sum() / j.attendu.sum() - 1) * 100
     hors = j[(j.classe != "conforme") & (j.ecart.abs() > cfg.seuil_materialite)]
     par_classe = j.groupby("classe").agg(contrats=("ecart", "size"), ecart=("ecart", "sum"),
@@ -503,10 +518,14 @@ def _c35_recalcul_courus(ctx) -> Constat:
             "court de la date de valeur — ou du premier couru si elle est postérieure — au dernier "
             "couru constaté. Trois conventions de décompte sont testées : exact/365, exact/360 et "
             "EXACT/EXACT, cette dernière rapportant chaque jour au nombre de jours de son année "
-            "civile, soit 366 en année bissextile. La période couverte comprend deux années "
-            "bissextiles, 2024 et 2028 : ignorer cette distinction introduirait un biais "
-            "systématique de 0,27 %. Le contrat est réputé conforme si l'une des trois conventions "
-            "restitue le montant comptabilisé à la tolérance retenue près.\n"
+            f"civile, soit 366 en année bissextile. La période couverte {mention} : ignorer cette "
+            "distinction introduirait un biais systématique de 0,27 %. Le contrat est réputé "
+            "conforme si l'une des trois conventions restitue le montant comptabilisé à la "
+            "tolérance retenue près.\n"
+            "PÉRIMÈTRE. Le test porte sur TOUS les contrats ayant produit des intérêts courus dans "
+            "l'extraction, y compris ceux comptabilisés avant la période d'audit : un contrat "
+            "antérieur continue d'accréditer des courus pendant la période et son moteur d'accrual "
+            "doit donc être testé. L'effectif diffère de ce fait de celui de la section 2.\n"
             f"RÉSULTAT D'ENSEMBLE. L'écart global n'est que de {pct(global_pct, 2, signe=True)}, ce qui atteste "
             "la justesse du moteur d'accrual. Les écarts sont donc individuels et non systémiques.\n"
             "CLASSEMENT DES ÉCARTS. Chaque contrat en écart est rattaché à une cause probable, "
@@ -519,7 +538,10 @@ def _c35_recalcul_courus(ctx) -> Constat:
             "recalcul sur la période n'est pas significatif ;\n"
             "- « courus au-delà de l'échéance » : des intérêts continuent de courir après la date "
             "d'échéance du contrat ;\n"
-            "- « écart inexpliqué » : aucune des causes ci-dessus, à investiguer en priorité."
+            "- « écart inexpliqué » : aucune des causes ci-dessus et couru comptabilisé SUPÉRIEUR "
+            "au recalcul — produit surévalué, à investiguer en priorité ;\n"
+            "- « sous-évaluation inexpliquée » : aucune des causes ci-dessus et couru comptabilisé "
+            "INFÉRIEUR au recalcul — produit non constaté, à investiguer également."
         ),
         chiffres=[
             ("Contrats testés", str(len(j))),
@@ -527,7 +549,7 @@ def _c35_recalcul_courus(ctx) -> Constat:
             ("Courus recalculés", xaf(float(j.attendu.sum()))),
             ("Écart global", f"{pct(global_pct, 2, signe=True)}"),
             ("Convention dominante", f"{par_base.index[0]} ({par_base.iloc[0]} contrats)"),
-            ("Tolérance retenue", f"{cfg.tolerance_couru:.0%}"),
+            ("Tolérance retenue", pct(cfg.tolerance_couru * 100, 0)),
             (f"Contrats en écart au-delà de {cfg.seuil_materialite/1e6:.0f} M XAF", str(len(hors))),
             ("Écart cumulé de ces contrats", xaf(float(hors.ecart.sum()))),
         ],

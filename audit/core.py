@@ -57,7 +57,9 @@ class Tableau:
         if tronque:
             out.append(f"... et {len(lignes) - self.max_lignes} autre(s) ligne(s)")
         if self.note:
-            out.append(self.note)
+            # Les notes peuvent être longues : on les replie sur la largeur du rapport,
+            # en tenant compte de l'indentation que le constat ajoutera ensuite.
+            out.extend(textwrap.wrap(self.note, width=LARGEUR - 4) or [self.note])
         return out
 
 

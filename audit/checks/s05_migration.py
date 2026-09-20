@@ -52,8 +52,13 @@ def _c51_rapprochement_positions(ctx) -> Constat:
         gravite=Gravite.CONFORME if conforme else Gravite.ELEVEE,
         constat=(
             "Le portefeuille sorti de Flexcube et le portefeuille réintroduit dans Calypso se "
-            f"rapprochent à {pct(part, 4)} près, sur un nombre identique de positions. La migration "
-            "des nominaux est donc correctement exécutée."
+            f"rapprochent à {pct(part, 4)} près : la migration des nominaux est correctement "
+            "exécutée en montant."
+            + ("" if len(sortie) == len(entree) else
+               f" Le NOMBRE de lignes diffère en revanche — {len(sortie)} à la sortie contre "
+               f"{len(entree)} à l'entrée : une ou plusieurs positions ont été redécoupées lors de "
+               "la reprise. Le fait est sans incidence sur les montants, mais il interdit un "
+               "rapprochement ligne à ligne et doit être documenté.")
             if conforme else
             "Le portefeuille sorti de Flexcube et celui réintroduit dans Calypso ne se rapprochent "
             "pas. Un écart sur la migration des nominaux affecte directement la valeur du "
@@ -82,25 +87,50 @@ def _c52_reprise_courus(ctx) -> Constat:
     repris = jour[(jour.AC_NO == CPT_COURUS_CALYPSO) & (jour.DRCR_IND == "D")
                   & jour.DESCRIPTION.fillna("").str.contains("ACCRUAL_BS")]
     montant = float(repris.LCY_AMOUNT.sum())
+    # Le montant repris dans le nouveau système doit égaler le solde réel du compte d'origine.
+    # Ce solde est établi au contrôle 5.3 ; on le recalcule ici pour confronter les deux.
+    courus = ctx.courus
+    solde_reel = None
+    if not courus.empty:
+        avant = float(courus[courus.TRN_DT < DATE_BASCULE].SIGNE.sum())
+        du_jour = float(courus[(courus.TRN_DT == DATE_BASCULE)
+                               & (courus.DRCR_IND == "D")].LCY_AMOUNT.sum())
+        solde_reel = avant + du_jour
+    ecart_reprise = montant - solde_reel if solde_reel is not None else None
+    ecart_significatif = (ecart_reprise is not None
+                          and abs(ecart_reprise) > ctx.config.seuil_materialite)
     return Constat(
         code="5.2",
-        titre="Reprise des intérêts courus dans le nouveau système",
-        gravite=Gravite.CONFORME if len(repris) else Gravite.ELEVEE,
+        titre=("Reprise des intérêts courus dans le nouveau système"
+               if not repris.empty and not ecart_significatif else
+               "Écart entre les intérêts courus repris et le solde du compte d'origine"),
+        gravite=(Gravite.ELEVEE if repris.empty else
+                 Gravite.MOYENNE if ecart_significatif else Gravite.CONFORME),
         constat=(
             "Les intérêts courus attachés aux positions migrées ont été réintroduits dans Calypso "
             f"par l'événement ACCRUAL_BS, sur le compte {CPT_COURUS_CALYPSO}. Le compte d'origine "
             f"({CPT_COURUS_MM}) a été soldé le même jour — voir le contrôle 5.3, qui établit que "
             "ce solde a été passé pour un montant supérieur au solde réel."
+            + ("" if ecart_reprise is None or abs(ecart_reprise) < 1 else
+               f"\nLe montant repris s'écarte par ailleurs de {xaf(abs(ecart_reprise))} du solde "
+               "réel du compte d'origine : les deux systèmes ne partent donc pas du même encours "
+               "de courus. L'écart est d'un autre ordre de grandeur que le sur-apurement du "
+               "contrôle 5.3 et s'en distingue, mais il doit lui aussi être justifié position par "
+               "position.")
             if len(repris) else
             "Aucune reprise d'intérêts courus n'est identifiée dans Calypso au jour de la bascule."
         ),
         chiffres=[
             ("Positions dont les courus sont repris", str(len(repris))),
-            ("Courus repris", xaf(montant)),
-        ],
+            ("Courus repris dans le nouveau système", xaf(montant)),
+        ] + ([] if solde_reel is None else [
+            ("Solde réel du compte d'origine (voir 5.3)", xaf(solde_reel)),
+            ("Écart de reprise", xaf(ecart_reprise)),
+        ]),
         recommandation=(
-            "Rapprocher position par position les courus repris et les courus soldés dans "
-            "Flexcube (voir contrôle 5.3)."
+            "Rapprocher position par position les courus repris dans le nouveau système et les "
+            "courus portés par le compte d'origine, et faire justifier l'écart constaté. Ce "
+            "rapprochement est distinct de celui du contrôle 5.3, qui porte sur le montant apuré."
         ),
     )
 
@@ -248,7 +278,14 @@ def _c53_sur_apurement(ctx) -> Constat:
             Tableau(["Contrat", "Cumul depuis l'origine", "Déjà encaissé", "Solde réel",
                      "Crédité", "Crédité en trop"],
                     detail, max_lignes=20,
-                    note="Décomposition contrat par contrat. Le sur-apurement est la somme de la dernière colonne."),
+                    note=(
+                        "Décomposition contrat par contrat. La dernière colonne totalise "
+                        f"{xaf(ecart_contrats)}, montant qui diffère du sur-apurement constaté sur "
+                        f"le compte ({xaf(sur)}) : le rattachement d'un mouvement à un "
+                        "contrat repose sur le libellé, et tous les mouvements du compte n'en "
+                        "portent pas. Le chiffre opposable est celui du compte, la décomposition "
+                        "servant à identifier les contrats concernés."
+                    )),
             Tableau(["Date d'arrêté", "Solde du compte de courus"],
                     soldes_arretes,
                     note="Le solde du compte de courus à chaque arrêté : un compte d'actif ne peut être négatif."),

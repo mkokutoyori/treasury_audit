@@ -4,7 +4,7 @@
 
   Périmètre        : Département de la trésorerie — gestion des investissements sur les marchés financiers
   Période d'audit  : 2023-09-27 au 2026-06-30
-  Rapport généré le : 20/09/2026 à 09:19
+  Rapport généré le : 20/09/2026 à 09:26
   Référentiel      : Plan Comptable des Établissements de Crédit (PCEC) — CEMAC / COBAC
 
   Ce rapport est produit automatiquement. Chaque constat indique le test exécuté, sa
@@ -32,8 +32,8 @@ SOMMAIRE
   Section 1 — Intégrité et complétude des données  (4 anomalie(s) / 7 contrôle(s))
   Section 2 — Référentiel des contrats de marché monétaire  (3 anomalie(s) / 8 contrôle(s))
   Section 3 — Cycle de vie des titres sous Flexcube  (7 anomalie(s) / 8 contrôle(s))
-  Section 4 — Contrôle interne et séparation des tâches  (5 anomalie(s) / 5 contrôle(s))
-  Section 5 — Migration Flexcube MM vers Calypso  (2 anomalie(s) / 6 contrôle(s))
+  Section 4 — Contrôle interne et séparation des tâches  (4 anomalie(s) / 5 contrôle(s))
+  Section 5 — Migration Flexcube MM vers Calypso  (3 anomalie(s) / 6 contrôle(s))
   Section 6 — Manquements du dispositif Calypso  (7 anomalie(s) / 7 contrôle(s))
   Section 7 — Pensions livrées auprès de la banque centrale  (4 anomalie(s) / 4 contrôle(s))
   Section 8 — Opérations de cession-rétrocession (Sell-Buy-Back)  (5 anomalie(s) / 5 contrôle(s))
@@ -86,7 +86,7 @@ RÉCAPITULATIF DES ANOMALIES PAR GRAVITÉ
   MOYENNE   [4.1] Contrôle des quatre yeux neutralisé pour les flux automatiques
   MOYENNE   [4.3] Poids des comptes techniques dans la comptabilisation
   MOYENNE   [4.4] Saisies nocturnes sur les comptes de titres
-  MOYENNE   [4.5] Répartition des saisies entre opérateurs et valideurs
+  MOYENNE   [5.2] Écart entre les intérêts courus repris et le solde du compte d'origine
   MOYENNE   [6.5] Contre-passation quotidienne intégrale : les volumes Calypso ne sont pas exploitables bruts
   MOYENNE   [7.3] Titres restés affectés en garantie au-delà de l'encours emprunté
   MOYENNE   [7.4] Opérations de pension non dénouées à la fin de l'extraction
@@ -694,9 +694,13 @@ des actifs, cédés au nominal.
   valeur — ou du premier couru si elle est postérieure — au dernier couru constaté. Trois
   conventions de décompte sont testées : exact/365, exact/360 et EXACT/EXACT, cette dernière
   rapportant chaque jour au nombre de jours de son année civile, soit 366 en année bissextile. La
-  période couverte comprend deux années bissextiles, 2024 et 2028 : ignorer cette distinction
-  introduirait un biais systématique de 0,27 %. Le contrat est réputé conforme si l'une des trois
-  conventions restitue le montant comptabilisé à la tolérance retenue près.
+  période couverte comprend l'année bissextile 2024 : ignorer cette distinction introduirait un
+  biais systématique de 0,27 %. Le contrat est réputé conforme si l'une des trois conventions
+  restitue le montant comptabilisé à la tolérance retenue près.
+  PÉRIMÈTRE. Le test porte sur TOUS les contrats ayant produit des intérêts courus dans
+  l'extraction, y compris ceux comptabilisés avant la période d'audit : un contrat antérieur
+  continue d'accréditer des courus pendant la période et son moteur d'accrual doit donc être testé.
+  L'effectif diffère de ce fait de celui de la section 2.
   RÉSULTAT D'ENSEMBLE. L'écart global n'est que de -0,74 %, ce qui atteste la justesse du moteur
   d'accrual. Les écarts sont donc individuels et non systémiques.
   CLASSEMENT DES ÉCARTS. Chaque contrat en écart est rattaché à une cause probable, afin d'orienter
@@ -709,14 +713,17 @@ des actifs, cédés au nominal.
     la période n'est pas significatif ;
   - « courus au-delà de l'échéance » : des intérêts continuent de courir après la date d'échéance du
     contrat ;
-  - « écart inexpliqué » : aucune des causes ci-dessus, à investiguer en priorité.
+  - « écart inexpliqué » : aucune des causes ci-dessus et couru comptabilisé SUPÉRIEUR au recalcul —
+    produit surévalué, à investiguer en priorité ;
+  - « sous-évaluation inexpliquée » : aucune des causes ci-dessus et couru comptabilisé INFÉRIEUR au
+    recalcul — produit non constaté, à investiguer également.
 
     Contrats testés                      : 465
     Courus comptabilisés                 : 9 772 608 725 XAF
     Courus recalculés                    : 9 844 982 264 XAF
     Écart global                         : -0,74 %
     Convention dominante                 : exact/exact (198 contrats)
-    Tolérance retenue                    : 10%
+    Tolérance retenue                    : 10 %
     Contrats en écart au-delà de 5 M XAF : 11
     Écart cumulé de ces contrats         : -15 044 842 XAF
 
@@ -776,9 +783,10 @@ SECTION 4 — CONTRÔLE INTERNE ET SÉPARATION DES TÂCHES
 
 Contrôles sur la piste d'audit applicative : respect du principe des quatre yeux, écritures
 dépourvues de validateur, poids des comptes techniques, horaires de saisie et concentration des
-opérations sur un nombre restreint d'opérateurs.
+opérations sur un nombre restreint d'opérateurs. Tous les contrôles de la section sont restreints
+aux écritures de la période d'audit.
 
-  5 contrôle(s) exécuté(s) — 5 anomalie(s), 0 sans anomalie.
+  5 contrôle(s) exécuté(s) — 4 anomalie(s), 1 sans anomalie.
 
 ----------------------------------------------------------------------------------------------------
 [4.2] Écritures manuelles dépourvues de tout validateur
@@ -786,18 +794,18 @@ opérations sur un nombre restreint d'opérateurs.
 
   Des écritures ne portent aucun identifiant de validation. Il ne s'agit pas d'une auto-validation —
   le champ est vide. Ces écritures ont donc été comptabilisées sans qu'aucun second intervenant ne
-  les approuve, et elles relèvent majoritairement du module d'écriture directe, celui qui permet les
+  les approuve. Elles émanent toutes du même compte et du seul module DE, celui qui permet les
   passations les plus libres. Leur étalement continu sur toute la période exclut l'incident
   ponctuel.
 
-    Écritures sans validateur : 2 979
-    Montant cumulé            : 1 210 642 580 561 XAF
-    Période                   : 2023-09-27 → 2026-09-18
+    Écritures sans validateur : 2 557
+    Montant cumulé            : 1 046 403 820 592 XAF
+    Période                   : 2023-09-27 → 2026-06-30
     Modules concernés         : DE
 
     Opérateur   Module  Écritures  Montant XAF        Du          Au        
     ----------  ------  ---------  -----------------  ----------  ----------
-    ADMINUSER1  DE      2 979      1 210 642 580 561  2023-09-27  2026-09-18
+    ADMINUSER1  DE      2 557      1 046 403 820 592  2023-09-27  2026-06-30
 
   Recommandation :
     Obtenir le paramétrage qui autorise la comptabilisation sans validation, la liste des
@@ -807,28 +815,28 @@ opérations sur un nombre restreint d'opérateurs.
 [4.1] Contrôle des quatre yeux neutralisé pour les flux automatiques
   Gravité : MOYENNE
 
-  438 427 écritures sur 512 826 (85,5 %) portent le même identifiant en saisie et en validation.
+  363 960 écritures sur 422 968 (86,0 %) portent le même identifiant en saisie et en validation.
   L'analyse détaillée est plus nuancée qu'il n'y paraît : cette auto-validation est le fait des
   COMPTES TECHNIQUES, pas des opérateurs. Aucun utilisateur nominatif ne s'auto-valide. Le principe
   des quatre yeux est donc respecté par les opérateurs humains, mais il est STRUCTURELLEMENT
   NEUTRALISÉ pour les flux automatiques — au premier rang desquels l'interface Calypso, dont la
   totalité des écritures est saisie et validée par un compte unique.
 
-    Écritures contrôlées         : 512 826
-    Saisie = validation          : 438 427 (85,5 %)
+    Écritures contrôlées         : 422 968
+    Saisie = validation          : 363 960 (86,0 %)
     Dont utilisateurs nominatifs : 0
 
     Compte technique auto-validant  Écritures
     ------------------------------  ---------
-    CALYPSOUSR                      194 938  
-    ADMINUSER1                      147 889  
-    SYSTEM                          74 526   
-    FLEXSWITCH                      9 902    
-    PRIMUSUSR                       1 425    
-    PROCESSMAKER                    286      
+    CALYPSOUSR                      157 372  
+    ADMINUSER1                      133 320  
+    SYSTEM                          56 900   
+    FLEXSWITCH                      8 158    
+    PRIMUSUSR                       1 296    
+    PROCESSMAKER                    187      
     MIGRATION                       130      
-    ONLINETAXPAY                    81       
-    NEXTGENUSR                      42       
+    ONLINETAXPAY                    53       
+    NEXTGENUSR                      31       
     ACCESSAFRIK                     18       
 
   Recommandation :
@@ -840,25 +848,25 @@ opérations sur un nombre restreint d'opérateurs.
 [4.3] Poids des comptes techniques dans la comptabilisation
   Gravité : MOYENNE
 
-  Les comptes techniques concentrent 84,3 % des écritures du périmètre. Un compte technique n'est
+  Les comptes techniques concentrent 85,1 % des écritures du périmètre. Un compte technique n'est
   rattaché à aucune personne physique : la responsabilité de l'écriture ne peut donc être établie,
   et le contrôle des quatre yeux ne peut s'appliquer. Le risque est d'autant plus élevé que certains
   de ces comptes servent aussi à des saisies manuelles.
 
-    Écritures par compte technique : 432 276 (84,3 %)
+    Écritures par compte technique : 360 022 (85,1 %)
 
-    Compte technique  Écritures  Montant XAF         
-    ----------------  ---------  --------------------
-    CALYPSOUSR        194 938    93 336 843 229 450  
-    ADMINUSER1        150 928    1 832 478 721 143,90
-    SYSTEM            74 526     162 925 621 989,16  
-    FLEXSWITCH        9 902      2 031 160 114 671,66
-    PRIMUSUSR         1 425      84 946 922 828,50   
-    PROCESSMAKER      286        177 583 978 906     
-    MIGRATION         130        164 353 282 505     
-    ONLINETAXPAY      81         105 896 688 773     
-    NEXTGENUSR        42         16 531 400          
-    ACCESSAFRIK       18         5 210               
+    Compte technique  Écritures  Montant XAF       
+    ----------------  ---------  ------------------
+    CALYPSOUSR        157 372    66 691 271 319 494
+    ADMINUSER1        135 877    1 579 638 706 197 
+    SYSTEM            56 900     143 377 939 909   
+    FLEXSWITCH        8 158      2 012 440 487 353 
+    PRIMUSUSR         1 296      65 053 764 140,50 
+    PROCESSMAKER      187        115 180 756 745   
+    MIGRATION         130        164 353 282 505   
+    ONLINETAXPAY      53         87 618 355 733    
+    NEXTGENUSR        31         10 992 400        
+    ACCESSAFRIK       18         5 210             
 
   Recommandation :
     Obtenir, pour chaque compte technique, son propriétaire fonctionnel, la liste des personnes
@@ -875,10 +883,12 @@ opérations sur un nombre restreint d'opérateurs.
   En revanche, des écritures ont été passées en PLEINE NUIT, avant 6 h du matin, par des opérateurs
   nominatifs. Ces saisies échappent à toute supervision hiérarchique et se concentrent sur un très
   petit nombre de dates. L'une d'elles correspond à la bascule vers le nouveau système, ce qui
-  l'explique.
+  l'explique. Une autre — 29/03/2024 — relève du transfert d'intérêts courus vers le compte
+  d'attente décrit au contrôle 3.8 : les deux constats portent sur la même opération et doivent être
+  instruits ensemble.
 
-    Écritures titres saisies par un opérateur : 3 591
-    Dont en soirée (20 h – 24 h)              : 523
+    Écritures titres saisies par un opérateur : 2 747
+    Dont en soirée (20 h – 24 h)              : 436
     Dont nocturnes (0 h – 6 h)                : 95
     Dates concernées                          : 2024-03-29, 2025-06-16
     Montant des saisies nocturnes             : 127 630 759 874 XAF
@@ -888,27 +898,27 @@ opérations sur un nombre restreint d'opérateurs.
     2024-03-29  BINEID00087   MBATOHID0012  DE      20         499 243 869      0 h  0 h
     2025-06-16  NDJOCKOS0067  MBATOHID0012  MM      75         127 131 516 005  1 h  2 h
 
-    Heure  Écritures  Montant XAF       
-    -----  ---------  ------------------
-    0      20         499 243 869       
-    1      2          503 972 223       
-    2      73         126 627 543 782   
-    8      34         25 612 222 531,90 
-    9      121        59 915 326 529    
-    10     148        122 194 344 932,75
-    11     158        135 135 713 142,73
-    12     255        219 379 416 539,33
-    13     236        200 120 063 975,96
-    14     365        193 282 318 944,52
-    15     288        298 716 466 277,14
-    16     430        330 775 931 289,62
-    17     445        417 473 387 856,98
-    18     277        192 040 155 510,29
-    19     216        264 989 833 891,16
-    20     168        25 061 996 694    
-    21     222        11 483 636 596,11 
-    22     108        4 782 685 144     
-    23     25         408 381 396       
+    Heure  Écritures  Montant XAF    
+    -----  ---------  ---------------
+    0      20         499 243 869    
+    1      2          503 972 223    
+    2      73         126 627 543 782
+    8      30         22 434 554 724 
+    9      117        55 813 712 830 
+    10     111        108 714 229 549
+    11     140        130 232 736 200
+    12     206        199 921 623 020
+    13     193        177 694 654 520
+    14     244        178 361 578 384
+    15     207        258 891 831 416
+    16     351        280 327 056 596
+    17     310        364 946 389 341
+    18     186        158 816 459 768
+    19     121        34 178 975 500 
+    20     150        24 603 479 167 
+    21     164        9 217 979 221  
+    22     97         4 557 775 629  
+    23     25         408 381 396    
     Répartition horaire de l'ensemble des saisies sur titres.
 
   Recommandation :
@@ -916,56 +926,51 @@ opérations sur un nombre restreint d'opérateurs.
     salle des marchés et des éventuelles astreintes.
 
 ----------------------------------------------------------------------------------------------------
-[4.5] Répartition des saisies entre opérateurs et valideurs
-  Gravité : MOYENNE
+CONTRÔLES SANS ANOMALIE
 
-  Les saisies manuelles sur le module de marché monétaire sont le fait de 6 opérateurs nominatifs,
-  validées par 6 personnes distinctes.
-  Ce nombre restreint n'est PAS une anomalie : les opérations sur titres étaient traitées, sous
-  l'ancien système, par l'équipe Treasury Operations, qui n'a historiquement pas dépassé 5
-  personnes. La concentration constatée reflète donc la taille réelle de l'équipe.
-  Ce qui importe est ailleurs : que la validation soit assurée par des personnes distinctes du
-  saisisseur, et que la matrice saisie/validation ne laisse pas un opérateur valider ses propres
-  écritures.
-  Le croisement saisie/validation ne fait apparaître AUCUN cas d'auto-validation par un opérateur
-  nominatif.
+  [4.5] Répartition des saisies entre opérateurs et valideurs
+      Les saisies manuelles sur le module de marché monétaire sont le fait de 5 opérateurs
+      nominatifs, validées par 6 personnes distinctes.
+      Ce nombre restreint n'est PAS une anomalie : les opérations sur titres étaient traitées, sous
+      l'ancien système, par l'équipe Treasury Operations, qui n'a historiquement pas dépassé 5
+      personnes. La concentration constatée reflète donc la taille réelle de l'équipe.
+      Ce qui importe est ailleurs : que la validation soit assurée par des personnes distinctes du
+      saisisseur, et que la matrice saisie/validation ne laisse pas un opérateur valider ses propres
+      écritures.
+      Le croisement saisie/validation ne fait apparaître AUCUN cas d'auto-validation par un
+      opérateur nominatif.
 
-    Opérateurs de saisie                          : 6
-    Valideurs distincts                           : 6
-    Effectif type de l'équipe Treasury Operations : ≤ 5
-    Cas d'auto-validation nominative              : 0
+        Opérateurs de saisie                          : 5
+        Valideurs distincts                           : 6
+        Effectif type de l'équipe Treasury Operations : ≤ 5
+        Cas d'auto-validation nominative              : 0
 
-    Opérateur     Écritures  Montant XAF       
-    ------------  ---------  ------------------
-    BINEID00087   954        1 085 547 804 321 
-    CHEICHEID059  1 173      801 758 983 430,83
-    NDJOCKOS0067  183        341 511 548 138   
-    FADILAID0005  88         25 617 549 635,69 
-    ELANGUEID060  12         16 100 313 792    
-    DOUMAOS00039  2          2 400 000 000     
+        Opérateur     Écritures  Montant XAF      
+        ------------  ---------  -----------------
+        BINEID00087   914        1 068 760 132 327
+        CHEICHEID059  609        595 659 177 577  
+        NDJOCKOS0067  183        341 511 548 138  
+        ELANGUEID060  12         16 100 313 792   
+        DOUMAOS00039  2          2 400 000 000    
 
-    Saisie        Validation    Écritures
-    ------------  ------------  ---------
-    BINEID00087   MBATOHID0012  595      
-    CHEICHEID059  CELESID0018   556      
-    CHEICHEID059  MBATOHID0012  364      
-    BINEID00087   MBOGID000083  242      
-    NDJOCKOS0067  MBATOHID0012  182      
-    CHEICHEID059  MBOGID000083  158      
-    BINEID00087   CELESID0018   104      
-    FADILAID0005  CELESID0018   88       
-    CHEICHEID059  RENGID000024  83       
-    ELANGUEID060  MBATOHID0012  12       
-    CHEICHEID059  YAMKAMID0043  12       
-    BINEID00087   YAMKAMID0043  11       
-    BINEID00087   IHOYID000023  2        
-    DOUMAOS00039  MBOGID000083  2        
-    NDJOCKOS0067  MBOGID000083  1        
-    Matrice saisie / validation.
+        Saisie        Validation    Écritures
+        ------------  ------------  ---------
+        BINEID00087   MBATOHID0012  595      
+        CHEICHEID059  MBATOHID0012  364      
+        BINEID00087   MBOGID000083  242      
+        NDJOCKOS0067  MBATOHID0012  182      
+        CHEICHEID059  MBOGID000083  158      
+        CHEICHEID059  CELESID0018   69       
+        BINEID00087   CELESID0018   64       
+        CHEICHEID059  YAMKAMID0043  12       
+        ELANGUEID060  MBATOHID0012  12       
+        BINEID00087   YAMKAMID0043  11       
+        CHEICHEID059  RENGID000024  6        
+        BINEID00087   IHOYID000023  2        
+        DOUMAOS00039  MBOGID000083  2        
+        NDJOCKOS0067  MBOGID000083  1        
+        Matrice saisie / validation.
 
-  Recommandation :
-    Vérifier l'existence de délégations formalisées et d'un contrôle de second niveau sur les
-    opérations de marché, la taille de l'équipe limitant structurellement la rotation des tâches.
 
 ====================================================================================================
 SECTION 5 — MIGRATION FLEXCUBE MM VERS CALYPSO
@@ -976,7 +981,7 @@ Flexcube et réintroduction des positions dans Calypso. Cette section rapproche 
 contrôle la reprise des intérêts courus, l'extinction des comptes d'origine et la cohérence du
 classement comptable retenu.
 
-  6 contrôle(s) exécuté(s) — 2 anomalie(s), 4 sans anomalie.
+  6 contrôle(s) exécuté(s) — 3 anomalie(s), 3 sans anomalie.
 
 ----------------------------------------------------------------------------------------------------
 [5.3] Sur-apurement du compte de courus à la migration, laissant un compte d'actif en solde créditeur
@@ -1058,7 +1063,11 @@ classement comptable retenu.
     099OTAP250370001  104 217 038             9 620 034      94 597 004   104 217 038  9 620 034      
     099OTAP241940002  73 675 973              8 681 683      64 994 290   73 675 973   8 681 683      
     ... et 35 autre(s) ligne(s)
-    Décomposition contrat par contrat. Le sur-apurement est la somme de la dernière colonne.
+    Décomposition contrat par contrat. La dernière colonne totalise 1 444 094 752 XAF, montant qui
+    diffère du sur-apurement constaté sur le compte (1 205 231 891 XAF) : le rattachement d'un
+    mouvement à un contrat repose sur le libellé, et tous les mouvements du compte n'en portent pas.
+    Le chiffre opposable est celui du compte, la décomposition servant à identifier les contrats
+    concernés.
 
     Date d'arrêté  Solde du compte de courus
     -------------  -------------------------
@@ -1108,12 +1117,37 @@ classement comptable retenu.
     réglementaires COBAC.
 
 ----------------------------------------------------------------------------------------------------
+[5.2] Écart entre les intérêts courus repris et le solde du compte d'origine
+  Gravité : MOYENNE
+
+  Les intérêts courus attachés aux positions migrées ont été réintroduits dans Calypso par
+  l'événement ACCRUAL_BS, sur le compte 512800100. Le compte d'origine (511800100) a été soldé le
+  même jour — voir le contrôle 5.3, qui établit que ce solde a été passé pour un montant supérieur
+  au solde réel.
+  Le montant repris s'écarte par ailleurs de 125 570 147 XAF du solde réel du compte d'origine : les
+  deux systèmes ne partent donc pas du même encours de courus. L'écart est d'un autre ordre de
+  grandeur que le sur-apurement du contrôle 5.3 et s'en distingue, mais il doit lui aussi être
+  justifié position par position.
+
+    Positions dont les courus sont repris     : 55
+    Courus repris dans le nouveau système     : 3 089 462 049 XAF
+    Solde réel du compte d'origine (voir 5.3) : 2 963 891 902 XAF
+    Écart de reprise                          : 125 570 147 XAF
+
+  Recommandation :
+    Rapprocher position par position les courus repris dans le nouveau système et les courus portés
+    par le compte d'origine, et faire justifier l'écart constaté. Ce rapprochement est distinct de
+    celui du contrôle 5.3, qui porte sur le montant apuré.
+
+----------------------------------------------------------------------------------------------------
 CONTRÔLES SANS ANOMALIE
 
   [5.1] Rapprochement des positions migrées
       Le portefeuille sorti de Flexcube et le portefeuille réintroduit dans Calypso se rapprochent à
-      0,0012 % près, sur un nombre identique de positions. La migration des nominaux est donc
-      correctement exécutée.
+      0,0012 % près : la migration des nominaux est correctement exécutée en montant. Le NOMBRE de
+      lignes diffère en revanche — 65 à la sortie contre 68 à l'entrée : une ou plusieurs positions
+      ont été redécoupées lors de la reprise. Le fait est sans incidence sur les montants, mais il
+      interdit un rapprochement ligne à ligne et doit être documenté.
 
         Positions sorties de Flexcube  : 65
         Positions entrées dans Calypso : 68
@@ -1127,15 +1161,6 @@ CONTRÔLES SANS ANOMALIE
         Flexcube — sortie  512200100  19 485 000 000   10    
         Calypso — entrée   511210100  19 486 515 439   13    
         Calypso — entrée   512410100  107 203 763 333  55    
-
-  [5.2] Reprise des intérêts courus dans le nouveau système
-      Les intérêts courus attachés aux positions migrées ont été réintroduits dans Calypso par
-      l'événement ACCRUAL_BS, sur le compte 512800100. Le compte d'origine (511800100) a été soldé
-      le même jour — voir le contrôle 5.3, qui établit que ce solde a été passé pour un montant
-      supérieur au solde réel.
-
-        Positions dont les courus sont repris : 55
-        Courus repris                         : 3 089 462 049 XAF
 
   [5.4] Extinction des comptes du dispositif Flexcube
       Les comptes de portefeuille, de créances rattachées et de provision du dispositif d'origine
