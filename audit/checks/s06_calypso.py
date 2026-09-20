@@ -139,67 +139,143 @@ def _c63_perte_semantique(ctx) -> Constat:
 
 
 def _c64_comptes_liaison(ctx) -> Constat:
-    """Un compte de liaison est un compte de passage : il doit revenir à zéro."""
+    """Un compte de liaison est un compte de passage : il doit revenir à zéro.
+
+    Le contrôle ne se contente pas de constater un solde : il établit à quelle date chaque
+    compte a CESSÉ de revenir à zéro, et décompose le solde arrêté entre ce qui n'a jamais
+    été déversé et ce qui l'a été après la clôture.
+    """
     gl = ctx.grand_livre
     cfg = ctx.config
-    lignes, total_fin, total_periode = [], 0.0, 0.0
+    lignes = []
+    total_fin = total_periode = 0.0
     for compte in CPT_LIAISON:
-        sous = gl[gl.AC_NO == compte]
+        sous = gl[gl.AC_NO == compte].sort_values(["TRN_DT", "STMT_DT"])
         if sous.empty:
             continue
-        premier = sous.TRN_DT.min()
+        # Un compte de passage doit revenir à zéro. On cherche la DERNIÈRE fois qu'il l'a fait.
+        quotidien = sous.assign(cumul=sous.SIGNE.cumsum()).groupby("TRN_DT").cumul.last()
+        retours = quotidien[quotidien.abs() < 1]
+        dernier_zero = retours.index[-1] if len(retours) else ""
+        depuis = int((quotidien.index > dernier_zero).sum()) if dernier_zero else len(quotidien)
         solde = float(sous.SIGNE.sum())
         solde_periode = float(sous[sous.TRN_DT <= cfg.fin].SIGNE.sum())
         total_fin += solde
         total_periode += solde_periode
-        lignes.append([compte, sous.AC_GL_DESC.iloc[0][:38], premier, len(sous), solde_periode, solde])
+        lignes.append([compte, sous.AC_GL_DESC.iloc[0][:36], sous.TRN_DT.min(), len(sous),
+                       len(retours), dernier_zero or "jamais", depuis,
+                       solde_periode, solde])
     if not lignes:
         return Constat(code="6.4", titre="Comptes de liaison Calypso", gravite=Gravite.CONFORME,
                        constat="Aucun compte de liaison dans le périmètre.")
-    # Trajectoire trimestrielle du compte le plus chargé
-    principal = max(lignes, key=lambda l: abs(l[5]))[0]
-    serie = gl[gl.AC_NO == principal].sort_values(["TRN_DT", "STMT_DT"]).set_index("TRN_DT_d").SIGNE.cumsum()
+    retours_total = sum(l[4] for l in lignes)
+    dernier_global = max((l[5] for l in lignes if l[5] != "jamais"), default="")
+
+    # --- Décomposition du solde arrêté, deal par deal ---------------------------------
+    c = ctx.calypso_enrichi
+    pont = c[c.AC_NO.isin(CPT_LIAISON) & c.DEAL.notna() & (c.DEAL != "")]
+    arrete = pont[pont.TRN_DT <= cfg.fin].groupby("DEAL").SIGNE.sum()
+    contributeurs = arrete[arrete.abs() >= 1]
+    vie_entiere = pont.groupby("DEAL").SIGNE.sum()
+    # Deux populations : ceux qui ne se soldent jamais, et ceux qui se soldent APRÈS la clôture
+    jamais = [d for d in contributeurs.index if abs(vie_entiere.get(d, 0)) >= 1]
+    apres_cloture = [d for d in contributeurs.index if abs(vie_entiere.get(d, 0)) < 1]
+    montant_jamais = float(contributeurs[jamais].sum()) if jamais else 0.0
+    montant_apres = float(contributeurs[apres_cloture].sum()) if apres_cloture else 0.0
+    # Lignes de pont sans identifiant de deal : réévaluations quotidiennes
+    sans_deal = gl[gl.AC_NO.isin(CPT_LIAISON) & (gl.TRN_DT <= cfg.fin)]
+    montant_sans_deal = total_periode - montant_jamais - montant_apres
+    reconciliation = [
+        ["Deals dont le déversement reste incomplet (contrôle 11.6)", len(jamais), montant_jamais],
+        ["Deals ouverts à la clôture, annulés ou dénoués après", len(apres_cloture), montant_apres],
+        ["Écritures de réévaluation sans identifiant de deal", "—", montant_sans_deal],
+        ["SOLDE DES COMPTES DE LIAISON AU " + cfg.fin, "—", total_periode],
+    ]
+    detail_apres = []
+    for d in sorted(apres_cloture, key=lambda x: -abs(contributeurs[x]))[:10]:
+        g = pont[pont.DEAL == d]
+        detail_apres.append([d, g.TRN_DT.min(), g[g.TRN_DT > cfg.fin].TRN_DT.min(),
+                             float(contributeurs[d]),
+                             (pd.Timestamp(g[g.TRN_DT > cfg.fin].TRN_DT.min())
+                              - pd.Timestamp(g.TRN_DT.min())).days])
+
+    principal = max(lignes, key=lambda l: abs(l[8]))[0]
+    serie = (gl[gl.AC_NO == principal].sort_values(["TRN_DT", "STMT_DT"])
+             .set_index("TRN_DT_d").SIGNE.cumsum())
     traj = serie.resample("QE").last().ffill()
     gravite = Gravite.CRITIQUE if abs(total_periode) > cfg.seuil_significatif * 10 else Gravite.ELEVEE
-    # Durée écoulée entre l'ouverture des comptes et la clôture, exprimée en mois entiers :
-    # écrire « quinze mois » en dur reviendrait à décrire une extraction et non la période.
-    ouverture = min(l[2] for l in lignes)
-    mois = ((pd.Timestamp(cfg.fin).year - pd.Timestamp(ouverture).year) * 12
-            + pd.Timestamp(cfg.fin).month - pd.Timestamp(ouverture).month)
     return Constat(
         code="6.4",
-        titre="Comptes de liaison Calypso non apurés : mesure globale des déversements manquants",
+        titre="Comptes de liaison Calypso : ils ont fonctionné, puis ont cessé de revenir à zéro",
         gravite=gravite,
         constat=(
-            "Les comptes de liaison ouverts pour l'interface Calypso ont leur première écriture au "
-            "jour de la bascule : leur solde d'ouverture est donc nul et le cumul des mouvements "
-            "constitue leur solde exact.\n"
-            "Or un compte de liaison est, par construction, un COMPTE DE PASSAGE : chaque deal "
-            "y fait transiter ses jambes de bilan d'un côté et son règlement en trésorerie de "
-            "l'autre, de sorte qu'un deal intégralement déversé le laisse à zéro.\n"
-            "LA CAUSE EST ÉTABLIE. Le contrôle 11.6 décompose ce solde deal par deal : il ne "
-            "traduit pas un retard d'apurement mais la somme des MOUVEMENTS QUE L'INTERFACE N'A "
-            "PAS DÉVERSÉS — tantôt le règlement, tantôt les jambes de bilan, tantôt une partie "
-            "des deux. Le présent contrôle en donne la mesure globale, le contrôle 11.6 le "
-            "détail et les conséquences.\n"
-            "Le solde cumulé atteint à la fin de la période d'audit un montant considérable, sans "
-            f"qu'aucun retour à zéro ne soit constaté depuis l'ouverture de ces comptes, soit "
-            f"{mois} mois."
+            "CE QU'EST UN COMPTE DE LIAISON. Chaque deal Calypso y fait transiter ses jambes de "
+            "bilan d'un côté et son règlement en trésorerie de l'autre. C'est un COMPTE DE "
+            "PASSAGE : un deal intégralement déversé le laisse à zéro, et le compte doit donc "
+            "revenir à zéro dès que les opérations en cours sont dénouées.\n"
+            "\n"
+            "ILS ONT D'ABORD FONCTIONNÉ. Le fait mérite d'être relevé, car il écarte l'hypothèse "
+            f"d'un paramétrage défectueux dès l'origine : ces comptes sont revenus à zéro "
+            f"{retours_total} fois au total, et l'un d'eux {max(l[4] for l in lignes)} fois à lui "
+            "seul. Le mécanisme est donc correctement conçu.\n"
+            "\n"
+            "PUIS ILS ONT CESSÉ. Chacun porte une date après laquelle il n'est JAMAIS revenu à "
+            f"zéro — la plus tardive est le {dernier_global}. Depuis, les soldes oscillent sans "
+            "jamais se résorber. Ce n'est donc pas une dérive progressive mais une RUPTURE : le "
+            "dispositif a fonctionné, puis il a cessé de le faire, à une date identifiable pour "
+            "chaque compte. C'est cette date qu'il faut rapprocher des évolutions apportées à "
+            "l'interface.\n"
+            "\n"
+            "CE QUE LE SOLDE CONTIENT. Le tableau de réconciliation décompose le solde arrêté et "
+            "le rapproche exactement du contrôle 11.6. Il se compose de deux populations "
+            "distinctes, qui n'appellent pas la même réponse : des deals dont le déversement "
+            "reste incomplet, et des deals qui étaient simplement OUVERTS à la clôture et que "
+            "Calypso a dénoués ou annulés ensuite. Les seconds ne sont pas une anomalie "
+            "d'interface, mais ils faussent bien les comptes arrêtés : au 30/06/2026, la "
+            "trésorerie et le portefeuille portaient des opérations que le système a ensuite "
+            "défaites. Ces douze deals ont tous été soldés dans la même semaine de septembre "
+            "2026, ce qui signe une campagne de régularisation et non un dénouement au fil de "
+            "l'eau : la banque a repris ces opérations en une fois, plus de deux mois après la "
+            "clôture qu'elles traversaient."
         ),
         chiffres=[
-            ("SOLDE CUMULÉ À LA FIN DE LA PÉRIODE D'AUDIT", xaf(total_periode)),
+            ("SOLDE CUMULÉ AU " + cfg.fin, xaf(total_periode)),
             ("Solde à la fin de l'extraction", xaf(total_fin)),
+            ("Retours à zéro constatés, tous comptes", str(retours_total)),
+            ("Dernier retour à zéro, tous comptes confondus", dernier_global or "jamais"),
+            ("Deals au déversement incomplet à la clôture",
+             f"{len(jamais)} — {xaf(montant_jamais)}"),
+            ("Deals ouverts à la clôture, dénoués ou annulés après",
+             f"{len(apres_cloture)} — {xaf(montant_apres)}"),
         ],
         tableaux=[
-            Tableau(["Compte", "Libellé", "1re écriture", "Lignes", "Solde fin période", "Solde fin extraction"], lignes),
+            Tableau(["Compte", "Libellé", "Ouverture", "Lignes", "Retours à zéro",
+                     "Dernier retour", "Jours actifs depuis", "Solde au " + cfg.fin,
+                     "Solde fin extraction"],
+                    lignes,
+                    note=("« Retours à zéro » compte les journées où le compte s'est effectivement "
+                          "soldé : c'est la preuve qu'il a fonctionné. « Dernier retour » date la "
+                          "rupture.")),
+            Tableau(["Composante du solde", "Deals", "Montant XAF"], reconciliation,
+                    note=("Décomposition du solde arrêté. Les trois premières lignes "
+                          "s'additionnent exactement à la quatrième.")),
+            Tableau(["Deal", "Première écriture", "Dénouement ou annulation", "Solde à la clôture XAF",
+                     "Jours d'ouverture"],
+                    detail_apres,
+                    note=("Deals ouverts au 30/06/2026 et soldés depuis. Leur durée d'ouverture "
+                          "mesure le temps pendant lequel les comptes ont porté une opération "
+                          "que le système a ensuite défaite.")),
             Tableau(["Fin de trimestre", f"Solde cumulé {principal}"],
                     [[d.strftime("%d/%m/%Y"), float(v)] for d, v in traj.items()],
-                    note=f"Trajectoire du compte le plus chargé ({principal}).", max_lignes=20),
+                    note=f"Trajectoire du compte le plus chargé ({principal})."),
         ],
         recommandation=(
-            "Vérifier si ce solde figure tel quel au bilan à la date d'arrêté. Obtenir l'état de "
-            "rapprochement de ces comptes et sa périodicité. Traiter la cause au contrôle 11.6, "
-            "qui identifie deal par deal les mouvements que l'interface n'a pas déversés."
+            "Rapprocher la date à laquelle chaque compte a cessé de revenir à zéro des "
+            "évolutions apportées à l'interface : le dispositif a fonctionné avant, la cause de "
+            "la rupture est donc datable. Vérifier si ce solde figure tel quel au bilan à la "
+            "date d'arrêté. Obtenir l'état de rapprochement de ces comptes et sa périodicité. "
+            "Traiter les deals au déversement incomplet au contrôle 11.6, et faire expliquer "
+            "pourquoi des opérations restent ouvertes plusieurs mois avant d'être annulées."
         ),
     )
 

@@ -4,7 +4,7 @@
 
   Périmètre        : Département de la trésorerie — gestion des investissements sur les marchés financiers
   Période d'audit  : 2023-09-27 au 2026-06-30
-  Rapport généré le : 20/09/2026 à 13:34
+  Rapport généré le : 20/09/2026 à 13:41
   Référentiel      : Plan Comptable des Établissements de Crédit (PCEC) — CEMAC / COBAC
 
   Ce rapport est produit automatiquement. Chaque constat indique le test exécuté, sa
@@ -54,7 +54,7 @@ RÉCAPITULATIF DES ANOMALIES PAR GRAVITÉ
   CRITIQUE  [4.2] Écritures manuelles dépourvues de tout validateur
   CRITIQUE  [5.3] Sur-apurement du compte de courus à la migration, laissant un compte d'actif en solde créditeur
   CRITIQUE  [6.1] Aucun référentiel de contrat n'alimente plus le core banking
-  CRITIQUE  [6.4] Comptes de liaison Calypso non apurés : mesure globale des déversements manquants
+  CRITIQUE  [6.4] Comptes de liaison Calypso : ils ont fonctionné, puis ont cessé de revenir à zéro
   CRITIQUE  [6.7] L'interface Calypso déverse certains mouvements en double dans le grand livre
   CRITIQUE  [8.2] Le schéma comptable appliqué est celui d'une cession ferme, non celui d'une pension livrée
   CRITIQUE  [9.4] Comptes présentant un solde contraire à leur nature comptable à une date d'arrêté
@@ -1331,30 +1331,72 @@ suspens.
     Étudier l'extension de l'interface au-delà du grand livre.
 
 ----------------------------------------------------------------------------------------------------
-[6.4] Comptes de liaison Calypso non apurés : mesure globale des déversements manquants
+[6.4] Comptes de liaison Calypso : ils ont fonctionné, puis ont cessé de revenir à zéro
   Gravité : CRITIQUE
 
-  Les comptes de liaison ouverts pour l'interface Calypso ont leur première écriture au jour de la
-  bascule : leur solde d'ouverture est donc nul et le cumul des mouvements constitue leur solde
-  exact.
-  Or un compte de liaison est, par construction, un COMPTE DE PASSAGE : chaque deal y fait transiter
-  ses jambes de bilan d'un côté et son règlement en trésorerie de l'autre, de sorte qu'un deal
-  intégralement déversé le laisse à zéro.
-  LA CAUSE EST ÉTABLIE. Le contrôle 11.6 décompose ce solde deal par deal : il ne traduit pas un
-  retard d'apurement mais la somme des MOUVEMENTS QUE L'INTERFACE N'A PAS DÉVERSÉS — tantôt le
-  règlement, tantôt les jambes de bilan, tantôt une partie des deux. Le présent contrôle en donne la
-  mesure globale, le contrôle 11.6 le détail et les conséquences.
-  Le solde cumulé atteint à la fin de la période d'audit un montant considérable, sans qu'aucun
-  retour à zéro ne soit constaté depuis l'ouverture de ces comptes, soit 12 mois.
+  CE QU'EST UN COMPTE DE LIAISON. Chaque deal Calypso y fait transiter ses jambes de bilan d'un côté
+  et son règlement en trésorerie de l'autre. C'est un COMPTE DE PASSAGE : un deal intégralement
+  déversé le laisse à zéro, et le compte doit donc revenir à zéro dès que les opérations en cours
+  sont dénouées.
 
-    SOLDE CUMULÉ À LA FIN DE LA PÉRIODE D'AUDIT : -133 405 764 689 XAF
-    Solde à la fin de l'extraction              : -139 764 171 448 XAF
+  ILS ONT D'ABORD FONCTIONNÉ. Le fait mérite d'être relevé, car il écarte l'hypothèse d'un
+  paramétrage défectueux dès l'origine : ces comptes sont revenus à zéro 64 fois au total, et l'un
+  d'eux 55 fois à lui seul. Le mécanisme est donc correctement conçu.
 
-    Compte     Libellé                              1re écriture  Lignes  Solde fin période  Solde fin extraction
-    ---------  -----------------------------------  ------------  ------  -----------------  --------------------
-    467000186  CALYPSO BRIDGE ACCOUNT               2025-06-16    2 235   -42 058 339 493    -48 325 343 347     
-    467000188  CALYPSO BRIDGE ACCOUNT MONEY MARKET  2025-06-16    1 239   -94 451 445 974    -94 549 929 809     
-    467000243  CALYPSO MIRROR TRADE BRIDGE ACCOUNT  2025-07-17    249     3 104 020 778      3 111 101 708       
+  PUIS ILS ONT CESSÉ. Chacun porte une date après laquelle il n'est JAMAIS revenu à zéro — la plus
+  tardive est le 2025-10-22. Depuis, les soldes oscillent sans jamais se résorber. Ce n'est donc pas
+  une dérive progressive mais une RUPTURE : le dispositif a fonctionné, puis il a cessé de le faire,
+  à une date identifiable pour chaque compte. C'est cette date qu'il faut rapprocher des évolutions
+  apportées à l'interface.
+
+  CE QUE LE SOLDE CONTIENT. Le tableau de réconciliation décompose le solde arrêté et le rapproche
+  exactement du contrôle 11.6. Il se compose de deux populations distinctes, qui n'appellent pas la
+  même réponse : des deals dont le déversement reste incomplet, et des deals qui étaient simplement
+  OUVERTS à la clôture et que Calypso a dénoués ou annulés ensuite. Les seconds ne sont pas une
+  anomalie d'interface, mais ils faussent bien les comptes arrêtés : au 30/06/2026, la trésorerie et
+  le portefeuille portaient des opérations que le système a ensuite défaites. Ces douze deals ont
+  tous été soldés dans la même semaine de septembre 2026, ce qui signe une campagne de
+  régularisation et non un dénouement au fil de l'eau : la banque a repris ces opérations en une
+  fois, plus de deux mois après la clôture qu'elles traversaient.
+
+    SOLDE CUMULÉ AU 2026-06-30                           : -133 405 764 689 XAF
+    Solde à la fin de l'extraction                       : -139 764 171 448 XAF
+    Retours à zéro constatés, tous comptes               : 64
+    Dernier retour à zéro, tous comptes confondus        : 2025-10-22
+    Deals au déversement incomplet à la clôture          : 201 — -124 704 289 100 XAF
+    Deals ouverts à la clôture, dénoués ou annulés après : 12 — -8 701 574 995 XAF
+
+    Compte     Libellé                              Ouverture   Lignes  Retours à zéro  Dernier retour  Jours actifs depuis  Solde au 2026-06-30  Solde fin extraction
+    ---------  -----------------------------------  ----------  ------  --------------  --------------  -------------------  -------------------  --------------------
+    467000186  CALYPSO BRIDGE ACCOUNT               2025-06-16  2 235   4               2025-06-24      181                  -42 058 339 493      -48 325 343 347     
+    467000188  CALYPSO BRIDGE ACCOUNT MONEY MARKET  2025-06-16  1 239   55              2025-10-22      160                  -94 451 445 974      -94 549 929 809     
+    467000243  CALYPSO MIRROR TRADE BRIDGE ACCOUNT  2025-07-17  249     5               2025-09-19      90                   3 104 020 778        3 111 101 708       
+    « Retours à zéro » compte les journées où le compte s'est effectivement soldé : c'est la preuve
+    qu'il a fonctionné. « Dernier retour » date la rupture.
+
+    Composante du solde                                        Deals  Montant XAF     
+    ---------------------------------------------------------  -----  ----------------
+    Deals dont le déversement reste incomplet (contrôle 11.6)  201    -124 704 289 100
+    Deals ouverts à la clôture, annulés ou dénoués après       12     -8 701 574 995  
+    Écritures de réévaluation sans identifiant de deal         —      99 406          
+    SOLDE DES COMPTES DE LIAISON AU 2026-06-30                 —      -133 405 764 689
+    Décomposition du solde arrêté. Les trois premières lignes s'additionnent exactement à la
+    quatrième.
+
+    Deal     Première écriture  Dénouement ou annulation  Solde à la clôture XAF  Jours d'ouverture
+    -------  -----------------  ------------------------  ----------------------  -----------------
+    3797100  2026-04-22         2026-09-14                -3 000 000 000          145              
+    3716000  2026-03-30         2026-09-14                -2 500 000 000          168              
+    3842348  2026-05-06         2026-09-14                -1 935 041 748          131              
+    3740595  2026-04-07         2026-09-14                -588 000 000            160              
+    3677150  2026-03-26         2026-09-14                -504 000 000            172              
+    3740588  2026-04-07         2026-09-10                -210 000 000            156              
+    3556481  2026-02-16         2026-09-15                143 727 972             211              
+    3715969  2026-03-30         2026-09-14                -137 500 000            168              
+    3568304  2026-02-20         2026-09-14                98 393 550              206              
+    3895136  2026-05-29         2026-09-14                -62 500 000             108              
+    Deals ouverts au 30/06/2026 et soldés depuis. Leur durée d'ouverture mesure le temps pendant
+    lequel les comptes ont porté une opération que le système a ensuite défaite.
 
     Fin de trimestre  Solde cumulé 467000188
     ----------------  ----------------------
@@ -1367,9 +1409,12 @@ suspens.
     Trajectoire du compte le plus chargé (467000188).
 
   Recommandation :
+    Rapprocher la date à laquelle chaque compte a cessé de revenir à zéro des évolutions apportées à
+    l'interface : le dispositif a fonctionné avant, la cause de la rupture est donc datable.
     Vérifier si ce solde figure tel quel au bilan à la date d'arrêté. Obtenir l'état de
-    rapprochement de ces comptes et sa périodicité. Traiter la cause au contrôle 11.6, qui identifie
-    deal par deal les mouvements que l'interface n'a pas déversés.
+    rapprochement de ces comptes et sa périodicité. Traiter les deals au déversement incomplet au
+    contrôle 11.6, et faire expliquer pourquoi des opérations restent ouvertes plusieurs mois avant
+    d'être annulées.
 
 ----------------------------------------------------------------------------------------------------
 [6.7] L'interface Calypso déverse certains mouvements en double dans le grand livre

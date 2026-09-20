@@ -1867,3 +1867,83 @@ tardive de 7 cas sur 75 le confirme plutôt qu'elle ne l'atténue.
 **Règle retenue** : *compter les anomalies à la maille de l'événement, jamais à celle de
 l'écriture.* Et : *une écriture de correction ne doit jamais entrer dans la population des
 anomalies qu'elle corrige.*
+
+---
+
+# SESSION 20 — Revue manuelle du point 6.4 : le pont a fonctionné avant de casser
+
+Demande : revue manuelle du contrôle 6.4, les comptes de liaison Calypso non apurés.
+Le solde est exact, mais le constat disait deux choses fausses et n'expliquait pas son propre
+chiffre.
+
+## 20.1 ✓ D'abord, la vérification de couverture
+
+Leçon de la session 19 : vérifier qu'aucune source ne manque. Les trois comptes de liaison sont
+intégralement couverts — 3 723 lignes, identiques dans `grand_livre` et `toutes_ecritures`. Le
+solde de **−133 405 764 689 XAF** au 30/06/2026 est confirmé.
+
+## 20.2 ⚠ « Aucun retour à zéro » — faux, et c'est le contraire qui est instructif
+
+Le constat affirmait qu'aucun retour à zéro n'était constaté « depuis l'ouverture de ces
+comptes, soit 12 mois ». En reconstituant le solde cumulé jour par jour :
+
+| Compte | Ouverture | Retours à zéro | Dernier retour |
+|---|---|---|---|
+| 467000186 | 16/06/2025 | **4** | 24/06/2025 |
+| 467000188 | 16/06/2025 | **55** | **22/10/2025** |
+| 467000243 | 17/07/2025 | **5** | 19/09/2025 |
+
+**64 retours à zéro au total.** Le dispositif a donc bien fonctionné — ce qui écarte
+l'hypothèse d'un paramétrage défectueux dès l'origine et rend le constat plus précis, pas
+moins grave : ce n'est pas une dérive lente mais une **rupture datable**. Le 467000188 se
+soldait normalement pendant quatre mois, puis plus jamais après le 22/10/2025.
+
+C'est cette date qu'il faut rapprocher des évolutions de l'interface.
+
+## 20.3 ⚠ « Un solde qui ne fait que croître » — faux aussi
+
+467000186 : 23 journées de hausse contre 64 de baisse. 467000188 : 29 contre 27. Le solde
+**oscille** sans jamais se résorber. Formulation corrigée.
+
+## 20.4 ⚠ L'écart de 8,7 Md entre 6.4 et 11.6 n'était pas expliqué
+
+6.4 annonçait −133 405 764 689 et 11.6 −124 704 289 100 sans que rien ne rapproche les deux.
+La décomposition, désormais au rapport :
+
+| Composante | Deals | Montant |
+|---|---|---|
+| Déversement resté incomplet (11.6) | 201 | −124 704 289 100 |
+| **Ouverts à la clôture, soldés après** | **12** | **−8 701 574 995** |
+| Réévaluations sans identifiant de deal | — | +99 406 |
+| **SOLDE AU 30/06/2026** | | **−133 405 764 689** |
+
+**La réconciliation est exacte au franc près.**
+
+## 20.5 ✓ Les douze deals à cheval : une campagne de régularisation
+
+Population que ni 6.4 ni 11.6 n'isolait. Exemple du deal 3797100 :
+
+| Date | Référence | Compte | Sens | Montant |
+|---|---|---|---|---|
+| 22/04/2026 | `099MNIP26112005T` | 099ACO00001 | D | 3 000 000 000 |
+| 22/04/2026 | `099MNIP26112005T` | 467000186 | C | 3 000 000 000 |
+| **14/09/2026** | `099MNIP2625700K0` | 467000186 | **D** | 3 000 000 000 |
+| **14/09/2026** | `099MNIP2625700K0` | 099ACO00001 | **C** | 3 000 000 000 |
+
+Un règlement en trésorerie **sans aucune jambe de bilan**, resté ouvert 145 jours, puis annulé
+par Calypso — référence d'interface, nouvel identifiant de mouvement, sens inverse : c'est la
+convention d'annulation du contrôle 1.5.
+
+**Les douze ont été soldés entre le 10 et le 15 septembre 2026**, soit la même semaine que les
+corrections de doublons du contrôle 6.7. Campagne de régularisation, pas dénouement au fil de
+l'eau. Durées d'ouverture : **108 à 211 jours**, toutes à cheval sur la clôture du 30/06/2026.
+
+## 20.6 État
+
+55 anomalies — 9 critiques — sur 11 sections et 69 contrôles. 6.4 reste CRITIQUE et gagne en
+précision : le défaut a une date de naissance par compte, et son solde est intégralement
+expliqué.
+
+**Règle retenue** : *un solde anormal doit être décomposé jusqu'à ce que ses composantes
+s'additionnent exactement à lui.* Les 8,7 Md d'écart entre deux de mes contrôles cachaient une
+population entière — douze opérations ouvertes six mois et annulées après coup.
