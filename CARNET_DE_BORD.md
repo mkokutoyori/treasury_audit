@@ -1270,3 +1270,105 @@ le compte de résultat ne l'a pas suivi).
 | **10.5** | Référentiel des opérateurs non normalisé : même personne sous plusieurs libellés, valeurs de remplissage (`NONE`, `0`, `TRADER1`) |
 
 → **46 anomalies** (contre 41), dont **7 critiques**, sur **10 sections et 58 contrôles**.
+
+---
+
+# SESSION 14 — Relecture critique du rapport d'audit et correction de ses anomalies
+
+Demande : *« relis le rapport d'audit, identifie les anomalies et corrige-les »*. Le rapport
+est ici traité comme un livrable à auditer : chaque affirmation du texte a été confrontée aux
+chiffres qu'elle accompagne, chaque chiffre à son périmètre, chaque renvoi à son contrôle
+cible. Vingt-six corrections ont été apportées. Elles se rangent en cinq familles.
+
+## 14.1 Le texte affirmait ce que les chiffres contredisaient
+
+| Contrôle | Le texte disait | Les données disent |
+|---|---|---|
+| **1.4** | « L'effet comptable net est nul » | −589 588 XAF subsistent, pour 86,4 Md déplacés |
+| **3.7** | « La progression est continue » | Le ratio recule entre le 31/12/2024 et le 30/06/2025 |
+| **5.1** | « sur un nombre identique de positions » | 65 à la sortie, 68 à l'entrée |
+| **7.2** | « couru passé le jour du tirage puis contre-passé » | Le compte de charge ne porte **aucun** couru, jamais |
+| **9.1** | « le résultat double quasiment d'un exercice à l'autre » | ×4,18 puis ×1,95 puis ×1,85 — ×15 au total |
+| **9.3** | « l'écart s'accroît d'exercice en exercice » | 10,15 → 15,07 → 13,00 → 15,07 % |
+| **9.4** | Le solde du compte d'emprunt vient des doublons (6.7) | Zéro doublon sur ce compte ; c'est une contre-passation orpheline du 21/01/2026 |
+
+## 14.2 Deux erreurs de calcul
+
+**7.2 — l'intérêt des pensions était divisé par deux.** `interet = sum(...) / 2` supposait que
+l'extraction portait les deux jambes ; elle n'en porte qu'une. Les taux implicites ressortaient
+à 2 % là où le taux BEAC est de 5 à 6 %. Corrigé : le deal 3349072 règle 101 000 000 XAF et non
+50 500 000, soit 4,18 % sur 98 jours.
+
+**7.3 — les soldes n'étaient ni datés ni corrigés.** Ils étaient pris à la fin de l'extraction
+(18/09/2026) et incluaient les doublons d'interface. Arrêtés au 30/06/2026 et nettoyés :
+
+| | Avant | Après |
+|---|---|---|
+| Encours emprunté | 45 000 000 000 | **50 000 000 000** |
+| Collatéral mobilisé | 71 847 170 000 | **61 847 170 000** |
+| Taux de couverture | 160 % | **124 %** |
+
+L'encours corrigé égale **exactement** l'unique opération non dénouée relevée en 7.4. Les deux
+contrôles convergent — ce qui n'était pas le cas auparavant.
+
+## 14.3 Des chiffres annoncés hors du périmètre d'audit
+
+L'extraction court jusqu'au 18/09/2026, la période d'audit s'arrête au 30/06/2026. Plusieurs
+constats majeurs annonçaient des montants dominés par les mois postérieurs à la clôture.
+
+| Contrôle | Annoncé | Dont période d'audit |
+|---|---|---|
+| **6.7** doublons d'interface | 178 mouvements / 289,6 Md | **124 mouvements / 76,7 Md** |
+| **8.1** cessions-rétrocessions | 215 opérations / 896,1 Md | **80 opérations / 402,4 Md** |
+| **8.5** résultat sur financements | 1 045 123 213 XAF | **182 465 990 XAF** |
+| **Section 4** contrôle interne | 3 076 écritures sans validateur | **2 557** |
+
+La section 4 étant désormais bornée à la période, le contrôle 4.5 devient **conforme** :
+5 opérateurs, ce qui correspond à l'effectif de l'équipe Treasury Operations.
+
+## 14.4 Un constat qui n'en était pas un
+
+**10.3 — « 2 597 Md d'écritures sans deal source ».** Le référentiel des deals s'arrête au
+**09/09/2026**, le grand livre court jusqu'au **18/09/2026**. La totalité des 41 deals dits
+orphelins se situe dans cet intervalle, et **aucun** à l'intérieur de la fenêtre couverte par
+le référentiel. Ce n'était pas une rupture de piste d'audit mais un décalage entre deux
+extractions. Gravité ramenée de MOYENNE à FAIBLE, le constat étant reformulé en demande de
+ré-extraction.
+
+## 14.5 Périmètres incohérents entre contrôles voisins
+
+- **3.4** portait sur tout l'historique quand **3.2**, qui décrit les mêmes annulations, était
+  borné à la période : 47 contrats contre 29. Aligné à 29.
+- **3.5** annonçait « deux années bissextiles, 2024 et 2028 » sur une liste écrite en dur ;
+  les périodes d'accrual testées ne traversent que **2024**. La mention est calculée.
+- **1.3** ne reportait pas au lundi les fériés tombant un week-end : le 26/12/2022 et le
+  02/01/2023 ressortaient à tort. Le test est borné à la période et propose une hypothèse de
+  rattachement pour chaque date restante (pont, fête musulmane).
+
+## 14.6 Mesures dépourvues de sens remplacées
+
+- **3.3** « Flux bruts sur le compte de règlement : **0 XAF** » — la somme des montants signés
+  d'un compte équilibré. Remplacée par ce que le constat démontre réellement : **1 213,8 Md**
+  de volume brut pour **−33,8 Md** de flux net, soit un facteur **× 35,9**, et **58,8 %** du
+  volume MM de la période.
+- **5.2** ne mesurait pas l'écart entre les courus repris par Calypso et le solde réel du
+  compte d'origine : **125 570 147 XAF**. Le contrôle passe de conforme à MOYENNE.
+- **8.2** énonçait trois marqueurs comptables et en chiffrait quatre : trois marqueurs,
+  quatre comptes, l'inscription hors bilan ayant une contrepartie.
+
+## 14.7 Forme
+
+Séparateur décimal français dans tout le rapport, tableaux compris ; `.replace(",", " ")`
+appliqué à des phrases entières qui en supprimait la ponctuation ; valeurs manquantes rendues
+par une cellule vide et non par « nan » ; tri numérique des codes (2.6 avant 10.2) ; notes de
+tableau repliées sur la largeur du rapport.
+
+## 14.8 État du rapport après relecture
+
+**46 anomalies** — 7 critiques, 17 élevées, 19 moyennes, 3 faibles — sur **10 sections et
+59 contrôles**. Le nombre total est inchangé, mais trois contrôles ont changé de nature :
+4.5 devient conforme, 5.2 devient une anomalie, 10.3 passe de MOYENNE à FAIBLE.
+
+**Règle retenue pour la suite** : *un constat n'est acquis que lorsque son texte, son chiffre
+et son périmètre disent la même chose.* Les sept contradictions de 14.1 ont toutes été trouvées
+en lisant le paragraphe et le tableau l'un contre l'autre, sans donnée nouvelle.

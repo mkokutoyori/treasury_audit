@@ -4,7 +4,7 @@ from __future__ import annotations
 import pandas as pd
 
 from ..core import Constat, Gravite, Section, Tableau, xaf, pct, fois, nb
-from ..data import CPT_PORTEFEUILLE, CPT_PRODUITS, DATE_BASCULE
+from ..data import CPT_COURUS_MM, CPT_PORTEFEUILLE, CPT_PRODUITS, DATE_BASCULE
 
 SECTION = (9, "Résultat, classement comptable et rendement")
 
@@ -67,8 +67,8 @@ def _c91_resultat(ctx) -> Constat:
         constat=(
             "Les écritures de clôture annuelle soldent chaque compte de résultat et permettent de "
             "reconstituer le compte de résultat de l'activité par exercice.\n"
-            "La progression observée est très rapide : le résultat double quasiment d'un exercice "
-            "à l'autre. Une telle croissance n'est pas en soi une anomalie, mais elle appelle une "
+            "La progression observée est très rapide : le résultat est multiplié par plus de "
+            "quinze entre le premier et le dernier exercice reconstituables. Une telle croissance n'est pas en soi une anomalie, mais elle appelle une "
             "revue analytique : quelle part provient de l'augmentation des encours, quelle part "
             "d'un changement de méthode de valorisation, et quelle part de la reconnaissance de "
             "plus-values sur des opérations dont la nature de cession est discutée en section 8 ?"
@@ -226,8 +226,12 @@ def _c93_rendement(ctx) -> Constat:
         gravite=Gravite.ELEVEE,
         constat=(
             "Le rendement implicite du portefeuille — produits de l'exercice rapportés à l'encours "
-            "moyen — s'écarte fortement des taux contractuels observés au référentiel, et l'écart "
-            "s'accroît d'exercice en exercice.\n"
+            "moyen — s'écarte fortement des taux contractuels observés au référentiel, sur chacun "
+            "des exercices mesurés.\n"
+            "PÉRIMÈTRE. Le produit de l'exercice est reconstitué à partir des écritures de clôture "
+            "annuelle : seuls les exercices CLOS peuvent donc être mesurés. L'exercice en cours à "
+            "la fin de la période d'audit n'en fait pas partie, et le premier exercice présenté "
+            "l'est à titre de base de comparaison antérieure à la période.\n"
             "Un portefeuille de titres souverains ne peut structurellement pas rendre beaucoup plus "
             "que son coupon. L'écart provient donc d'autres composantes du produit : étalement de "
             "prime et décote, et surtout PLUS-VALUES DE CESSION RÉALISÉES. Ces dernières doivent "
@@ -241,7 +245,10 @@ def _c93_rendement(ctx) -> Constat:
             ("Taux contractuel au 95e centile", f"{pct(borne, 2)}"),
             ("Rendement implicite du dernier exercice", f"{pct(lignes[-1][3], 2)}" if lignes else "n/d"),
         ],
-        tableaux=[Tableau(["Exercice", "Encours moyen XAF", "Produits XAF", "Rendement %"], lignes)],
+        tableaux=[Tableau(["Exercice", "Encours moyen XAF", "Produits XAF", "Rendement %"], lignes,
+                          note=("Le rendement ne progresse pas de façon régulière : il reste "
+                                "toutefois, sur chaque exercice, très au-dessus du 95e centile "
+                                "des taux contractuels."))],
         recommandation=(
             "Décomposer le produit par nature et rapprocher la composante plus-values des "
             "opérations examinées en section 8. L'encours moyen est pondéré par les jours "
@@ -257,6 +264,29 @@ def _c94_soldes_anormaux(ctx) -> Constat:
     comptes : le solde à toute date est donc calculable (voir contrôle 1.7).
     """
     preuve = ctx.historique_complet()
+    doublons = ctx.mouvements_dupliques
+    gl = ctx.grand_livre
+
+    def origine(compte: str, date_pire: str, solde: float) -> str:
+        """Rattache, quand c'est vérifiable, le solde anormal à une cause déjà établie."""
+        if not doublons.empty:
+            vises = doublons[(doublons.compte == compte) & (doublons.date <= date_pire)]
+            if len(vises) and abs(float(vises.impact.sum())) > abs(solde) / 2:
+                return "déversement en double de l'interface (contrôle 6.7)"
+        if compte == CPT_COURUS_MM:
+            return "sur-apurement à la migration (contrôle 5.3)"
+        lignes = gl[(gl.AC_NO == compte) & (gl.TRN_DT <= date_pire)]
+        debits = int((lignes.DRCR_IND == "D").sum())
+        credits = int((lignes.DRCR_IND == "C").sum())
+        # Un écart de quelques écritures seulement signe une contre-passation orpheline ;
+        # un écart massif traduit un compte à flux asymétriques par nature (étalement,
+        # amortissement) et ne peut pas s'interpréter ainsi.
+        ecart = abs(debits - credits)
+        if 0 < ecart <= 5 and lignes.DESCRIPTION.fillna("").str.contains("ACCRUAL").any():
+            sens = "contre-passation" if debits > credits else "couru"
+            return f"{sens} orpheline : {ecart} écriture(s) sans symétrique"
+        return "à investiguer"
+
     anomalies = []
     for compte, r in preuve.iterrows():
         if r.nature == "neutre":
@@ -267,7 +297,8 @@ def _c94_soldes_anormaux(ctx) -> Constat:
         if contraires:
             pire = max(contraires.items(), key=lambda x: abs(x[1]))
             anomalies.append([compte, r.libelle[:36], r.nature, len(contraires),
-                              pire[0], float(pire[1]), float(r.solde_final)])
+                              pire[0], float(pire[1]), float(r.solde_final),
+                              origine(compte, pire[0], float(pire[1]))])
     if not anomalies:
         return Constat(
             code="9.4", titre="Sens des soldes aux dates d'arrêté", gravite=Gravite.CONFORME,
@@ -289,9 +320,12 @@ def _c94_soldes_anormaux(ctx) -> Constat:
             "double, ou une imputation erronée.\n"
             "Le cas le plus marquant concerne un compte de produits perçus d'avance devenu "
             "débiteur : l'étalement au résultat a dépassé le produit initialement différé, ce qui "
-            "signifie que des produits ont été reconnus SANS CONTREPARTIE. Celui du compte "
-            "d'emprunt au jour le jour trouve son origine dans le déversement en double de "
-            "l'interface (contrôle 6.7).\n"
+            "signifie que des produits ont été reconnus SANS CONTREPARTIE.\n"
+            "La dernière colonne du tableau rattache chaque solde, lorsque c'est vérifiable, à une "
+            "cause déjà établie ailleurs dans le rapport. Un compte de dettes rattachées dont le "
+            "nombre de contre-passations excède celui des courus porte une contre-passation "
+            "orpheline : le couru qu'elle annule n'a jamais été comptabilisé, et le résidu "
+            "subsiste tant qu'aucune écriture ne le corrige.\n"
             "Ce contrôle n'est possible que parce que l'extraction couvre l'historique intégral "
             "des comptes et que leur solde est donc calculable à toute date."
         ),
@@ -301,8 +335,8 @@ def _c94_soldes_anormaux(ctx) -> Constat:
             ("Dates d'arrêté testées", ", ".join(ctx.arretes)),
         ],
         tableaux=[
-            Tableau(["Compte", "Libellé", "Nature", "Arrêtés en anomalie", "Pire arrêté",
-                     "Solde à cette date", "Solde final"],
+            Tableau(["Compte", "Libellé", "Nature", "Arrêtés", "Pire arrêté",
+                     "Solde à cette date", "Solde final", "Origine identifiée"],
                     anomalies),
         ],
         recommandation=(

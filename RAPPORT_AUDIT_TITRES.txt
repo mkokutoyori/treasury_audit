@@ -4,7 +4,7 @@
 
   Périmètre        : Département de la trésorerie — gestion des investissements sur les marchés financiers
   Période d'audit  : 2023-09-27 au 2026-06-30
-  Rapport généré le : 20/09/2026 à 09:35
+  Rapport généré le : 20/09/2026 à 11:28
   Référentiel      : Plan Comptable des Établissements de Crédit (PCEC) — CEMAC / COBAC
 
   Ce rapport est produit automatiquement. Chaque constat indique le test exécuté, sa
@@ -46,8 +46,8 @@ RÉCAPITULATIF DES ANOMALIES PAR GRAVITÉ
 
   CRITIQUE   : 7
   ELEVEE     : 17
-  MOYENNE    : 20
-  FAIBLE     : 2
+  MOYENNE    : 19
+  FAIBLE     : 3
   TOTAL      : 46
 
   CRITIQUE  [4.2] Écritures manuelles dépourvues de tout validateur
@@ -92,10 +92,10 @@ RÉCAPITULATIF DES ANOMALIES PAR GRAVITÉ
   MOYENNE   [7.4] Opérations de pension non dénouées à la fin de l'extraction
   MOYENNE   [9.1] Progression du résultat de l'activité de titres
   MOYENNE   [10.1] Deals conclus sans écriture, sur des portefeuilles pourtant couverts par le périmètre
-  MOYENNE   [10.3] Écritures comptables sans deal correspondant dans le système amont
   MOYENNE   [10.5] Référentiel des opérateurs non normalisé
   FAIBLE    [1.3] Jours ouvrés sans écriture restant à rapprocher du calendrier des fériés
   FAIBLE    [2.4] Contrats comptabilisés tardivement après leur négociation
+  FAIBLE    [10.3] Écritures postérieures à la dernière négociation du référentiel extrait
 
 ====================================================================================================
 SECTION 1 — INTÉGRITÉ ET COMPLÉTUDE DES DONNÉES
@@ -1953,8 +1953,11 @@ implicite du portefeuille.
   en soi et révèle une écriture manquante, une écriture en double, ou une imputation erronée.
   Le cas le plus marquant concerne un compte de produits perçus d'avance devenu débiteur :
   l'étalement au résultat a dépassé le produit initialement différé, ce qui signifie que des
-  produits ont été reconnus SANS CONTREPARTIE. Celui du compte d'emprunt au jour le jour trouve son
-  origine dans le déversement en double de l'interface (contrôle 6.7).
+  produits ont été reconnus SANS CONTREPARTIE.
+  La dernière colonne du tableau rattache chaque solde, lorsque c'est vérifiable, à une cause déjà
+  établie ailleurs dans le rapport. Un compte de dettes rattachées dont le nombre de contre-
+  passations excède celui des courus porte une contre-passation orpheline : le couru qu'elle annule
+  n'a jamais été comptabilisé, et le résidu subsiste tant qu'aucune écriture ne le corrige.
   Ce contrôle n'est possible que parce que l'extraction couvre l'historique intégral des comptes et
   que leur solde est donc calculable à toute date.
 
@@ -1962,11 +1965,11 @@ implicite du portefeuille.
     Dont solde anormal significatif : 2
     Dates d'arrêté testées          : 2023-12-31, 2024-06-30, 2024-12-31, 2025-06-30, 2025-12-31, 2026-06-30
 
-    Compte     Libellé                               Nature     Arrêtés en anomalie  Pire arrêté  Solde à cette date  Solde final
-    ---------  ------------------------------------  ---------  -------------------  -----------  ------------------  -----------
-    511800100  CREANCES RATTACHEES - PLACEMENT       debiteur   1                    2025-06-30   -1 205 231 891      0,00       
-    472200106  PRODUITS PERCU DAVANCE SUR BON DE TR  crediteur  1                    2026-06-30   686 724 016         718 339 497
-    559000101  DETTES RATTACHEES PRET EMPRUNT AU JR  crediteur  1                    2026-06-30   66 000 000          66 000 000 
+    Compte     Libellé                               Nature     Arrêtés  Pire arrêté  Solde à cette date  Solde final  Origine identifiée                                        
+    ---------  ------------------------------------  ---------  -------  -----------  ------------------  -----------  ----------------------------------------------------------
+    511800100  CREANCES RATTACHEES - PLACEMENT       debiteur   1        2025-06-30   -1 205 231 891      0,00         sur-apurement à la migration (contrôle 5.3)               
+    472200106  PRODUITS PERCU DAVANCE SUR BON DE TR  crediteur  1        2026-06-30   686 724 016         718 339 497  à investiguer                                             
+    559000101  DETTES RATTACHEES PRET EMPRUNT AU JR  crediteur  1        2026-06-30   66 000 000          66 000 000   contre-passation orpheline : 1 écriture(s) sans symétrique
 
   Recommandation :
     Obtenir la justification de chaque solde anormal à la date d'arrêté concernée et vérifier s'il
@@ -2037,8 +2040,12 @@ implicite du portefeuille.
   Gravité : ELEVEE
 
   Le rendement implicite du portefeuille — produits de l'exercice rapportés à l'encours moyen —
-  s'écarte fortement des taux contractuels observés au référentiel, et l'écart s'accroît d'exercice
-  en exercice.
+  s'écarte fortement des taux contractuels observés au référentiel, sur chacun des exercices
+  mesurés.
+  PÉRIMÈTRE. Le produit de l'exercice est reconstitué à partir des écritures de clôture annuelle :
+  seuls les exercices CLOS peuvent donc être mesurés. L'exercice en cours à la fin de la période
+  d'audit n'en fait pas partie, et le premier exercice présenté l'est à titre de base de comparaison
+  antérieure à la période.
   Un portefeuille de titres souverains ne peut structurellement pas rendre beaucoup plus que son
   coupon. L'écart provient donc d'autres composantes du produit : étalement de prime et décote, et
   surtout PLUS-VALUES DE CESSION RÉALISÉES. Ces dernières doivent être rapprochées des constats de
@@ -2056,6 +2063,8 @@ implicite du portefeuille.
     2023      36 393 720 277,72   5 484 939 170     15,07      
     2024      87 850 725 737,70   11 422 825 031    13,00      
     2025      143 126 905 963,74  21 562 142 054    15,07      
+    Le rendement ne progresse pas de façon régulière : il reste toutefois, sur chaque exercice, très
+    au-dessus du 95e centile des taux contractuels.
 
   Recommandation :
     Décomposer le produit par nature et rapprocher la composante plus-values des opérations
@@ -2068,11 +2077,12 @@ implicite du portefeuille.
 
   Les écritures de clôture annuelle soldent chaque compte de résultat et permettent de reconstituer
   le compte de résultat de l'activité par exercice.
-  La progression observée est très rapide : le résultat double quasiment d'un exercice à l'autre.
-  Une telle croissance n'est pas en soi une anomalie, mais elle appelle une revue analytique :
-  quelle part provient de l'augmentation des encours, quelle part d'un changement de méthode de
-  valorisation, et quelle part de la reconnaissance de plus-values sur des opérations dont la nature
-  de cession est discutée en section 8 ?
+  La progression observée est très rapide : le résultat est multiplié par plus de quinze entre le
+  premier et le dernier exercice reconstituables. Une telle croissance n'est pas en soi une
+  anomalie, mais elle appelle une revue analytique : quelle part provient de l'augmentation des
+  encours, quelle part d'un changement de méthode de valorisation, et quelle part de la
+  reconnaissance de plus-values sur des opérations dont la nature de cession est discutée en section
+  8 ?
 
     Croissance du résultat : 2023 : × 4,18 ; 2024 : × 1,95 ; 2025 : × 1,85
 
@@ -2247,6 +2257,7 @@ séparation des tâches dans le système amont et qualité du référentiel des 
     Portefeuilles hors périmètre (écartés du test)  : ABCM_MM.FundTransfer, ABCM_FI.Sales, ABCM_FX.Sales
     Deals aboutis sur portefeuilles couverts        : 1 903
     DONT SANS ÉCRITURE                              : 435 (23 %)
+    Dont négociés pendant la période d'audit        : 366 sur 1 557 (24 %)
 
     Portefeuille              Deals aboutis  Comptabilisés  Couverture %
     ------------------------  -------------  -------------  ------------
@@ -2261,16 +2272,18 @@ séparation des tâches dans le système amont et qualité du référentiel des 
     ABCM_BSB.Bond             2              2              100,00      
     La couverture révèle quels portefeuilles alimentent le périmètre extrait.
 
-    Statut du deal     Sans comptabilité  Avec comptabilité  Total  Part %
-    -----------------  -----------------  -----------------  -----  ------
-    CANCELED           56                 22                 78     28,20 
-    HYPO_TRADE         160                1                  161    0,60  
-    LIMIT_CHECK        2                  0                  2      0,00  
-    MATURED            830                1 026              1 856  55,30 
-    PENDING            3                  1                  4      25,00 
-    PENDING_AUTHORIZE  2                  1                  3      33,30 
-    TRADE_ENTERED      2                  1                  3      33,30 
-    VERIFIED           525                848                1 373  61,80 
+    Statut du deal     Sans comptabilité  Avec comptabilité  Total  Part comptabilisée %
+    -----------------  -----------------  -----------------  -----  --------------------
+    CANCELED           56                 22                 78     28,20               
+    HYPO_TRADE         160                1                  161    0,60                
+    LIMIT_CHECK        2                  0                  2      0,00                
+    MATURED            830                1 026              1 856  55,30               
+    PENDING            3                  1                  4      25,00               
+    PENDING_AUTHORIZE  2                  1                  3      33,30               
+    TRADE_ENTERED      2                  1                  3      33,30               
+    VERIFIED           525                848                1 373  61,80               
+    Ce tableau porte sur la TOTALITÉ du référentiel, portefeuilles hors périmètre compris : il
+    éclaire le comportement de chaque statut, non le taux de couverture énoncé plus haut.
 
     Deal     Portefeuille          Contrepartie     Statut    Date de négociation
     -------  --------------------  ---------------  --------  -------------------
@@ -2295,44 +2308,6 @@ séparation des tâches dans le système amont et qualité du référentiel des 
     Justifier, deal par deal, l'absence d'écriture sur les portefeuilles couverts. Mettre en place
     un rapprochement quotidien entre le nombre de deals conclus et le nombre de deals comptabilisés,
     par portefeuille.
-
-----------------------------------------------------------------------------------------------------
-[10.3] Écritures comptables sans deal correspondant dans le système amont
-  Gravité : MOYENNE
-
-  Des écritures du grand livre portent un identifiant de deal qui ne figure pas au référentiel du
-  système amont. Deux lectures sont possibles : l'extraction du référentiel ne couvre pas
-  l'intégralité de l'historique des deals, ou des écritures ont été générées sans deal source.
-  La distinction est importante : dans le second cas, la comptabilité porterait des opérations dont
-  aucune trace ne subsiste dans le système de négociation, ce qui romprait la piste d'audit.
-
-    Deals orphelins      : 41
-    Écritures concernées : 500
-    Volume               : 2 597 746 495 286 XAF
-    Période              : 2026-09-10 → 2026-09-18
-
-    Deal     Portefeuille              Titre         Écritures  Volume XAF       Du          Au        
-    -------  ------------------------  ------------  ---------  ---------------  ----------  ----------
-    4342944  ABCM_MM.Plmt.Tkn.Secured                42         481 229 361 112  2026-09-10  2026-09-10
-    4342965  ABCM_MM.Plmt.Tkn.Secured                42         481 229 361 112  2026-09-11  2026-09-11
-    4350956  ABCM_MM.Plmt.Tkn.Secured                42         441 264 500 000  2026-09-14  2026-09-14
-    4345377  ABCM_MM.Plmt.Tkn.Secured                42         441 226 166 668  2026-09-14  2026-09-14
-    4342920  ABCM_MM.Plmt.Tkn.Secured                42         401 222 972 224  2026-09-10  2026-09-10
-    4361074  ABCM_FX.Trading.Spot                    16         64 757 722 810   2026-09-15  2026-09-15
-    4360309  ABCM_FX.Trading.Fwd                     24         30 759 007 584   2026-09-15  2026-09-15
-    4342700  ABCM_FX.Trading.Fwd                     24         24 182 862 828   2026-09-10  2026-09-10
-    4342714  ABCM_FX.Trading.Fwd                     24         24 182 858 652   2026-09-10  2026-09-10
-    4342876  ABCM_FX.Trading.Spot                    16         21 053 595 872   2026-09-10  2026-09-10
-    4356382  ABCM_FVOCI.Bond           CM2L00000036  8          20 934 301 368   2026-09-15  2026-09-15
-    4356240  ABCM_FVOCI.Bond           GA2K00000249  6          20 096 164 384   2026-09-15  2026-09-15
-    4356220  ABCM_FVOCI.Bond           GA2K00000249  6          20 096 164 384   2026-09-15  2026-09-15
-    4355343  ABCM_FVOCI.Bond           GA2B00000109  6          16 504 109 588   2026-09-15  2026-09-15
-    4355070  ABCM_FVOCI.Bond           GA2B00000091  6          15 831 896 404   2026-09-15  2026-09-15
-    ... et 26 autre(s) ligne(s)
-
-  Recommandation :
-    Confirmer l'étendue de l'extraction du référentiel des deals. Pour les deals qui n'y
-    figureraient réellement pas, obtenir la justification des écritures correspondantes.
 
 ----------------------------------------------------------------------------------------------------
 [10.5] Référentiel des opérateurs non normalisé
@@ -2378,6 +2353,53 @@ séparation des tâches dans le système amont et qualité du référentiel des 
   Recommandation :
     Normaliser le référentiel des opérateurs et rendre le champ obligatoire, afin que l'attribution
     des opérations soit exploitable.
+
+----------------------------------------------------------------------------------------------------
+[10.3] Écritures postérieures à la dernière négociation du référentiel extrait
+  Gravité : FAIBLE
+
+  Des écritures du grand livre portent un identifiant de deal qui ne figure pas au référentiel du
+  système amont. Deux lectures sont possibles : l'extraction du référentiel ne couvre pas
+  l'intégralité de l'historique des deals, ou des écritures ont été générées sans deal source.
+  La distinction est importante : dans le second cas, la comptabilité porterait des opérations dont
+  aucune trace ne subsiste dans le système de négociation, ce qui romprait la piste d'audit.
+  LE TEST TRANCHE. La TOTALITÉ de ces écritures est postérieure à la dernière négociation figurant
+  au référentiel extrait (2026-09-09), alors que le grand livre court jusqu'au 2026-09-18. C'est
+  donc la première lecture qui s'applique : le décalage entre les deux extractions explique
+  l'intégralité des cas, et aucune écriture n'est orpheline à l'intérieur de la fenêtre couverte par
+  le référentiel. Le constat ne porte pas sur les comptes arrêtés, ces écritures étant toutes
+  postérieures à la clôture ; il reste à lever en obtenant un référentiel couvrant la même fenêtre
+  que le grand livre.
+
+    Deals orphelins                                : 41
+    Écritures concernées                           : 500
+    Volume                                         : 2 597 746 495 286 XAF
+    Période des écritures                          : 2026-09-10 → 2026-09-18
+    Dernière négociation au référentiel extrait    : 2026-09-09
+    Deals orphelins dans la fenêtre du référentiel : 0
+
+    Deal     Portefeuille              Titre         Écritures  Volume XAF       Du          Au        
+    -------  ------------------------  ------------  ---------  ---------------  ----------  ----------
+    4342944  ABCM_MM.Plmt.Tkn.Secured                42         481 229 361 112  2026-09-10  2026-09-10
+    4342965  ABCM_MM.Plmt.Tkn.Secured                42         481 229 361 112  2026-09-11  2026-09-11
+    4350956  ABCM_MM.Plmt.Tkn.Secured                42         441 264 500 000  2026-09-14  2026-09-14
+    4345377  ABCM_MM.Plmt.Tkn.Secured                42         441 226 166 668  2026-09-14  2026-09-14
+    4342920  ABCM_MM.Plmt.Tkn.Secured                42         401 222 972 224  2026-09-10  2026-09-10
+    4361074  ABCM_FX.Trading.Spot                    16         64 757 722 810   2026-09-15  2026-09-15
+    4360309  ABCM_FX.Trading.Fwd                     24         30 759 007 584   2026-09-15  2026-09-15
+    4342700  ABCM_FX.Trading.Fwd                     24         24 182 862 828   2026-09-10  2026-09-10
+    4342714  ABCM_FX.Trading.Fwd                     24         24 182 858 652   2026-09-10  2026-09-10
+    4342876  ABCM_FX.Trading.Spot                    16         21 053 595 872   2026-09-10  2026-09-10
+    4356382  ABCM_FVOCI.Bond           CM2L00000036  8          20 934 301 368   2026-09-15  2026-09-15
+    4356240  ABCM_FVOCI.Bond           GA2K00000249  6          20 096 164 384   2026-09-15  2026-09-15
+    4356220  ABCM_FVOCI.Bond           GA2K00000249  6          20 096 164 384   2026-09-15  2026-09-15
+    4355343  ABCM_FVOCI.Bond           GA2B00000109  6          16 504 109 588   2026-09-15  2026-09-15
+    4355070  ABCM_FVOCI.Bond           GA2B00000091  6          15 831 896 404   2026-09-15  2026-09-15
+    ... et 26 autre(s) ligne(s)
+
+  Recommandation :
+    Confirmer l'étendue de l'extraction du référentiel des deals. Pour les deals qui n'y
+    figureraient réellement pas, obtenir la justification des écritures correspondantes.
 
 ====================================================================================================
                                            FIN DU RAPPORT                                           

@@ -74,6 +74,12 @@ def _c101_couverture(ctx) -> Constat:
     dans_couverts = aboutis[aboutis.Book.isin(couverts.index)]
     manquants = dans_couverts[~dans_couverts.en_comptabilite]
     part = len(manquants) / max(len(dans_couverts), 1) * 100
+    # Le taux est-il porté par les deals les plus récents, non encore déversés, ou vaut-il
+    # aussi pour la période arrêtée ? La réponse change la portée du constat.
+    negocies = dans_couverts["Trade Date_d"]
+    couverts_periode = dans_couverts[negocies <= ctx.config.fin]
+    manquants_periode = couverts_periode[~couverts_periode.en_comptabilite]
+    part_periode = len(manquants_periode) / max(len(couverts_periode), 1) * 100
     if manquants.empty:
         return Constat(
             code="10.1", titre="Couverture comptable des deals conclus", gravite=Gravite.CONFORME,
@@ -110,14 +116,21 @@ def _c101_couverture(ctx) -> Constat:
             ("Portefeuilles hors périmètre (écartés du test)", ", ".join(hors_perimetre.index)),
             ("Deals aboutis sur portefeuilles couverts", nb(len(dans_couverts))),
             ("DONT SANS ÉCRITURE", f"{len(manquants)} ({pct(part, 0)})"),
+            ("Dont négociés pendant la période d'audit",
+             f"{nb(len(manquants_periode))} sur {nb(len(couverts_periode))} "
+             f"({pct(part_periode, 0)})"),
         ],
         tableaux=[
             Tableau(["Portefeuille", "Deals aboutis", "Comptabilisés", "Couverture %"],
                     [[i, int(r.deals), int(r.comptabilises), float(r.couverture)]
                      for i, r in par_book.iterrows()],
                     note="La couverture révèle quels portefeuilles alimentent le périmètre extrait."),
-            Tableau(["Statut du deal", "Sans comptabilité", "Avec comptabilité", "Total", "Part %"],
-                    lignes),
+            Tableau(["Statut du deal", "Sans comptabilité", "Avec comptabilité", "Total",
+                     "Part comptabilisée %"],
+                    lignes,
+                    note=("Ce tableau porte sur la TOTALITÉ du référentiel, portefeuilles hors "
+                          "périmètre compris : il éclaire le comportement de chaque statut, non "
+                          "le taux de couverture énoncé plus haut.")),
             Tableau(["Deal", "Portefeuille", "Contrepartie", "Statut", "Date de négociation"],
                     [[r["Trade Id"], r.Book, r.CounterParty, r.TradeStatus,
                       str(r["Trade Date_d"].date()) if r["Trade Date_d"] == r["Trade Date_d"] else ""]
@@ -213,6 +226,16 @@ def _c102_deals_non_aboutis(ctx) -> Constat:
     )
 
 
+def _date_extreme(deals, colonne: str) -> str:
+    """Dernière date du référentiel des deals, au format ISO, ou une chaîne vide."""
+    if deals.empty or colonne not in deals.columns:
+        return ""
+    valeurs = pd.to_numeric(deals[colonne], errors="coerce").dropna()
+    if valeurs.empty:
+        return ""
+    return str(pd.to_datetime(valeurs.max(), unit="D", origin="1899-12-30").date())
+
+
 def _c103_ecritures_orphelines(ctx) -> Constat:
     """Toute écriture doit se rattacher à un deal existant dans le système amont."""
     deals, _ = _apparier(ctx)
@@ -226,10 +249,18 @@ def _c103_ecritures_orphelines(ctx) -> Constat:
         ecritures=("LCY_AMOUNT", "size"), volume=("LCY_AMOUNT", "sum"),
         debut=("TRN_DT", "min"), fin=("TRN_DT", "max"), book=("BOOK", "first"),
         titre=("TITRE", "first"))
+    # Le référentiel des deals s'arrête à une date donnée, le grand livre à une autre. Des
+    # écritures postérieures à la dernière négociation extraite s'expliquent par ce décalage
+    # et non par l'absence de deal source : la distinction change la portée du constat.
+    derniere_negociation = _date_extreme(deals, "Trade Date")
+    apres_extraction = (orphelines.TRN_DT > derniere_negociation).all() if derniere_negociation else False
+    dans_extraction = par_deal[par_deal.debut <= derniere_negociation] if derniere_negociation else par_deal
     return Constat(
         code="10.3",
-        titre="Écritures comptables sans deal correspondant dans le système amont",
-        gravite=Gravite.MOYENNE,
+        titre=("Écritures postérieures à la dernière négociation du référentiel extrait"
+               if apres_extraction else
+               "Écritures comptables sans deal correspondant dans le système amont"),
+        gravite=Gravite.FAIBLE if apres_extraction else Gravite.MOYENNE,
         constat=(
             "Des écritures du grand livre portent un identifiant de deal qui ne figure pas au "
             "référentiel du système amont. Deux lectures sont possibles : l'extraction du "
@@ -237,13 +268,27 @@ def _c103_ecritures_orphelines(ctx) -> Constat:
             "ont été générées sans deal source.\n"
             "La distinction est importante : dans le second cas, la comptabilité porterait des "
             "opérations dont aucune trace ne subsiste dans le système de négociation, ce qui "
-            "romprait la piste d'audit."
+            "romprait la piste d'audit.\n"
+            + ("LE TEST TRANCHE. La TOTALITÉ de ces écritures est postérieure à la dernière "
+               f"négociation figurant au référentiel extrait ({derniere_negociation}), alors que "
+               f"le grand livre court jusqu'au {orphelines.TRN_DT.max()}. C'est donc la première "
+               "lecture qui s'applique : le décalage entre les deux extractions explique "
+               "l'intégralité des cas, et aucune écriture n'est orpheline à l'intérieur de la "
+               "fenêtre couverte par le référentiel. Le constat ne porte pas sur les comptes "
+               "arrêtés, ces écritures étant toutes postérieures à la clôture ; il reste à lever "
+               "en obtenant un référentiel couvrant la même fenêtre que le grand livre."
+               if apres_extraction else
+               "AUCUNE de ces écritures n'est expliquée par le décalage entre les deux "
+               f"extractions : {len(dans_extraction)} deals orphelins se situent à l'intérieur de "
+               "la fenêtre couverte par le référentiel et relèvent donc de la seconde lecture.")
         ),
         chiffres=[
             ("Deals orphelins", str(len(par_deal))),
             ("Écritures concernées", nb(len(orphelines))),
             ("Volume", xaf(float(orphelines.LCY_AMOUNT.sum()))),
-            ("Période", f"{orphelines.TRN_DT.min()} → {orphelines.TRN_DT.max()}"),
+            ("Période des écritures", f"{orphelines.TRN_DT.min()} → {orphelines.TRN_DT.max()}"),
+            ("Dernière négociation au référentiel extrait", derniere_negociation or "n/d"),
+            ("Deals orphelins dans la fenêtre du référentiel", str(len(dans_extraction))),
         ],
         tableaux=[
             Tableau(["Deal", "Portefeuille", "Titre", "Écritures", "Volume XAF", "Du", "Au"],
