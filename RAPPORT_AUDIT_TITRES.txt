@@ -4,7 +4,7 @@
 
   Périmètre        : Département de la trésorerie — gestion des investissements sur les marchés financiers
   Période d'audit  : 2023-09-27 au 2026-06-30
-  Rapport généré le : 20/09/2026 à 09:33
+  Rapport généré le : 20/09/2026 à 09:35
   Référentiel      : Plan Comptable des Établissements de Crédit (PCEC) — CEMAC / COBAC
 
   Ce rapport est produit automatiquement. Chaque constat indique le test exécuté, sa
@@ -1644,10 +1644,15 @@ appliqué avec celui que le PCEC prévoit pour une pension livrée.
   financement. L'endettement est sous-évalué, faussant les ratios de liquidité et de transformation.
   Et l'usage réel du portefeuille comme collatéral est invisible au bilan comme au hors bilan.
 
-    Opérations concernées               : 215
-    Sorties du portefeuille (crédits)   : 473 462 410 000 XAF
-    Entrées au portefeuille (débits)    : 444 206 660 000 XAF
-    Marqueurs de pension livrée absents : 4
+  LECTURE DU TABLEAU COMPARATIF. Les trois marqueurs se traduisent par quatre comptes, l'inscription
+  hors bilan ayant par nature une contrepartie. Aucun des quatre n'est mouvementé sur les cessions-
+  rétrocessions, alors que les quatre le sont sur les pensions auprès de la banque centrale.
+
+    Opérations concernées                                         : 215
+    Sorties du portefeuille (crédits)                             : 473 462 410 000 XAF
+    Entrées au portefeuille (débits)                              : 444 206 660 000 XAF
+    Comptes marqueurs présents sur les pensions BEAC, absents ici : 4 sur 4
+    Écart entre sorties et entrées du portefeuille                : 29 255 750 000 XAF
 
     Marqueur comptable d'une pension livrée   Compte     Présent sur les pensions BEAC  Présent sur les cessions-rétrocessions
     ----------------------------------------  ---------  -----------------------------  --------------------------------------
@@ -1707,15 +1712,17 @@ appliqué avec celui que le PCEC prévoit pour une pension livrée.
   sont toutes des deals VALIDÉS ou ARRIVÉS À ÉCHÉANCE — aucune n'est annulée, il s'agit donc
   d'opérations réelles. Certains deals commentés dans la comptabilité sont absents du référentiel
   extrait. Enfin, ces opérations sont très concentrées sur un opérateur. En effet, Justin Tenku
-  Jabong traite 194 des 200 opérations identifiées.
+  Jabong traite 194 des 200 opérations retrouvées au référentiel des deals.
 
-    Opérations identifiées par le commentaire          : 215
-    Montant réglé cumulé                               : 896 125 677 223 XAF
-    Période                                            : 2025-11-25 → 2026-09-18
-    Aller-retours détectés par la signature économique : 107
-    Dont NON commentés                                 : 44 (41 % manqués par le libellé)
-    Deals commentés absents du référentiel Calypso     : 15
-    Statuts des deals commentés                        : VERIFIED : 173, MATURED : 27
+    Opérations identifiées par le commentaire — PÉRIODE D'AUDIT : 80
+    Montant réglé sur la période d'audit                        : 402 403 585 157 XAF
+    Opérations identifiées sur toute l'extraction               : 215
+    Montant réglé sur toute l'extraction                        : 896 125 677 223 XAF
+    Période                                                     : 2025-11-25 → 2026-09-18
+    Aller-retours détectés par la signature économique          : 107
+    Dont NON commentés                                          : 44 (41 % manqués par le libellé)
+    Deals commentés absents du référentiel Calypso              : 15
+    Statuts des deals commentés                                 : VERIFIED : 173, MATURED : 27
 
     Jambe mentionnée  Lignes
     ----------------  ------
@@ -1906,13 +1913,22 @@ appliqué avec celui que le PCEC prévoit pour une pension livrée.
   Le produit net bancaire de l'exercice s'en trouve majoré, et avec lui le résultat distribuable et
   les fonds propres.
 
-    Impact résultat net des opérations identifiées : 1 045 123 213 XAF
+    IMPACT RÉSULTAT SUR LA PÉRIODE D'AUDIT : 182 465 990 XAF
+    Impact sur toute l'extraction          : 1 045 123 213 XAF
 
     Compte     Libellé                             Événement          Lignes  Impact net XAF
     ---------  ----------------------------------  -----------------  ------  --------------
     733200100  REVENUS DE BONS DU TRESOR           PREM_DISC_REAL     8       19 175 055    
     733400100  REVENUS D OBLIGATIONS ET BONS ASSI  ACCRUAL_REAL       88      1 036 731 904 
     734400100  REV D OBLIGATIONS ET BONS ASSIMILE  REALIZED_CLEAN_PL  19      -10 783 746   
+    Décomposition sur toute l'extraction.
+
+    Exercice  Impact résultat XAF
+    --------  -------------------
+    2025      12 988 027         
+    2026      1 032 135 186      
+    Ventilation par exercice : seuls les exercices clos dans la période d'audit entrent dans le
+    résultat revu.
 
   Recommandation :
     Mesurer l'incidence d'un retraitement en financement garanti sur le résultat de chaque exercice

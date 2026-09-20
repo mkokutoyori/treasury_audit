@@ -96,6 +96,12 @@ def _c81_identification(ctx, commentes, paires) -> Constat:
         return Constat(code="8.1", titre="Opérations de cession-rétrocession", gravite=Gravite.CONFORME,
                        constat="Aucune opération de cession-rétrocession identifiée.")
     regle = commentes[commentes.EVENEMENT == "CST_S_SETTLED"].groupby("DEAL").LCY_AMOUNT.max()
+    # Les opérations se poursuivent au-delà de la clôture : on isole ce qui relève de la
+    # période d'audit de ce qui constitue un événement postérieur.
+    dans_periode = commentes[(commentes.TRN_DT >= ctx.config.debut)
+                             & (commentes.TRN_DT <= ctx.config.fin)]
+    regle_periode = (dans_periode[dans_periode.EVENEMENT == "CST_S_SETTLED"]
+                     .groupby("DEAL").LCY_AMOUNT.max())
     deals = ctx.deals_calypso
     ids = set(commentes.DEAL)
     apparies = deals[deals["Trade Id"].isin(ids)] if not deals.empty else pd.DataFrame()
@@ -112,7 +118,7 @@ def _c81_identification(ctx, commentes, paires) -> Constat:
     if len(par_trader):
         premier = par_trader.groupby("Trader").deals.sum().sort_values(ascending=False)
         concentration = (f"{premier.index[0]} traite {int(premier.iloc[0])} des "
-                         f"{int(premier.sum())} opérations identifiées")
+                         f"{int(premier.sum())} opérations retrouvées au référentiel des deals")
     return Constat(
         code="8.1",
         titre="L'identification des cessions-rétrocessions par le commentaire est incomplète",
@@ -138,8 +144,11 @@ def _c81_identification(ctx, commentes, paires) -> Constat:
             + (f" En effet, {concentration}." if concentration else "")
         ),
         chiffres=[
-            ("Opérations identifiées par le commentaire", str(commentes.DEAL.nunique())),
-            ("Montant réglé cumulé", xaf(float(regle.sum()))),
+            ("Opérations identifiées par le commentaire — PÉRIODE D'AUDIT",
+             str(dans_periode.DEAL.nunique())),
+            ("Montant réglé sur la période d'audit", xaf(float(regle_periode.sum()))),
+            ("Opérations identifiées sur toute l'extraction", str(commentes.DEAL.nunique())),
+            ("Montant réglé sur toute l'extraction", xaf(float(regle.sum()))),
             ("Période", f"{commentes.TRN_DT.min()} → {commentes.TRN_DT.max()}"),
             ("Aller-retours détectés par la signature économique", str(len(paires))),
             ("Dont NON commentés", f"{len(non_commentees)} ({pct(part_manquee, 0)} manqués par le libellé)"),
@@ -230,13 +239,20 @@ def _c82_schema_comptable(ctx, commentes) -> Constat:
             "quittent économiquement jamais. Des plus-values de cession sont constatées sur des "
             "opérations de financement. L'endettement est sous-évalué, faussant les ratios de "
             "liquidité et de transformation. Et l'usage réel du portefeuille comme collatéral est "
-            "invisible au bilan comme au hors bilan."
+            "invisible au bilan comme au hors bilan.\n"
+            "\n"
+            "LECTURE DU TABLEAU COMPARATIF. Les trois marqueurs se traduisent par quatre comptes, "
+            "l'inscription hors bilan ayant par nature une contrepartie. Aucun des quatre n'est "
+            "mouvementé sur les cessions-rétrocessions, alors que les quatre le sont sur les "
+            "pensions auprès de la banque centrale."
         ),
         chiffres=[
             ("Opérations concernées", str(commentes.DEAL.nunique())),
             ("Sorties du portefeuille (crédits)", xaf(sorties)),
             ("Entrées au portefeuille (débits)", xaf(entrees)),
-            ("Marqueurs de pension livrée absents", str(len([p for p in presence if p[2] and not p[3]]))),
+            ("Comptes marqueurs présents sur les pensions BEAC, absents ici",
+             f"{len([p for p in presence if p[2] and not p[3]])} sur {len(presence)}"),
+            ("Écart entre sorties et entrées du portefeuille", xaf(sorties - entrees)),
         ],
         tableaux=[
             Tableau(["Marqueur comptable d'une pension livrée", "Compte",
@@ -408,6 +424,12 @@ def _c85_resultat(ctx, commentes) -> Constat:
     par = resultat.groupby(["AC_NO", "AC_GL_DESC", "EVENEMENT"]).agg(
         lignes=("LCY_AMOUNT", "size"), net=("SIGNE", "sum"))
     impact = -float(resultat.SIGNE.sum())
+    # Le résultat des exercices revus est celui de la période ; le reste relève des
+    # événements postérieurs à la clôture.
+    en_periode = resultat[(resultat.TRN_DT >= ctx.config.debut) & (resultat.TRN_DT <= ctx.config.fin)]
+    impact_periode = -float(en_periode.SIGNE.sum())
+    par_exercice = (resultat.assign(exercice=resultat.TRN_DT.str[:4])
+                    .groupby("exercice").SIGNE.sum())
     return Constat(
         code="8.5",
         titre="Résultat constaté sur des opérations de financement",
@@ -423,10 +445,20 @@ def _c85_resultat(ctx, commentes) -> Constat:
             "devrait l'être. Le produit net bancaire de l'exercice s'en trouve majoré, et avec lui "
             "le résultat distribuable et les fonds propres."
         ),
-        chiffres=[("Impact résultat net des opérations identifiées", xaf(impact))],
-        tableaux=[Tableau(["Compte", "Libellé", "Événement", "Lignes", "Impact net XAF"],
-                          [[i[0], i[1][:34], i[2], int(r.lignes), -float(r.net)]
-                           for i, r in par.iterrows()])],
+        chiffres=[
+            ("IMPACT RÉSULTAT SUR LA PÉRIODE D'AUDIT", xaf(impact_periode)),
+            ("Impact sur toute l'extraction", xaf(impact)),
+        ],
+        tableaux=[
+            Tableau(["Compte", "Libellé", "Événement", "Lignes", "Impact net XAF"],
+                    [[i[0], i[1][:34], i[2], int(r.lignes), -float(r.net)]
+                     for i, r in par.iterrows()],
+                    note="Décomposition sur toute l'extraction."),
+            Tableau(["Exercice", "Impact résultat XAF"],
+                    [[i, -float(v)] for i, v in par_exercice.items()],
+                    note=("Ventilation par exercice : seuls les exercices clos dans la période "
+                          "d'audit entrent dans le résultat revu.")),
+        ],
         recommandation=(
             "Mesurer l'incidence d'un retraitement en financement garanti sur le résultat de "
             "chaque exercice concerné, en substituant une charge d'intérêt au produit constaté."
