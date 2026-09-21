@@ -13,20 +13,37 @@
 
 | Ref. | Exception | Rating |
 |---|---|---|
-| 7.1.2 | Repurchase transaction recorded without its corresponding cash settlement | High |
-| 7.1.3 | Securities acquired on integration recorded as Central Bank cash for six months | High |
-| 7.1.4 | Accrued interest carried for three years and written off as an operational loss | High |
-| 7.1.5 | Sale and buy-back transactions accounted for as outright disposals | High |
-| 7.1.6 | Interface suspense accounts no longer clearing to nil | High |
-| 7.1.7 | Overstated clearing of accrued interest on migration to Calypso | High |
-| 7.1.8 | Duplicated interface postings remaining uncorrected | Concern |
-| 7.1.9 | Unexplained difference in accrued interest taken up at migration | Concern |
-| 7.1.10 | Exposure to excluded sovereigns not fully supported by the explanation provided | Concern |
-| 7.1.11 | Securities charge account used for items outside its purpose | Concern |
-| 7.1.12 | Finance suspense account used for a manual reversal campaign and carrying integration residues | Concern |
-| 7.1.13 | Central Bank refinancing recorded as unsecured overnight interbank borrowing | Concern |
-| 7.1.14 | No impairment recognised against the securities portfolio | Concern |
-| 7.1.15 | Pledged securities recorded in duplicate on the annual reporting date | Moderate |
+| 7.1.1 | Inconsistent and Unreliable Securities Identification Codes | Concern |
+| 7.1.2 | Repurchase Transaction Recorded Without Its Corresponding Cash Settlement | High |
+| 7.1.3 | Securities Acquired on Integration Recorded as Central Bank Cash for Six Months | High |
+| 7.1.4 | Accrued Interest Carried for Three Years and Written Off as an Operational Loss | High |
+| 7.1.5 | Sale and Buy-Back Transactions Accounted for as Outright Disposals | High |
+| 7.1.6 | Interface Suspense Accounts No Longer Clearing to Nil | High |
+| 7.1.7 | Overstated Clearing of Accrued Interest on Migration to Calypso | High |
+| 7.1.8 | Duplicated Interface Postings Remaining Uncorrected | Concern |
+| 7.1.9 | Unexplained Difference in Accrued Interest Taken Up at Migration | Concern |
+| 7.1.10 | Exposure to Excluded Sovereigns Not Fully Supported by the Explanation Provided | Concern |
+| 7.1.11 | Securities Charge Account Used for Items Outside Its Purpose | Concern |
+| 7.1.12 | Finance Suspense Account Used for a Large Manual Reversal Campaign and Carrying Integration Residues at Year-End | Concern |
+| 7.1.13 | Central Bank Refinancing Recorded as Unsecured Overnight Interbank Borrowing | Concern |
+| 7.1.14 | No Impairment Recognised Against the Securities Portfolio | Concern |
+| 7.1.15 | Pledged Securities Recorded in Duplicate on the Annual Reporting Date | Moderate |
+| 7.1.16 | Securities Transactions No Longer Supported by a Contract Record | High |
+| 7.1.17 | Segregation of Duties Not Operative Over Accounting Postings | High |
+| 7.1.18 | Portfolio Income Recorded Under the Wrong Accounting Category | High |
+| 7.1.19 | Account Balances Contrary to the Nature of the Account at Reporting Dates | High |
+| 7.1.20 | Repurchase Transactions Identifiable Only Through Free-Text Narration | Concern |
+| 7.1.21 | Securities Repeatedly Recycled with the Same Counterparty, and Gains Recognised on Financing Transactions | Concern |
+| 7.1.22 | Repurchase Transactions Recorded Without Accrual and Settled Late | Concern |
+| 7.1.23 | Collateral Pledged in Excess of the Outstanding Borrowing | Concern |
+| 7.1.24 | Accrued Interest Not Reconciled to the Underlying Contracts | Concern |
+| 7.1.25 | Implicit Portfolio Yield Materially Above Contractual Rates | Concern |
+| 7.1.26 | Premium and Discount Recognised in Full on Disposal Rather Than Over the Holding Period | Concern |
+| 7.1.27 | Cancelled, Pending and Hypothetical Deals Generating Accounting Entries | Concern |
+| 7.1.28 | Executed Deals Without Corresponding Accounting Entries | Concern |
+| 7.1.29 | Securities Acquired for Customers Transiting the Proprietary Portfolio | Concern |
+| 7.1.30 | Contract Lifecycle Exceptions in the Legacy System | Moderate |
+| 7.1.31 | Referential Integrity Weaknesses in the Contract Register | Moderate |
 
 ---
 
@@ -645,3 +662,569 @@ for the entry should be produced, and a single method for recording pledged coll
 adopted and applied consistently.
 
 **Risk Rating: Moderate.**
+
+---
+
+## 7.1.16 Securities Transactions No Longer Supported by a Contract Record
+
+Since the migration of 16 June 2025, no contract record is created in the core banking system for
+securities transactions. The money market contract register received its last entry on 12 June 2025
+and 1,941 transactions concluded in Calypso since that date exist in the General Ledger as
+accounting entries only, with no underlying contract carrying the nominal, the rate, the maturity
+and the counterparty.
+
+The structured information ordinarily conveyed by an accounting entry has been lost in the same
+movement. Under the legacy module each posting carried one of six amount tags identifying the
+nature of the event — principal, interest, accrual, and so forth — whereas the entirety of the
+Calypso flow is posted under a single tag, *TXN_AMT*, through one module. The nature of an event
+can therefore no longer be determined from the entry itself.
+
+What remains is the narration. Of the 191,417 Calypso entries falling within the audit scope,
+25,688 (13%) carry a structured description permitting a transaction to be identified, and 16,019
+carry a free-text comment entered by the dealing room. The economic intent of an operation — and in
+particular whether a sale is outright or forms part of a repurchase arrangement — is recorded
+nowhere else.
+
+**Implications:**
+- Terms and conditions of transactions concluded since June 2025 cannot be verified against the
+  accounting records, the two being no longer linked.
+- Automated controls over the portfolio, over accruals and over maturities cannot operate, the
+  data on which they depend being absent.
+- The nature of an accounting event cannot be determined from the entry, making reconciliation,
+  analytical review and exception reporting dependent on manual interpretation of narration.
+- The qualification of transactions — and consequently their accounting treatment — rests on
+  free-text entered at the discretion of the dealer.
+
+**Recommendations:**
+Treasury, together with Information Technology, should extend the interface so that each Calypso
+transaction creates or updates a contract record in the core banking system carrying the nominal,
+rate, maturity and counterparty, and so that the nature of the Calypso event is reported in a
+structured field of the accounting entry rather than in narration. Pending that development, a
+periodic reconciliation between the Calypso deal register and the General Ledger should be
+established and evidenced, and the recording of economic intent should be moved from free text to a
+mandatory coded field.
+
+**Risk Rating: High.**
+
+---
+
+## 7.1.17 Segregation of Duties Not Operative Over Accounting Postings
+
+The four-eyes control configured in the core banking system does not operate over the securities
+flow. The entirety of the Calypso interface — 191,417 entries — is posted and authorised under a
+single technical account, so that capture and validation are performed by the same identity in every
+case. Across the wider population of 422,968 entries examined, 363,960 (86%) were validated by the
+same account that captured them, and in no instance was that account a named individual.
+
+Manual postings present a distinct weakness. A total of 2,557 entries amounting to
+XAF 1,046,403,820,592 were passed over the period without any validator being recorded. We further
+noted 436 entries captured between 20:00 and midnight and 95 between midnight and 06:00, the latter
+representing XAF 127,630,759,874 and falling on two dates, one of which is the migration date.
+
+The same weakness is present in the upstream system. Of the 3,480 deals in the Calypso register,
+21% were captured under generic accounts — *calypso_user* and *admin* — 709 carry no identified
+trader, and the register contains no validation field. The operator naming convention is not
+standardised, two distinct labels appearing to designate the same individual.
+
+**Implications:**
+- Accountability for accounting entries cannot be established, and the four-eyes principle is not
+  achieved over the securities flow.
+- Manual entries of substantial value passed without any independent authorisation.
+- Deals captured in the front-office system without an identifiable trader, precluding any review
+  of dealing authority and limits by individual.
+- Out-of-hours postings which cannot be reconciled to any authorised processing schedule.
+
+**Recommendations:**
+Treasury should obtain from Information Technology the functional ownership of each technical
+account, the list of individuals permitted to use it and the application-level audit trail
+associated with it, so that entries posted under those accounts can be attributed. The four-eyes
+requirement should be enforced over manual entries without exception, and entries already passed
+without a validator should be subjected to a retrospective review. In the upstream system, deal
+capture under generic accounts should be discontinued, a validation field introduced, and the
+operator naming convention standardised.
+
+**Risk Rating: High.**
+
+---
+
+## 7.1.18 Portfolio Income Recorded Under the Wrong Accounting Category
+
+The PCEC assigns a distinct series of income accounts to each category of securities, so that
+instruments held in the trading portfolio give rise to trading income and instruments held in the
+investment portfolio to investment income. Testing of the correspondence between the balance sheet
+category of each instrument and the income account credited found 41,879 entries recorded under the
+incorrect category, against 487 correctly recorded. The predominant case is that of instruments
+held in the trading portfolio whose income is credited to investment income, representing 41,705
+entries and XAF 8,866,006,400 of income recognised since the migration.
+
+The reclassification performed at migration is relevant to this matter. Positions representing
+XAF 126,690,278,772 of nominal were transferred from the investment portfolio accounts to the
+trading portfolio accounts on 16 June 2025, the income accounts credited thereafter having remained
+those applicable to the former category.
+
+**Implications:**
+- Misstatement of the composition of net banking income between trading and investment activities.
+- Income recognised in accounts which do not correspond to the balance sheet classification of the
+  underlying instruments, affecting segment and regulatory reporting.
+- A change in accounting category performed at migration without the corresponding change in
+  income recognition, and without evidence of a documented decision supporting the
+  reclassification itself.
+
+**Recommendations:**
+Treasury and Financial Control should establish and document the intended classification of each
+portfolio, obtain the decision underlying the reclassification performed at migration, and align
+the income accounts credited with the balance sheet category of the instruments concerned. The
+accounting scheme of the Calypso interface should be amended so that the income account is derived
+from the portfolio in which the instrument is held, and the income recognised since the migration
+should be reclassified accordingly.
+
+**Risk Rating: High.**
+
+---
+
+## 7.1.19 Account Balances Contrary to the Nature of the Account at Reporting Dates
+
+Three accounts within the securities perimeter presented, at a reporting date, a balance in the
+opposite sense to that which their nature admits. Two of these are individually significant.
+
+| Account | Nature | Reporting date | Balance (XAF) | Origin |
+|---|---|---|---|---|
+| 511800100 — Créances rattachées, placement | Debtor | 30 June 2025 | (1,205,231,891) | Over-clearing at migration (7.1.7) |
+| 472200106 — Produits perçus d'avance sur bons du Trésor | Creditor | 30 June 2026 | 686,724,016 | Not established |
+| 559000101 — Dettes rattachées, prêts et emprunts au jour le jour | Creditor | 30 June 2026 | 66,000,000 | Unmatched reversal |
+
+The first is explained by the migration matter reported separately. The second remains
+unexplained and stood at XAF 718,339,497 at the end of the extraction. The third arises from a
+single reversal entry passed without its symmetrical counterpart.
+
+**Implications:**
+- Balances presented in the financial statements which cannot arise in the ordinary course, and
+  which indicate an incomplete or incorrect posting in each case.
+- An unexplained debit balance on a deferred income account, increasing over the period, with no
+  identified origin.
+- Absence of a detective control over the direction of account balances at reporting dates.
+
+**Recommendations:**
+Treasury should obtain the justification of each balance at the reporting date concerned and
+establish whether it was corrected thereafter, giving priority to the deferred income account,
+whose balance has continued to increase. A systematic control should be introduced comparing the
+direction of each balance to the nature of the account at every reporting date, with any exception
+reported to Financial Control before the accounts are closed.
+
+**Risk Rating: High.**
+
+---
+
+## 7.1.20 Repurchase Transactions Identifiable Only Through Free-Text Narration
+
+Sale and buy-back transactions are identified in the accounting records solely by the comment
+entered by the dealing room. Testing the completeness of that identification against the economic
+signature of the transactions — the same instrument, the same counterparty, opposing quantities and
+a repurchase within a limited period — disclosed 107 such round trips, of which 44, or 41%, carry no
+comment identifying them as repurchase transactions. The population identified by narration
+therefore understates the activity by a material margin.
+
+We further note that Calypso provides a dedicated portfolio for buy-sell-back transactions, in
+which 8 operations are recorded. None of the 215 transactions identified as sale and buy-back is
+held within it, all being carried in the ordinary investment portfolios.
+
+**Implications:**
+- The population of repurchase transactions cannot be determined reliably, and any restatement or
+  disclosure derived from it will be incomplete.
+- Transactions whose economic substance is a secured financing indistinguishable, in the records,
+  from outright portfolio activity.
+- A classification mechanism which exists within the front-office system and is not used, leaving
+  identification dependent on discretionary free text.
+
+**Recommendations:**
+Treasury should make the use of the dedicated portfolio mandatory for all sale and buy-back
+transactions, so that they become identifiable from the system rather than from narration, and
+should reclassify the transactions already concluded. A periodic control based on the economic
+signature of round trips should be implemented to identify transactions not captured in the
+dedicated portfolio.
+
+**Risk Rating: Concern.**
+
+---
+
+## 7.1.21 Securities Repeatedly Recycled with the Same Counterparty, and Gains Recognised on Financing Transactions
+
+Analysis of the sale and buy-back population identified instruments subject to repeated round trips
+with the same counterparty. Eighty-two securities are involved in repeated commented transactions
+and thirteen in repeated round trips evidenced by the deal register, one instrument having been
+recycled nine times. The price of that instrument rises at each iteration, the cumulative
+progression amounting to XAF 133,390,410 — a pattern characteristic of a rolled funding position
+rather than of successive portfolio decisions.
+
+Because the transactions are recorded as outright disposals, each iteration gives rise to a
+recognised gain. The effect on the result of the audit period is XAF 182,465,990, and
+XAF 1,045,123,213 over the whole extraction.
+
+**Implications:**
+- Income recognised on transactions which, in substance, represent the cost of funding rather than
+  a realised portfolio gain.
+- Results of individual financial years inflated by amounts arising from the repeated recycling of
+  the same instruments.
+- Concentration of funding on a limited number of counterparties and instruments not apparent from
+  the accounting records.
+
+**Recommendations:**
+Treasury should quantify, for each financial year, the result recognised on transactions falling
+within the repurchase population and present the effect of its reversal to Financial Control. The
+rolled funding positions should be identified and monitored as funding lines, with the associated
+counterparty concentration reported to the Asset and Liability Committee.
+
+**Risk Rating: Concern.**
+
+---
+
+## 7.1.22 Repurchase Transactions Recorded Without Accrual and Settled Late
+
+Review of the 129 repurchase transactions concluded with the Central Bank identified three related
+weaknesses in their recording.
+
+No interest accrual is recorded on these transactions at any point. Two transactions were
+outstanding across a reporting date and the charge not attached to the period concerned amounts to
+XAF 63,750,000.
+
+Repayments are in a number of cases recorded well after contractual maturity. Fourteen transactions
+were recorded more than five days after maturity, the longest delay being 133 days; the median
+delay is one day, so the matter concerns a limited number of transactions rather than the process
+as a whole. One liability extinguished contractually, amounting to XAF 90,000,000,000, was still
+carried in the balance sheet at a reporting date.
+
+Finally, one transaction of XAF 50,000,000,000 drawn during the period carries no repayment at the
+end of the extraction, and the interest recorded on two transactions does not follow from their
+contractual terms, giving a cumulative difference of XAF 35,951,388 against a recomputation
+performed on an actual/360 basis, which reproduces the interest recorded on the remaining 127.
+
+**Implications:**
+- Interest expense not attached to the period in which it arises, affecting the comparability of
+  results between reporting periods.
+- Liabilities extinguished contractually but still presented in the balance sheet, and
+  correspondingly a drawn position with no recorded repayment.
+- Interest recorded on certain transactions which cannot be derived from their contractual terms,
+  indicating either a capture error or a term not reflected in the records.
+
+**Recommendations:**
+Treasury should implement the accrual of interest on repurchase transactions at each reporting
+date, without exception for transactions outstanding across the date. A control should be
+established requiring every matured transaction to be recorded within an agreed period of maturity,
+with escalation beyond it, and the outstanding transaction should be traced to the Central Bank
+statement and settled in the records. The interest recorded on the two transactions in difference
+should be recomputed and corrected.
+
+**Risk Rating: Concern.**
+
+---
+
+## 7.1.23 Collateral Pledged in Excess of the Outstanding Borrowing
+
+At 30 June 2026 the securities pledged as collateral in support of Central Bank refinancing amounted
+to XAF 61,847,170,000 against drawn borrowings of XAF 50,000,000,000, representing a coverage ratio
+of 124% and an excess of XAF 11,847,170,000. Securities remain pledged beyond the exposure they
+support, the release of collateral not following the repayment of the corresponding borrowing.
+
+**Implications:**
+- Understatement of the liquidity reserve available to the bank, instruments being presented as
+  encumbered when the borrowing they secured has been repaid.
+- Collateral immobilised without economic justification, reducing the securities available for
+  refinancing or disposal.
+- Absence of a control reconciling pledged collateral to outstanding borrowings.
+
+**Recommendations:**
+Treasury should reconcile the securities pledged to the Central Bank against outstanding borrowings
+at each reporting date and obtain the release of collateral no longer required. A control matching
+the release of collateral to the repayment of the corresponding borrowing should be established and
+performed as part of the periodic monitoring of the liquidity reserve.
+
+**Risk Rating: Concern.**
+
+---
+
+## 7.1.24 Accrued Interest Not Reconciled to the Underlying Contracts
+
+Accrued interest recorded on the portfolio was recomputed, contract by contract, for 465 contracts.
+The interest recorded amounts to XAF 9,772,608,725 against XAF 9,844,982,264 on recomputation, a
+difference of 0.74% overall. Eleven contracts nevertheless present an individual difference in
+excess of XAF 5 million. The day-count convention applied is not uniform across the portfolio, three
+conventions being in use, of which actual/actual predominates with 198 contracts.
+
+A separate matter concerns the accumulation of accrued interest. At 30 June 2026 the balance of the
+accrual accounts represents 1.31 years of coupon at the portfolio's median rate of 6.00%, amounting
+to XAF 19,249,608,622. Accrued interest exceeding one full year of coupon indicates coupons accrued
+and not collected, or accruals not reversed on collection.
+
+**Implications:**
+- Individual accrual balances which cannot be reconciled to the terms of the underlying contracts.
+- Day-count conventions applied inconsistently across instruments of the same nature, affecting
+  the comparability and accuracy of accrual computations.
+- An accrual balance exceeding one year of coupon, indicating either uncollected coupons requiring
+  assessment or accruals not reversed on collection.
+
+**Recommendations:**
+Treasury should perform and document a contract-by-contract reconciliation of the accrual accounts
+at each reporting date, investigating in the first instance the eleven contracts presenting an
+individual difference above XAF 5 million. The day-count convention applicable to each category of
+instrument should be defined, recorded in the system and applied consistently. The composition of
+the accrual balance should be analysed to identify coupons accrued and not collected, which should
+be assessed for recoverability.
+
+**Risk Rating: Concern.**
+
+---
+
+## 7.1.25 Implicit Portfolio Yield Materially Above Contractual Rates
+
+The yield implicit in the income recognised on the portfolio was compared to the contractual rates
+of the instruments held. The contractual rates do not exceed 7.00% at the 95th percentile, whereas
+the implicit yield of the most recent financial year is 15.07%. The difference is present in each
+of the years examined and is not attributable to a progressive change in the composition of the
+portfolio.
+
+A yield of this magnitude cannot be produced by coupon income alone. It indicates that income of a
+different nature — in particular the premiums and discounts addressed at 7.1.26 and the gains
+recognised on financing transactions addressed at 7.1.21 — is presented within portfolio income
+without distinction.
+
+**Implications:**
+- Portfolio income presented in a manner which does not permit coupon income to be distinguished
+  from gains of a different nature.
+- Performance indicators derived from portfolio income which do not reflect the underlying yield of
+  the instruments held.
+- Analytical review over the portfolio rendered ineffective, an implicit yield of twice the
+  contractual rate not having been identified by first-line monitoring.
+
+**Recommendations:**
+Treasury should analyse the composition of portfolio income by nature — coupon, premium and
+discount, disposal result — and present each separately in management reporting. The implicit yield
+should be computed and compared to contractual rates at each reporting date, with any material
+divergence explained before the accounts are closed.
+
+**Risk Rating: Concern.**
+
+---
+
+## 7.1.26 Premium and Discount Recognised in Full on Disposal Rather Than Over the Holding Period
+
+Securities are carried in the portfolio accounts at par, the premium or discount arising on
+acquisition being recorded separately in the regularisation accounts. At 30 June 2026 the portfolio
+nominal amounts to XAF 244,098,816,666 and the regularisation balance to XAF 585,075,319, giving a
+carrying value of XAF 244,683,891,985. We observe that the regularisation balance is in a debit
+position at that date, which is contrary to the nature of the account.
+
+The premium and discount are not amortised over the holding period of the instrument. They are
+released in full on disposal, giving rise to income of XAF 7,640,766,066 over the audit period and
+XAF 12,393,901,859 over the whole extraction.
+
+**Implications:**
+- Income recognised at the point of disposal rather than over the period during which the
+  instrument is held, with a corresponding effect on the allocation of results between financial
+  years.
+- Carrying value of the portfolio determinable only by combining two sets of accounts, the
+  portfolio accounts alone reflecting nominal rather than cost.
+- A regularisation balance presented in the opposite sense to the nature of the account at a
+  reporting date.
+
+**Recommendations:**
+Treasury and Financial Control should confirm the treatment of premiums and discounts against the
+applicable accounting framework and, where amortisation over the holding period is required,
+establish the computation and recognise it periodically. The direction of the regularisation
+balance should be explained and corrected, and management reporting should present the carrying
+value of the portfolio rather than its nominal.
+
+**Risk Rating: Concern.**
+
+---
+
+## 7.1.27 Cancelled, Pending and Hypothetical Deals Generating Accounting Entries
+
+The interface transmits deals to the General Ledger without regard to their status in the upstream
+system. Twenty-six deals which did not reach a concluded status nevertheless generated 252
+accounting entries representing XAF 68,737,189,808, one of them being a hypothetical deal captured
+for simulation purposes. Two of these deals leave a permanent residue in the accounts, the effect on
+the result being limited to XAF 82,850.
+
+**Implications:**
+- Accounting entries generated by transactions which were never concluded, including a simulation.
+- Portfolio and cash balances temporarily reflecting positions the bank never held.
+- Absence of a status check within the interface, so that the integrity of the accounting records
+  depends on the discipline of deal capture.
+
+**Recommendations:**
+Treasury and Information Technology should implement a status check within the interface so that
+only deals which have reached a concluded status generate accounting entries, and should establish
+that simulations cannot be captured in a manner which permits their transmission. The residues left
+by the two deals concerned should be identified and cleared.
+
+**Risk Rating: Concern.**
+
+---
+
+## 7.1.28 Executed Deals Without Corresponding Accounting Entries
+
+The converse case was also tested. Of the 3,480 deals in the Calypso register, 3,229 reached a
+concluded status, of which 1,903 relate to portfolios covered by the accounting extraction. Of
+those, 435 — representing 23% — carry no accounting entry whatsoever. Restricting the population to
+deals negotiated during the audit period, 366 of 1,557 (24%) are in the same position.
+
+**Implications:**
+- Transactions concluded in the front-office system and absent from the accounting records, with
+  the portfolio, cash and income balances understated accordingly.
+- No reconciliation in place between the deal register and the General Ledger capable of
+  identifying transmission failures.
+- The completeness of the accounting records over securities activity cannot be asserted.
+
+**Recommendations:**
+Treasury should establish a daily reconciliation between the deals concluded in the upstream system
+and the entries received in the General Ledger, with any difference investigated and cleared before
+the following business day. The 435 deals identified should be examined individually to determine
+whether the absence of entries reflects a transmission failure or a deal correctly excluded, and
+the accounting effect of any genuine omission should be quantified.
+
+**Risk Rating: Concern.**
+
+---
+
+## 7.1.29 Securities Acquired for Customers Transiting the Proprietary Portfolio
+
+Securities placed with customers are first acquired into the bank's own portfolio and subsequently
+transferred to the customer desk. Two hundred and two placement transactions were identified,
+involving 29 securities, each of which also appears in the proprietary portfolio. The volume
+transferred to the customer desk amounts to XAF 35,302,280,281, against placement commissions of
+XAF 5,596,771. Customer securities carried off balance sheet at the reporting date amount to
+XAF 23,893,110,000, and the mirror suspense account through which the transfers pass stood at
+XAF 3,104,020,778 at that date.
+
+**Implications:**
+- Instruments acquired for placement indistinguishable, within the portfolio accounts, from those
+  held on the bank's own account, so that proprietary exposure cannot be measured directly.
+- Issuer and sovereign limits monitored on a portfolio which includes instruments intended for
+  customers, as illustrated at 7.1.10.
+- A residual balance on the mirror suspense account at the reporting date, indicating placements
+  not fully transferred.
+
+**Recommendations:**
+Treasury should establish a means of identifying, within the portfolio accounts, instruments
+acquired for placement with customers, whether by dedicated accounts or by an attribute carried on
+the transaction, so that proprietary exposure can be measured and limits monitored on the correct
+basis. The residual balance on the mirror suspense account should be analysed and cleared.
+
+**Risk Rating: Concern.**
+
+---
+
+## 7.1.30 Contract Lifecycle Exceptions in the Legacy System
+
+Examination of the securities contracts recorded in the legacy module before the migration
+identified a number of lifecycle exceptions. Of the 446 settlements recorded during the period, 411
+were early settlements, which are consistent with liquidity management and are not in themselves
+exceptional; 30 occurred at maturity and 5, representing XAF 7,496,000,000, were recorded after
+contractual maturity, the longest delay being two days.
+
+Twenty-nine contracts were recorded and settled on the same day. Of these, 21 are disposals
+following an actual holding period of up to 13 days, the contract having been captured late; the
+remaining 8 are capture cancellations carrying no holding period, which nevertheless introduced
+XAF 35,954,100,000 of notional into the records before being reversed.
+
+The treatment of accrued interest on disposal is not uniform. Of the 21 disposals concerned, 9 carry
+a reversal of the accrued interest, amounting to XAF 6,869,149, while 12 do not, leaving
+XAF 16,406,021 of accrued interest in the accounts.
+
+Finally, 259 sequences were identified in which a contract is closed and reopened on the same day,
+for a higher, lower or identical amount. These sequences carry XAF 1,213,821,593,333 of gross
+movement against a net cash flow of XAF (33,784,286,667), so that gross volumes derived from these
+accounts do not represent flows. Twenty-two contracts were captured more than five days after
+negotiation, the longest delay being 30 days.
+
+**Implications:**
+- Notional amounts introduced into the records by capture errors and reversed thereafter, without
+  the reversal being traceable to an identified authorisation.
+- Accrued interest retained in the accounts on disposals where the position no longer exists.
+- Gross volumes on the securities accounts which substantially overstate the underlying activity,
+  affecting any measure derived from them.
+- Contracts captured after negotiation, so that the records do not reflect the position at the date
+  it arose.
+
+**Recommendations:**
+Treasury should apply a uniform treatment to accrued interest on disposal and reverse the amounts
+retained on the twelve disposals concerned. Capture cancellations should be subject to
+authorisation and evidenced as such. Contracts should be captured on the day of negotiation, and
+any measure of activity derived from these accounts should be established on a net basis, the gross
+movement being materially affected by same-day closures and reopenings.
+
+**Risk Rating: Moderate.**
+
+---
+
+## 7.1.31 Referential Integrity Weaknesses in the Contract Register
+
+The money market contract register contains 603 lines for 596 distinct contracts, seven references
+being duplicated. The nominal exposed to double counting amounts to XAF 11,039,000,000. Any measure
+derived from the register without prior deduplication will therefore overstate the position.
+
+Two contracts, representing XAF 3,500,000,000 of nominal, carry rates which cannot be reconciled to
+comparable transactions of the same period and instrument, the difference exceeding ten percentage
+points in one case.
+
+**Implications:**
+- Position and exposure measures derived from the register overstated by the duplicated contracts.
+- Contracts carrying rates which cannot be substantiated by reference to market conditions,
+  indicating either a capture error or a transaction requiring specific justification.
+- Absence of a uniqueness control over contract references and of a reasonableness control over
+  rates at capture.
+
+**Recommendations:**
+Treasury should identify the seven duplicated references, determine which record is authoritative
+in each case and correct the register. The two contracts carrying divergent rates should be
+supported by the dealing confirmation and, where the rate is confirmed, by an explanation of the
+terms obtained. A uniqueness control over contract references and a reasonableness control
+comparing the rate captured to comparable transactions should be implemented at the point of
+capture.
+
+**Risk Rating: Moderate.**
+
+---
+
+## Appendix — Cross-reference to the detailed audit report
+
+| Exception | Detailed report reference |
+|---|---|
+| 7.1.1 | 11.3 |
+| 7.1.2 | 11.8 |
+| 7.1.3 | 12.5 |
+| 7.1.4 | 12.7 |
+| 7.1.5 | 8.2 |
+| 7.1.6 | 6.4, 11.6 |
+| 7.1.7 | 5.3 |
+| 7.1.8 | 6.7 |
+| 7.1.9 | 5.2 |
+| 7.1.10 | 11.4 |
+| 7.1.11 | 12.1 |
+| 7.1.12 | 12.3, 3.8 |
+| 7.1.13 | 12.2, 7.1 |
+| 7.1.14 | 12.6 |
+| 7.1.15 | 12.4 |
+| 7.1.16 | 6.1, 6.3, 6.6 |
+| 7.1.17 | 4.1, 4.2, 4.3, 4.4, 6.2, 10.4, 10.5 |
+| 7.1.18 | 9.2, 5.5 |
+| 7.1.19 | 9.4 |
+| 7.1.20 | 8.1, 8.3 |
+| 7.1.21 | 8.4, 8.5 |
+| 7.1.22 | 7.2, 7.4, 7.5, 7.6 |
+| 7.1.23 | 7.3 |
+| 7.1.24 | 3.5, 3.7 |
+| 7.1.25 | 9.3 |
+| 7.1.26 | 11.5 |
+| 7.1.27 | 10.2, 10.3 |
+| 7.1.28 | 10.1 |
+| 7.1.29 | 11.2 |
+| 7.1.30 | 2.4, 3.1, 3.2, 3.3, 3.4 |
+| 7.1.31 | 2.1, 2.6 |
+
+The following matters recorded in the detailed report have not been raised as exceptions, being
+methodological observations bearing on the interpretation of the data rather than control
+weaknesses: 1.2 and 1.3 (extraction integrity), 1.4 and 1.5 (posting conventions between the two
+systems), 6.5 (daily reversal and reinstatement of accruals by Calypso, which inflates gross volumes
+without affecting the result), 9.1 (progression of the result of the activity) and 11.7 (accounting
+scheme of the new arrangement, reconstructed and documented).
