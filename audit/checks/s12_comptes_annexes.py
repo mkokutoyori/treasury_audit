@@ -321,106 +321,226 @@ def _c122_pensions_sans_passif(ctx) -> Constat:
 
 
 # --- 12.3 ---------------------------------------------------------------------------------
+# Un libellé se rapporte au circuit titres s'il porte une référence de contrat Flexcube
+# (099XXXX suivi de neuf chiffres) ou un code de titre CEMAC. Les motifs plus lâches —
+# « CM1 », « CM2 » employés comme fragments — produisent trop de faux positifs.
+MOTIF_CONTRAT = r"099[A-Z]{4}\d{9}"
+MOTIF_ISIN = r"\b(?:CM|CG|GA|GQ|TD|CF)[0-9][A-Z0-9]{8}\b"
+
+
 def _c123_compte_attente(ctx) -> Constat:
+    """Le compte d'attente de la direction financière, et ce que le circuit titres y a fait.
+
+    Deux choses sont à séparer, et la version antérieure de ce contrôle les confondait : ce
+    compte n'est PAS un compte de passage du circuit titres — il sert à la direction
+    financière pour toutes ses régularisations. Mais le circuit titres y a fait, une fois,
+    une incursion massive.
+    """
     compte = CPT_ATTENTE[0]
     d = _periode(ctx, compte)
+    complet = ctx.historique_compte(compte, dans_periode=False)
     libelle = ctx.libelle_compte(compte)
-    titres = d[d.DESCRIPTION.fillna("").str.upper().str.contains(MOTIF_TITRE, regex=True)]
-    episode = d[(d.TRN_DT >= "2024-03-01") & (d.TRN_DT <= "2024-04-30")]
+    if d.empty:
+        return Constat(code="12.3", titre=f"Compte {compte} non mouvementé",
+                       gravite=Gravite.CONFORME, constat="Aucun mouvement sur la période.")
+
+    texte = d.DESCRIPTION.fillna("").str.upper()
+    titres = d[texte.str.contains(MOTIF_CONTRAT, regex=True)
+               | texte.str.contains(MOTIF_ISIN, regex=True)]
+    jours_titres = sorted(set(titres.TRN_DT))
+    campagne = d[d.TRN_DT.isin(jours_titres)]
+    hors_campagne_titres = len(titres[~titres.TRN_DT.isin(jours_titres)])
+
+    lib_camp = campagne.DESCRIPTION.fillna("").str.upper()
+    reversals = campagne[lib_camp.str.contains("REVERSAL|RVSL", regex=True)]
+    contrats = int(lib_camp.str.extract(f"({MOTIF_CONTRAT})")[0].nunique())
+    jour_pic = campagne.groupby("TRN_DT").size().idxmax()
+    n_pic = int(campagne.groupby("TRN_DT").size().max())
+    # Le jour où le compte s'écarte le plus de zéro, et dans quel sens.
+    soldes_camp = {j: ctx.solde_a(compte, j) for j in sorted(set(campagne.TRN_DT))}
+    pire_jour = min(soldes_camp, key=lambda j: soldes_camp[j])
+    pire_solde = soldes_camp[pire_jour]
+
+    # Le lien avec le compte de courus MANUELS du contrôle 12.7.
+    vague = ctx.comptes_complementaires
+    manuel = vague[vague.AC_NO == CPT_COURUS_MANUELS]
+    refs_attente = set(campagne.TRN_REF_NO)
+    refs_manuel = set(manuel[manuel.TRN_DT.isin(jours_titres)].TRN_REF_NO)
+    communes = refs_attente & refs_manuel
+    veille = min(jours_titres)
+    avant = float(manuel[manuel.TRN_DT < veille].SIGNE.sum())
+    apres = float(manuel[manuel.TRN_DT <= max(jours_titres)].SIGNE.sum())
+
+    # Le solde qui reste, et ce qu'il est réellement.
     soldes = [[a, ctx.solde_a(compte, a)] for a in ctx.arretes]
-    fin = ctx.solde_a(compte, ctx.config.fin)
+    fin_periode = ctx.solde_a(compte, ctx.config.fin)
     gros = d.nlargest(1, "LCY_AMOUNT")
     gros_montant = float(gros.LCY_AMOUNT.iloc[0]) if len(gros) else 0.0
-    gros_libelle = str(gros.DESCRIPTION.iloc[0] or "") if len(gros) else ""
     gros_date = str(gros.TRN_DT.iloc[0]) if len(gros) else ""
+    # L'apurement, postérieur à la période : c'est lui qui dit ce qu'était ce solde.
+    apur = complet[complet.DESCRIPTION.fillna("").str.contains(
+        "Regularization suspense", case=False)]
+    apur_scb = apur[apur.DESCRIPTION.fillna("").str.upper().str.contains("SCB")]
+    apur_date = str(apur_scb.TRN_DT.max()) if not apur_scb.empty else ""
+    apur_lib = str(apur_scb.DESCRIPTION.iloc[0]) if not apur_scb.empty else ""
+    jours_solde = ((pd.Timestamp(apur_date) - pd.Timestamp(gros_date)).days
+                   if apur_date and gros_date else 0)
     autre = ctx.solde_a(CPT_ATTENTE[1], ctx.config.fin)
 
     return Constat(
         code="12.3",
-        titre="Un compte d'attente porte 32 milliards de mouvements titres et reste chargé d'un milliard à la clôture",
+        titre=("Le compte d'attente de la direction financière : une reprise massive d'intérêts "
+               "sur titres en quatre jours, et le résidu de la fusion SCB à la clôture"),
         gravite=Gravite.ELEVEE,
         reference=f"Compte {compte} {libelle}",
         constat=(
-            f"CE QU'EST CE COMPTE. {compte} {libelle} est un compte d'attente : il reçoit "
-            "provisoirement une écriture dont l'imputation définitive n'est pas encore "
-            "arrêtée. Par nature, un compte d'attente doit se vider vite, et se présenter à "
-            "zéro à chaque arrêté.\n"
+            "I. CE QU'EST CE COMPTE — ET CE QU'IL N'EST PAS\n"
             "\n"
-            f"PREMIER CONSTAT — LE VOLUME. Sur la période, ce compte a reçu {nb(len(d))} "
-            f"écritures pour {xaf(float(d.LCY_AMOUNT.sum()))} de mouvements bruts, réparties "
-            f"sur {nb(d.TRN_REF_NO.nunique())} écritures comptables distinctes. "
-            f"{nb(len(titres))} d'entre elles — soit {pct(len(titres) / max(len(d), 1) * 100)} "
-            "— portent dans leur libellé une référence de titre ou de contrat de marché "
-            "monétaire. Ce compte d'attente est donc, en pratique, un compte de passage du "
-            "circuit titres.\n"
+            f"{compte} {libelle} est le compte d'attente de la DIRECTION FINANCIÈRE. Son "
+            "contenu ordinaire n'a rien de bancaire au sens du marché : factures "
+            "informatiques en attente de rattachement, reprises de paie, écritures "
+            "inter-agences. Ce n'est pas un compte de trésorerie, et la version antérieure de "
+            "ce contrôle le présentait à tort comme « un compte de passage du circuit "
+            "titres ». Il ne l'est pas.\n"
             "\n"
-            "DEUXIÈME CONSTAT — L'ÉPISODE DE MARS ET AVRIL 2024. En deux mois, "
-            f"{nb(len(episode))} lignes y ont transité pour "
-            f"{xaf(float(episode.LCY_AMOUNT.sum()))} de mouvements bruts, en "
-            f"{nb(episode.TRN_REF_NO.nunique())} écritures manuelles saisies par "
-            f"{nb(episode.USER_ID.nunique())} opérateurs. Les libellés sont explicites : il "
-            "s'agit d'annulations et de réenregistrements d'intérêts courus sur titres — "
-            "« Reversal of interest income on SALES », « Reversal of 511800101 in 466000107 ». "
-            "L'opération se solde à zéro : le compte est revenu à zéro au 30 avril 2024. Mais "
-            "au 31 mars 2024, en plein milieu de l'épisode, il portait encore "
-            f"{xaf(ctx.solde_a(compte, '2024-03-31'))}.\n"
+            "II. MAIS LE CIRCUIT TITRES Y A FAIT UNE INCURSION, ET ELLE EST MASSIVE\n"
             "\n"
-            "Ce n'est pas une perte, c'est un problème de piste d'audit : plus de "
-            "27 milliards de produits sur titres ont été défaits puis refaits par écritures "
-            "manuelles, en dehors de tout traitement automatique, sans qu'aucune pièce ne "
-            "rattache l'ensemble à une décision de correction identifiée.\n"
+            f"Sur les {nb(len(d))} lignes de la période, {nb(len(titres))} portent une "
+            "référence de contrat de marché monétaire ou un code de titre CEMAC. Le fait "
+            "marquant n'est pas leur nombre, c'est leur DATE : elles se concentrent toutes "
+            f"sur {nb(len(jours_titres))} JOURS — {', '.join(jours_titres)}. "
+            + ("En dehors de ces quelques jours, le compte ne porte PAS UNE SEULE écriture "
+               "se rapportant à un titre.\n"
+               if hors_campagne_titres == 0 else
+               f"En dehors de ces jours, il en porte {nb(hors_campagne_titres)}.\n")
+            + "\n"
+            "III. CE QUE CETTE CAMPAGNE A FAIT\n"
             "\n"
-            "TROISIÈME CONSTAT — LE SOLDE QUI RESTE. Le compte n'est pas revenu à zéro. Au "
-            f"{ctx.config.fin} il porte {xaf(fin)} au DÉBIT. L'essentiel tient à une seule "
-            f"écriture, passée le {gros_date} pour {xaf(gros_montant)}, libellée "
-            f"« {gros_libelle} ». Une reclassification du compte inter-agences vers un compte "
-            "d'attente, passée le jour de l'arrêté annuel, n'est pas une imputation : c'est le "
-            "report d'un problème d'un compte vers un autre. Ce milliard figure à l'actif du "
-            "bilan sans que rien n'en justifie la nature.\n"
+            f"Sur ces {nb(len(jours_titres))} jours, {nb(len(campagne))} lignes ont transité "
+            f"par le compte, en {nb(campagne.TRN_REF_NO.nunique())} écritures manuelles "
+            f"saisies par {nb(campagne.USER_ID.nunique())} opérateurs, pour "
+            f"{xaf(float(campagne.LCY_AMOUNT.sum()))} de mouvements bruts. "
+            f"{nb(len(reversals))} de ces lignes sont des ANNULATIONS, pour "
+            f"{xaf(float(reversals.LCY_AMOUNT.sum()))}, et elles touchent {nb(contrats)} "
+            f"contrats distincts. La seule journée du {jour_pic} en porte {nb(n_pic)}.\n"
             "\n"
-            f"À TITRE DE COMPARAISON, le compte d'attente symétrique {CPT_ATTENTE[1]} "
-            f"{ctx.libelle_compte(CPT_ATTENTE[1])} se présente à {xaf(autre)} : lui est "
-            "correctement apuré. La défaillance porte sur un compte, pas sur le dispositif."
+            "CE QUI ÉTAIT VISÉ EST IDENTIFIABLE, ET C'EST IMPORTANT. Les libellés le disent : "
+            f"« Reversal of {CPT_COURUS_MANUELS} in {compte} ». "
+            f"{nb(len(communes))} écritures de la campagne mouvementent SIMULTANÉMENT ce "
+            f"compte d'attente et {CPT_COURUS_MANUELS} "
+            f"{ctx.libelle_compte(CPT_COURUS_MANUELS)} — le second compte de courus, servi à "
+            "la main, dont le contrôle 12.7 retrace l'histoire.\n"
+            f"L'effet est mesurable : le solde de {CPT_COURUS_MANUELS} passe de "
+            f"{xaf(avant)} la veille de la campagne à {xaf(apres)} au lendemain, soit "
+            f"{xaf(avant - apres)} de moins.\n"
+            "\n"
+            "AUTREMENT DIT, CETTE CAMPAGNE ÉTAIT UNE TENTATIVE D'APUREMENT DU COMPTE DE COURUS "
+            "MANUELS. Elle n'a pas abouti : le contrôle 12.7 établit que le solde résiduel de "
+            "ce compte a fini, deux ans plus tard, en PERTE OPÉRATIONNELLE. Les deux constats "
+            "décrivent le même dossier à deux moments : la tentative de nettoyage, puis "
+            "l'abandon.\n"
+            "\n"
+            "IV. CE QUE LA CAMPAGNE LAISSE COMME PROBLÈME DE PISTE D'AUDIT\n"
+            "\n"
+            f"{xaf(float(reversals.LCY_AMOUNT.sum()))} de produits sur titres ont été défaits "
+            "puis refaits par écritures manuelles, en dehors de tout traitement automatique, "
+            "sans qu'aucune pièce ne rattache l'ensemble à une décision de correction "
+            f"identifiée. Le {jour_pic} — une fin de trimestre — le compte d'attente porte "
+            f"encore {xaf(ctx.solde_a(compte, jour_pic))} en fin de journée.\n"
+            + (f"\nPLUS RÉVÉLATEUR ENCORE : le {pire_jour}, en cours de campagne, le compte "
+               f"se présente à {xaf(pire_solde)}, c'est-à-dire CRÉDITEUR — sur un compte que "
+               "son intitulé même désigne comme débiteur. Un compte d'attente qui bascule de "
+               "plus d'un milliard dans le sens opposé à sa nature signale que les deux jambes "
+               "d'une même correction ont été passées à plusieurs jours d'intervalle.\n"
+               if pire_solde < -1 else "")
+            + "\n"
+            "V. LE SOLDE QUI RESTE À LA CLÔTURE — ET CE QU'IL EST RÉELLEMENT\n"
+            "\n"
+            f"Au {ctx.config.fin}, le compte porte {xaf(fin_periode)} au DÉBIT. L'essentiel "
+            f"tient à une écriture unique, passée le {gros_date} — le jour de l'arrêté "
+            f"annuel — pour {xaf(gros_montant)}, sous le libellé laconique « Rclss COMPTE "
+            "INTER BRANCHES ».\n"
+            + (f"\nCE QU'IL Y AVAIT DERRIÈRE, LA BANQUE LE DIT ELLE-MÊME — MAIS SEULEMENT LE "
+               f"{apur_date}, en apurant le compte par l'écriture exactement inverse. Le "
+               f"libellé est alors explicite : « {apur_lib} ». Il ne s'agissait donc pas d'un "
+               "problème inter-agences ordinaire, mais du RÉSIDU NON AFFECTÉ DE LA MIGRATION "
+               "DE FUSION DE STANDARD CHARTERED — le même dossier que le contrôle 12.5 — "
+               "comprenant notamment un découvert du compte de Standard Chartered à New York.\n"
+               f"\nCE RÉSIDU EST RESTÉ {nb(jours_solde)} JOURS DANS UN COMPTE D'ATTENTE, et "
+               "il a figuré comme tel à l'actif du bilan à l'arrêté du 31 décembre 2025 et à "
+               "celui du 30 juin 2026. Porter au bilan, sous un libellé qui n'en dit rien, un "
+               "milliard dont on sait qu'il provient d'une fusion non soldée, n'est pas une "
+               "imputation : c'est un report.\n" if apur_date else "")
+            + "\n"
+            "VI. À TITRE DE COMPARAISON\n"
+            "\n"
+            f"Le compte d'attente symétrique {CPT_ATTENTE[1]} "
+            f"{ctx.libelle_compte(CPT_ATTENTE[1])} se présente à {xaf(autre)} à la clôture : "
+            "lui est correctement apuré. La défaillance porte sur un compte, pas sur le "
+            "dispositif."
         ),
         chiffres=[
+            ("Nature du compte", "attente de la direction financière, hors périmètre trésorerie"),
             ("Écritures sur la période", nb(len(d))),
-            ("Écritures comptables distinctes", nb(d.TRN_REF_NO.nunique())),
-            ("Mouvements bruts cumulés", xaf(float(d.LCY_AMOUNT.sum()))),
             ("Dont portant une référence de titre", nb(len(titres))),
-            ("Épisode mars-avril 2024 — lignes", nb(len(episode))),
-            ("Épisode mars-avril 2024 — mouvements bruts", xaf(float(episode.LCY_AMOUNT.sum()))),
-            ("Épisode mars-avril 2024 — solde résiduel", xaf(float(episode.SIGNE.sum()))),
-            ("Solde au 31 mars 2024, en cours d'épisode", xaf(ctx.solde_a(compte, "2024-03-31"))),
-            (f"Solde au {ctx.config.fin}", xaf(fin)),
-            ("Dont une seule écriture de reclassement", xaf(gros_montant)),
-            (f"Solde du compte d'attente symétrique {CPT_ATTENTE[1]}", xaf(autre)),
+            ("Jours où le circuit titres a employé ce compte", nb(len(jours_titres))),
+            ("Écritures titres en dehors de ces jours", nb(hors_campagne_titres)),
+            ("Campagne — lignes", nb(len(campagne))),
+            ("Campagne — écritures manuelles", nb(campagne.TRN_REF_NO.nunique())),
+            ("Campagne — opérateurs", nb(campagne.USER_ID.nunique())),
+            ("Campagne — mouvements bruts", xaf(float(campagne.LCY_AMOUNT.sum()))),
+            ("Campagne — annulations", f"{nb(len(reversals))} — {xaf(float(reversals.LCY_AMOUNT.sum()))}"),
+            ("Campagne — contrats touchés", nb(contrats)),
+            (f"Écritures touchant aussi {CPT_COURUS_MANUELS}", nb(len(communes))),
+            (f"Solde de {CPT_COURUS_MANUELS} avant la campagne", xaf(avant)),
+            (f"Solde de {CPT_COURUS_MANUELS} après la campagne", xaf(apres)),
+            ("Réduction obtenue", xaf(avant - apres)),
+            (f"Solde du compte d'attente au {ctx.config.fin}", xaf(fin_periode)),
+            ("Dont résidu de la fusion SCB", xaf(gros_montant)),
+            ("Durée du séjour de ce résidu", f"{nb(jours_solde)} jours" if jours_solde else "n/d"),
+            ("Date d'apurement, postérieure à la période", apur_date or "non apuré"),
         ],
         tableaux=[
             Tableau(
+                entetes=["Jour de la campagne", "Lignes", "Mouvements bruts XAF",
+                         "Solde du compte en fin de journée XAF"],
+                lignes=[[j, int((campagne.TRN_DT == j).sum()),
+                         float(campagne[campagne.TRN_DT == j].LCY_AMOUNT.sum()),
+                         ctx.solde_a(compte, j)] for j in jours_titres],
+                note=("La campagne de reprise, jour par jour. Elle tient en quelques journées, "
+                      "dont une fin de trimestre."),
+            ),
+            Tableau(
                 entetes=["Date d'arrêté", "Solde XAF"],
                 lignes=soldes,
-                note=("Le solde du compte d'attente à chaque date d'arrêté. Un compte d'attente "
-                      "doit s'y présenter à zéro."),
+                note=("Le solde du compte d'attente à chaque date d'arrêté. Un compte "
+                      "d'attente doit s'y présenter à zéro."),
             ),
             Tableau(
                 entetes=["Date", "Référence", "Sens", "Montant XAF", "Opérateur", "Libellé"],
                 lignes=[[r.TRN_DT, r.TRN_REF_NO, r.DRCR_IND, float(r.LCY_AMOUNT), r.USER_ID,
-                         str(r.DESCRIPTION or "")[:58]]
-                        for _, r in d.nlargest(10, "LCY_AMOUNT").iterrows()],
-                note="Les dix plus gros mouvements du compte sur la période.",
+                         str(r.DESCRIPTION or "")[:56]]
+                        for _, r in pd.concat([d.nlargest(6, "LCY_AMOUNT"), apur_scb]).iterrows()],
+                max_lignes=12,
+                note=("Les plus gros mouvements de la période, et l'écriture d'apurement "
+                      "postérieure qui révèle la nature du solde porté à la clôture."),
             ),
         ],
         recommandation=(
-            f"1. Faire justifier ligne à ligne le solde de {xaf(fin)} au {ctx.config.fin}, et "
-            "en premier lieu le reclassement du compte inter-agences passé le jour de "
-            "l'arrêté : produire la pièce qui en établit la nature et l'imputation définitive.\n"
-            "2. Obtenir la note de correction qui fonde l'épisode de mars et avril 2024 : qui "
-            "l'a décidée, sur quel diagnostic, et pourquoi elle a été exécutée par écritures "
-            "manuelles plutôt que par reprise du traitement.\n"
-            "3. Instaurer une règle d'apurement : tout solde d'un compte d'attente de plus de "
-            "trente jours fait l'objet d'un état nominatif présenté au comité d'audit.\n"
-            f"4. Étendre la revue au compte 511800101 « créances rattachées — manuelles », que "
-            "les libellés désignent mais qui ne figure dans aucune extraction (contrôle 12.6)."
+            "1. Obtenir la note de correction qui fonde la campagne de reprise : qui l'a "
+            "décidée, sur quel diagnostic, et pourquoi elle a été exécutée par écritures "
+            "manuelles plutôt que par reprise du traitement. Elle touche "
+            f"{nb(contrats)} contrats et {xaf(float(reversals.LCY_AMOUNT.sum()))}.\n"
+            "2. La rapprocher du contrôle 12.7 : la campagne visait le compte de courus "
+            "manuels, et n'a pas suffi à l'apurer. Comprendre pourquoi permet de savoir ce "
+            "que la perte opérationnelle finale recouvrait réellement.\n"
+            f"3. Faire justifier le maintien de {xaf(gros_montant)} de résidus de la fusion "
+            "Standard Chartered dans un compte d'attente à la date d'arrêté annuel, sous un "
+            "libellé qui n'en indique pas la nature, et obtenir l'analyse détaillée qui a "
+            "permis de les apurer en août 2026.\n"
+            "4. Instaurer une règle d'apurement : tout solde d'un compte d'attente de plus de "
+            "trente jours fait l'objet d'un état nominatif présenté au comité d'audit, avec "
+            "l'origine de chaque ligne."
         ),
     )
 

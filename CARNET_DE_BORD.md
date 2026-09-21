@@ -2659,3 +2659,88 @@ seul grief, chiffré, daté, et prouvé par la contre-passation de la banque ell
 **Règle retenue** : *avant de qualifier une opération d'anormale parce qu'elle ressemble à
 une autre, vérifier qu'il s'agit bien de la même. Deux migrations à six mois d'intervalle ne
 sont pas une migration en deux temps.*
+
+---
+
+# Session 27 — Revue manuelle du 12.3 : deux erreurs de ma part, un constat plus net
+
+## 27.1 Première erreur — la part « titres » était surestimée
+
+J'annonçais **70,5 %** des lignes porteuses d'une référence de titre. Le motif que j'utilisais
+(`CM1|CM2|CG2|GA2|GQ2|OTAP|TBTR|SECURIT|T ?BOND|TBILL`) attrapait `CM1`/`CM2` comme simples
+fragments de texte. Avec un motif exact — référence de contrat `099XXXX` + 9 chiffres, ou code
+ISIN CEMAC complet — la mesure tombe à **45,7 %**, soit 839 lignes.
+
+## 27.2 Seconde erreur — et c'est la plus importante
+
+J'écrivais que ce compte est « en pratique un compte de passage du circuit titres ».
+**C'est faux, et l'inverse est bien plus intéressant.**
+
+Test : combien de lignes titres **en dehors** de l'épisode de mars-avril 2024 ?
+
+> **Zéro. Pas une seule.**
+
+`466000107` est le compte d'attente **de la direction financière** : factures informatiques
+(WISE COMPUTERS, Dell PowerStore, licences VMware, ATM NCR/OMOA), reprises de paie, écritures
+inter-agences. Le circuit titres n'y est passé **qu'une fois**, et massivement.
+
+## 27.3 La campagne, resserrée à quatre jours
+
+Pas « deux mois » : **quatre journées**.
+
+| Jour | Lignes | Mouvements bruts | Solde en fin de journée |
+|---|---|---|---|
+| 29/03/2024 | 671 | 5 408 831 531 | **+87 088 407** (fin de trimestre) |
+| 01/04/2024 | 103 | 8 405 035 850 | +59 532 959 |
+| 09/04/2024 | 471 | 11 695 572 874 | **−1 640 165 908** |
+| 11/04/2024 | 68 | 1 640 165 908 | 0 |
+
+**1 313 lignes, 683 écritures, 4 opérateurs, 27,15 Md bruts, 157 contrats touchés**, dont
+**1 153 annulations pour 25,11 Md**.
+
+Le 09/04, le compte bascule à **−1,64 Md**, soit créditeur — sur un compte dont l'intitulé dit
+« DEBITEUR ». Les deux jambes d'une même correction ont été passées à deux jours d'écart.
+
+## 27.4 Ce que la campagne visait — le lien avec le 12.7
+
+Les libellés le disent : *« Reversal of 511800101 in 466000107 »*. **12 écritures** mouvementent
+simultanément le compte d'attente et **`511800101 CREANCES RATTACHEES - MANUELLES`**.
+
+| | Solde de `511800101` |
+|---|---|
+| veille de la campagne (28/03/2024) | 1 032 503 694 |
+| au lendemain (11/04/2024) | 900 078 802 |
+| **réduction obtenue** | **132 424 892** |
+
+**C'était une tentative d'apurement du compte de courus manuels.** Elle n'a pas abouti : le
+12.7 établit que le résidu de 314 918 217 a fini en **perte opérationnelle** en juillet 2026.
+Les deux constats décrivent le même dossier à deux moments — la tentative, puis l'abandon.
+
+## 27.5 Le solde à la clôture — ce qu'il était vraiment
+
+Le 31/12/2025, `BINEID00087` passe **1 075 318 728** sous le libellé laconique
+« Rclss COMPTE INTER BRANCHES ». J'en avais fait un problème inter-agences générique.
+
+**La banque dit elle-même ce que c'était — mais seulement le 25/08/2026**, en apurant le
+compte par l'écriture exactement inverse :
+
+> *« Regularization suspense account compte attente Fincon **SCB entries on interbranch** »*
+> *« … SCB entries representing **SCB overdraft of 271 703.16 from NY acc** »*
+
+C'est le **résidu non affecté de la migration de fusion Standard Chartered** — le même dossier
+que le 12.5 — dont un découvert du compte SCB de New York. Il est resté **237 jours** dans un
+compte d'attente et a figuré à l'actif aux arrêtés du 31/12/2025 **et** du 30/06/2026.
+
+## 27.6 Ce que devient le constat
+
+Gravité maintenue à **ELEVEE**, mais le constat est entièrement recomposé et **beaucoup plus
+net** : ce n'est plus « un compte d'attente pollué par les titres », c'est **une incursion
+unique et massive du circuit titres dans un compte qui n'est pas le sien**, plus **un résidu
+de fusion porté au bilan sous un libellé qui n'en dit rien**.
+
+Trois contrôles se rejoignent désormais sur le même dossier SCB : **12.3** (le résidu
+inter-agences), **12.5** (les titres logés au nostro), **12.7** (les courus manuels passés en
+perte).
+
+**Règle retenue** : *mesurer « combien » ne suffit pas — il faut mesurer « quand ». La
+concentration d'un flux sur quatre jours dit une chose que son volume total masquait.*

@@ -4,7 +4,7 @@
 
   Périmètre        : Département de la trésorerie — gestion des investissements sur les marchés financiers
   Période d'audit  : 2023-09-27 au 2026-06-30
-  Rapport généré le : 21/09/2026 à 00:56
+  Rapport généré le : 21/09/2026 à 01:08
   Référentiel      : Plan Comptable des Établissements de Crédit (PCEC) — CEMAC / COBAC
 
   Ce rapport est produit automatiquement. Chaque constat indique le test exécuté, sa
@@ -90,7 +90,7 @@ RÉCAPITULATIF DES ANOMALIES PAR GRAVITÉ
   ELEVEE    [11.5] Le portefeuille est comptabilisé au pair : la prime et la décote sont portées à part
   ELEVEE    [12.1] Le compte de charge 622000100 sert de compte de régularisation universel du circuit titres
   ELEVEE    [12.2] Les pensions livrées sont comptabilisées en emprunts au jour le jour : aucun des comptes que le PCEC leur réserve n'est servi
-  ELEVEE    [12.3] Un compte d'attente porte 32 milliards de mouvements titres et reste chargé d'un milliard à la clôture
+  ELEVEE    [12.3] Le compte d'attente de la direction financière : une reprise massive d'intérêts sur titres en quatre jours, et le résidu de la fusion SCB à la clôture
   MOYENNE   [1.2] Lignes dupliquées dans les extractions
   MOYENNE   [1.4] Opération technique passée un week-end, touchant l'ensemble des comptes du périmètre
   MOYENNE   [1.5] Deux conventions de contre-passation opposées entre les deux systèmes
@@ -4084,52 +4084,107 @@ compte soit resté vide est ici un résultat de contrôle à part entière.
     part ne font aujourd'hui l'objet d'aucun enregistrement de dette.
 
 ----------------------------------------------------------------------------------------------------
-[12.3] Un compte d'attente porte 32 milliards de mouvements titres et reste chargé d'un milliard à la clôture
+[12.3] Le compte d'attente de la direction financière : une reprise massive d'intérêts sur titres en quatre jours, et le résidu de la fusion SCB à la clôture
   Gravité : ELEVEE
   Référence : Compte 466000107 COMPTE ATTENTE FINCON DEBITEUR
 
-  CE QU'EST CE COMPTE. 466000107 COMPTE ATTENTE FINCON DEBITEUR est un compte d'attente : il reçoit
-  provisoirement une écriture dont l'imputation définitive n'est pas encore arrêtée. Par nature, un
-  compte d'attente doit se vider vite, et se présenter à zéro à chaque arrêté.
+  I. CE QU'EST CE COMPTE — ET CE QU'IL N'EST PAS
 
-  PREMIER CONSTAT — LE VOLUME. Sur la période, ce compte a reçu 1 837 écritures pour 32 125 752 380
-  XAF de mouvements bruts, réparties sur 1 117 écritures comptables distinctes. 1 295 d'entre elles
-  — soit 70,5 % — portent dans leur libellé une référence de titre ou de contrat de marché
-  monétaire. Ce compte d'attente est donc, en pratique, un compte de passage du circuit titres.
+  466000107 COMPTE ATTENTE FINCON DEBITEUR est le compte d'attente de la DIRECTION FINANCIÈRE. Son
+  contenu ordinaire n'a rien de bancaire au sens du marché : factures informatiques en attente de
+  rattachement, reprises de paie, écritures inter-agences. Ce n'est pas un compte de trésorerie, et
+  la version antérieure de ce contrôle le présentait à tort comme « un compte de passage du circuit
+  titres ». Il ne l'est pas.
 
-  DEUXIÈME CONSTAT — L'ÉPISODE DE MARS ET AVRIL 2024. En deux mois, 1 314 lignes y ont transité pour
-  27 150 310 958 XAF de mouvements bruts, en 684 écritures manuelles saisies par 4 opérateurs. Les
-  libellés sont explicites : il s'agit d'annulations et de réenregistrements d'intérêts courus sur
-  titres — « Reversal of interest income on SALES », « Reversal of 511800101 in 466000107 ».
-  L'opération se solde à zéro : le compte est revenu à zéro au 30 avril 2024. Mais au 31 mars 2024,
-  en plein milieu de l'épisode, il portait encore 87 088 407 XAF.
+  II. MAIS LE CIRCUIT TITRES Y A FAIT UNE INCURSION, ET ELLE EST MASSIVE
 
-  Ce n'est pas une perte, c'est un problème de piste d'audit : plus de 27 milliards de produits sur
-  titres ont été défaits puis refaits par écritures manuelles, en dehors de tout traitement
-  automatique, sans qu'aucune pièce ne rattache l'ensemble à une décision de correction identifiée.
+  Sur les 1 837 lignes de la période, 839 portent une référence de contrat de marché monétaire ou un
+  code de titre CEMAC. Le fait marquant n'est pas leur nombre, c'est leur DATE : elles se
+  concentrent toutes sur 4 JOURS — 2024-03-29, 2024-04-01, 2024-04-09, 2024-04-11. En dehors de ces
+  quelques jours, le compte ne porte PAS UNE SEULE écriture se rapportant à un titre.
 
-  TROISIÈME CONSTAT — LE SOLDE QUI RESTE. Le compte n'est pas revenu à zéro. Au 2026-06-30 il porte
-  1 075 474 620 XAF au DÉBIT. L'essentiel tient à une seule écriture, passée le 2025-12-31 pour 1
-  075 318 728 XAF, libellée « Rclss  COMPTE INTER BRANCHES ». Une reclassification du compte inter-
-  agences vers un compte d'attente, passée le jour de l'arrêté annuel, n'est pas une imputation :
-  c'est le report d'un problème d'un compte vers un autre. Ce milliard figure à l'actif du bilan
-  sans que rien n'en justifie la nature.
+  III. CE QUE CETTE CAMPAGNE A FAIT
 
-  À TITRE DE COMPARAISON, le compte d'attente symétrique 467000103 CPTE ATTENTE FINCON CREDITEUR se
-  présente à -200 XAF : lui est correctement apuré. La défaillance porte sur un compte, pas sur le
-  dispositif.
+  Sur ces 4 jours, 1 313 lignes ont transité par le compte, en 683 écritures manuelles saisies par 4
+  opérateurs, pour 27 149 606 163 XAF de mouvements bruts. 1 153 de ces lignes sont des ANNULATIONS,
+  pour 25 108 638 427 XAF, et elles touchent 157 contrats distincts. La seule journée du 2024-03-29
+  en porte 671.
 
+  CE QUI ÉTAIT VISÉ EST IDENTIFIABLE, ET C'EST IMPORTANT. Les libellés le disent : « Reversal of
+  511800101 in 466000107 ». 12 écritures de la campagne mouvementent SIMULTANÉMENT ce compte
+  d'attente et 511800101 CREANCES RATTACHEES - MANUELLES — le second compte de courus, servi à la
+  main, dont le contrôle 12.7 retrace l'histoire.
+  L'effet est mesurable : le solde de 511800101 passe de 1 032 503 694 XAF la veille de la campagne
+  à 900 078 802 XAF au lendemain, soit 132 424 892 XAF de moins.
+
+  AUTREMENT DIT, CETTE CAMPAGNE ÉTAIT UNE TENTATIVE D'APUREMENT DU COMPTE DE COURUS MANUELS. Elle
+  n'a pas abouti : le contrôle 12.7 établit que le solde résiduel de ce compte a fini, deux ans plus
+  tard, en PERTE OPÉRATIONNELLE. Les deux constats décrivent le même dossier à deux moments : la
+  tentative de nettoyage, puis l'abandon.
+
+  IV. CE QUE LA CAMPAGNE LAISSE COMME PROBLÈME DE PISTE D'AUDIT
+
+  25 108 638 427 XAF de produits sur titres ont été défaits puis refaits par écritures manuelles, en
+  dehors de tout traitement automatique, sans qu'aucune pièce ne rattache l'ensemble à une décision
+  de correction identifiée. Le 2024-03-29 — une fin de trimestre — le compte d'attente porte encore
+  87 088 407 XAF en fin de journée.
+
+  PLUS RÉVÉLATEUR ENCORE : le 2024-04-09, en cours de campagne, le compte se présente à -1 640 165
+  908 XAF, c'est-à-dire CRÉDITEUR — sur un compte que son intitulé même désigne comme débiteur. Un
+  compte d'attente qui bascule de plus d'un milliard dans le sens opposé à sa nature signale que les
+  deux jambes d'une même correction ont été passées à plusieurs jours d'intervalle.
+
+  V. LE SOLDE QUI RESTE À LA CLÔTURE — ET CE QU'IL EST RÉELLEMENT
+
+  Au 2026-06-30, le compte porte 1 075 474 620 XAF au DÉBIT. L'essentiel tient à une écriture
+  unique, passée le 2025-12-31 — le jour de l'arrêté annuel — pour 1 075 318 728 XAF, sous le
+  libellé laconique « Rclss COMPTE INTER BRANCHES ».
+
+  CE QU'IL Y AVAIT DERRIÈRE, LA BANQUE LE DIT ELLE-MÊME — MAIS SEULEMENT LE 2026-08-25, en apurant
+  le compte par l'écriture exactement inverse. Le libellé est alors explicite : « Regularization
+  suspense account compte attente Fincon SCB entries on interbranch ». Il ne s'agissait donc pas
+  d'un problème inter-agences ordinaire, mais du RÉSIDU NON AFFECTÉ DE LA MIGRATION DE FUSION DE
+  STANDARD CHARTERED — le même dossier que le contrôle 12.5 — comprenant notamment un découvert du
+  compte de Standard Chartered à New York.
+
+  CE RÉSIDU EST RESTÉ 237 JOURS DANS UN COMPTE D'ATTENTE, et il a figuré comme tel à l'actif du
+  bilan à l'arrêté du 31 décembre 2025 et à celui du 30 juin 2026. Porter au bilan, sous un libellé
+  qui n'en dit rien, un milliard dont on sait qu'il provient d'une fusion non soldée, n'est pas une
+  imputation : c'est un report.
+
+  VI. À TITRE DE COMPARAISON
+
+  Le compte d'attente symétrique 467000103 CPTE ATTENTE FINCON CREDITEUR se présente à -200 XAF à la
+  clôture : lui est correctement apuré. La défaillance porte sur un compte, pas sur le dispositif.
+
+    Nature du compte                               : attente de la direction financière, hors périmètre trésorerie
     Écritures sur la période                       : 1 837
-    Écritures comptables distinctes                : 1 117
-    Mouvements bruts cumulés                       : 32 125 752 380 XAF
-    Dont portant une référence de titre            : 1 295
-    Épisode mars-avril 2024 — lignes               : 1 314
-    Épisode mars-avril 2024 — mouvements bruts     : 27 150 310 958 XAF
-    Épisode mars-avril 2024 — solde résiduel       : 0 XAF
-    Solde au 31 mars 2024, en cours d'épisode      : 87 088 407 XAF
-    Solde au 2026-06-30                            : 1 075 474 620 XAF
-    Dont une seule écriture de reclassement        : 1 075 318 728 XAF
-    Solde du compte d'attente symétrique 467000103 : -200 XAF
+    Dont portant une référence de titre            : 839
+    Jours où le circuit titres a employé ce compte : 4
+    Écritures titres en dehors de ces jours        : 0
+    Campagne — lignes                              : 1 313
+    Campagne — écritures manuelles                 : 683
+    Campagne — opérateurs                          : 4
+    Campagne — mouvements bruts                    : 27 149 606 163 XAF
+    Campagne — annulations                         : 1 153 — 25 108 638 427 XAF
+    Campagne — contrats touchés                    : 157
+    Écritures touchant aussi 511800101             : 12
+    Solde de 511800101 avant la campagne           : 1 032 503 694 XAF
+    Solde de 511800101 après la campagne           : 900 078 802 XAF
+    Réduction obtenue                              : 132 424 892 XAF
+    Solde du compte d'attente au 2026-06-30        : 1 075 474 620 XAF
+    Dont résidu de la fusion SCB                   : 1 075 318 728 XAF
+    Durée du séjour de ce résidu                   : 237 jours
+    Date d'apurement, postérieure à la période     : 2026-08-25
+
+    Jour de la campagne  Lignes  Mouvements bruts XAF  Solde du compte en fin de journée XAF
+    -------------------  ------  --------------------  -------------------------------------
+    2024-03-29           671     5 408 831 531         87 088 407                           
+    2024-04-01           103     8 405 035 850         59 532 959                           
+    2024-04-09           471     11 695 572 874        -1 640 165 908                       
+    2024-04-11           68      1 640 165 908         0                                    
+    La campagne de reprise, jour par jour. Elle tient en quelques journées, dont une fin de
+    trimestre.
 
     Date d'arrêté  Solde XAF    
     -------------  -------------
@@ -4142,31 +4197,34 @@ compte soit resté vide est ici un résultat de contrôle à part entière.
     Le solde du compte d'attente à chaque date d'arrêté. Un compte d'attente doit s'y présenter à
     zéro.
 
-    Date        Référence         Sens  Montant XAF    Opérateur     Libellé                                                   
-    ----------  ----------------  ----  -------------  ------------  ----------------------------------------------------------
-    2025-12-31  099004e253650001  D     1 075 318 728  BINEID00087   Rclss  COMPTE INTER BRANCHES                              
-    2024-04-01  099000f240920001  C     391 780 822    BINEID00087   Reversal of interest income on  SALES  CM2B00000053 099OTA
-    2024-04-09  099001d241000001  D     391 780 822    CHOHOS00066   Reversal of interest income on  SALES  CM2B00000053 099OTA
-    2024-04-01  099000f240920001  D     366 164 384    BINEID00087   Reversal of 511800101 in 466000107 rf 099000e233030001 int
-    2024-04-09  0990014241000001  C     366 164 384    BINEID00087   Reversal of 511800101 in 466000107 rf 099000e233030001 int
-    2024-03-29  099000c240890046  C     336 000 000    BINEID00087   ANNUAL INTEREST FOR T BOND CM2B00000020 6BN               
-    2024-04-09  099001b241000001  D     336 000 000    BINEID00087   ANNUAL INTEREST FOR T BOND CM2B00000020 6BN               
-    2025-12-31  099004j253650061  D     321 409 835    CHEICHEID059  WISE COMPUTERS Invoice no F25D00033 of 1 8 2025 50pct adv 
-    2024-04-01  099000f240920001  D     292 575 342    BINEID00087   Reversal of  interest income on   PURCHASE  CM2L00000036  
-    2024-04-01  099000f240920001  C     292 575 342    BINEID00087   Reversal Liquidation of the Accrued interest of CM2L000000
-    Les dix plus gros mouvements du compte sur la période.
+    Date        Référence         Sens  Montant XAF    Opérateur    Libellé                                                 
+    ----------  ----------------  ----  -------------  -----------  --------------------------------------------------------
+    2025-12-31  099004e253650001  D     1 075 318 728  BINEID00087  Rclss  COMPTE INTER BRANCHES                            
+    2024-04-01  099000f240920001  C     391 780 822    BINEID00087  Reversal of interest income on  SALES  CM2B00000053 099O
+    2024-04-09  099001d241000001  D     391 780 822    CHOHOS00066  Reversal of interest income on  SALES  CM2B00000053 099O
+    2024-04-01  099000f240920001  D     366 164 384    BINEID00087  Reversal of 511800101 in 466000107 rf 099000e233030001 i
+    2024-04-09  0990014241000001  C     366 164 384    BINEID00087  Reversal of 511800101 in 466000107 rf 099000e233030001 i
+    2024-03-29  099000c240890046  C     336 000 000    BINEID00087  ANNUAL INTEREST FOR T BOND CM2B00000020 6BN             
+    2026-08-25  099001j262370001  D     21 838 619     POMOOS0015   Regularization suspense account compte attente Fincon SC
+    2026-08-25  099001j262370001  D     29,00          POMOOS0015   Regularization suspense account compte attente Fincon SC
+    2026-08-25  099001j262370001  D     136 855        POMOOS0015   Regularization suspense account compte attente Fincon SC
+    2026-08-25  099001j262370001  C     1 075 318 728  POMOOS0015   Regularization suspense account compte attente Fincon SC
+    2026-08-25  099001j262370001  D     20 849 679     POMOOS0015   Regularization suspense account compte attente Fincon SC
+    Les plus gros mouvements de la période, et l'écriture d'apurement postérieure qui révèle la
+    nature du solde porté à la clôture.
 
   Recommandation :
-    1. Faire justifier ligne à ligne le solde de 1 075 474 620 XAF au 2026-06-30, et en premier lieu
-    le reclassement du compte inter-agences passé le jour de l'arrêté : produire la pièce qui en
-    établit la nature et l'imputation définitive.
-    2. Obtenir la note de correction qui fonde l'épisode de mars et avril 2024 : qui l'a décidée,
-    sur quel diagnostic, et pourquoi elle a été exécutée par écritures manuelles plutôt que par
-    reprise du traitement.
-    3. Instaurer une règle d'apurement : tout solde d'un compte d'attente de plus de trente jours
-    fait l'objet d'un état nominatif présenté au comité d'audit.
-    4. Étendre la revue au compte 511800101 « créances rattachées — manuelles », que les libellés
-    désignent mais qui ne figure dans aucune extraction (contrôle 12.6).
+    1. Obtenir la note de correction qui fonde la campagne de reprise : qui l'a décidée, sur quel
+    diagnostic, et pourquoi elle a été exécutée par écritures manuelles plutôt que par reprise du
+    traitement. Elle touche 157 contrats et 25 108 638 427 XAF.
+    2. La rapprocher du contrôle 12.7 : la campagne visait le compte de courus manuels, et n'a pas
+    suffi à l'apurer. Comprendre pourquoi permet de savoir ce que la perte opérationnelle finale
+    recouvrait réellement.
+    3. Faire justifier le maintien de 1 075 318 728 XAF de résidus de la fusion Standard Chartered
+    dans un compte d'attente à la date d'arrêté annuel, sous un libellé qui n'en indique pas la
+    nature, et obtenir l'analyse détaillée qui a permis de les apurer en août 2026.
+    4. Instaurer une règle d'apurement : tout solde d'un compte d'attente de plus de trente jours
+    fait l'objet d'un état nominatif présenté au comité d'audit, avec l'origine de chaque ligne.
 
 ----------------------------------------------------------------------------------------------------
 [12.4] Un nantissement de 6,2 milliards inscrit en doublon sur un compte de classe 2, le jour de l'arrêté annuel
