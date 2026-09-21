@@ -4,7 +4,7 @@
 
   Périmètre        : Département de la trésorerie — gestion des investissements sur les marchés financiers
   Période d'audit  : 2023-09-27 au 2026-06-30
-  Rapport généré le : 21/09/2026 à 01:08
+  Rapport généré le : 21/09/2026 à 01:21
   Référentiel      : Plan Comptable des Établissements de Crédit (PCEC) — CEMAC / COBAC
 
   Ce rapport est produit automatiquement. Chaque constat indique le test exécuté, sa
@@ -88,7 +88,7 @@ RÉCAPITULATIF DES ANOMALIES PAR GRAVITÉ
   ELEVEE    [11.3] Codification des titres : codes fictifs, pays contradictoires et libellés divergents
   ELEVEE    [11.4] Titres de souverains exclus : l'explication par le placement clientèle ne couvre pas la position la plus lourde
   ELEVEE    [11.5] Le portefeuille est comptabilisé au pair : la prime et la décote sont portées à part
-  ELEVEE    [12.1] Le compte de charge 622000100 sert de compte de régularisation universel du circuit titres
+  ELEVEE    [12.1] Le compte de charge 622000100 porte 616 millions d'imputations qui ne relèvent pas de son objet
   ELEVEE    [12.2] Les pensions livrées sont comptabilisées en emprunts au jour le jour : aucun des comptes que le PCEC leur réserve n'est servi
   ELEVEE    [12.3] Le compte d'attente de la direction financière : une reprise massive d'intérêts sur titres en quatre jours, et le résidu de la fusion SCB à la clôture
   MOYENNE   [1.2] Lignes dupliquées dans les extractions
@@ -3901,90 +3901,148 @@ compte soit resté vide est ici un résultat de contrôle à part entière.
     et une perte de cette taille passée en une fois ne peuvent pas coexister sans explication.
 
 ----------------------------------------------------------------------------------------------------
-[12.1] Le compte de charge 622000100 sert de compte de régularisation universel du circuit titres
+[12.1] Le compte de charge 622000100 porte 616 millions d'imputations qui ne relèvent pas de son objet
   Gravité : ELEVEE
   Référence : Compte 622000100 COMM ET FRAIS SUR TITRES — 261 écritures sur la période
 
-  CE QU'EST CE COMPTE. 622000100 COMM ET FRAIS SUR TITRES est un compte de CHARGE d'exploitation. Le
-  PCEC lui assigne deux emplois, et deux seulement : les commissions versées aux intermédiaires lors
-  de l'achat et de la vente de titres, et les droits de garde payés au dépositaire.
+  I. CE QUE LE PCEC RÉSERVE À CE COMPTE
 
-  CE QU'IL CONTIENT RÉELLEMENT. Sur la période, il porte 261 écritures. Seules 115 relèvent des deux
-  emplois prévus. Les 146 autres — soit 55,9 % du total — y logent des opérations qui appartiennent
-  ailleurs : des décotes et primes d'acquisition et de cession, des régularisations d'intérêts
-  courus, des écarts d'arrondi et des différences que personne n'a rattachées à leur origine.
+  622000100 COMM ET FRAIS SUR TITRES est un compte de CHARGE d'exploitation. Le PCEC lui assigne des
+  emplois précis : les commissions d'intermédiation versées lors de l'achat et de la vente de
+  titres, et les frais de conservation — droits de garde du dépositaire, prélèvements du CRCT, la
+  cellule de règlement et de conservation des titres de la CEMAC. Rien d'autre.
 
-  TROIS CONSÉQUENCES COMPTABLES, DISTINCTES.
-  - PREMIÈRE — une compensation entre charges et produits. 52 écritures sont des CRÉDITS, pour 1 470
-    811 156 XAF, sur un compte de charge dont les débits s'élèvent à 1 476 723 300 XAF. Autrement
-    dit, des PRODUITS sont enregistrés en diminution d'une CHARGE. Le PCEC prohibe cette
-    compensation : charges et produits doivent figurer pour leur montant brut. Le solde net du
-    compte, 5 912 144 XAF, ne dit donc rien du volume réel qui y a transité.
-  - DEUXIÈME — une imputation erronée des décotes. 626 048 767 XAF de décotes et primes y sont
-    passées. Une décote à l'acquisition est un élément du prix de revient du titre ou un produit à
-    étaler, selon le cas ; elle relève des comptes de produits comptabilisés d'avance ou du résultat
-    sur titres. Elle n'est en aucun cas une commission.
-  - TROISIÈME — la disparition des écarts. 51 365 791 XAF de régularisations d'intérêts y sont
-    logées, et 29 écritures portent sur des montants inférieurs ou égaux à 100 XAF, pour 217 XAF au
-    total. Ces écritures d'un ou deux francs sont le signe d'un rapprochement forcé : plutôt que
+  II. CE QU'IL PORTE RÉELLEMENT
+
+  Le compte porte 261 écritures sur la période, dont 3 sont les écritures de clôture annuelle qui le
+  soldent contre le résultat — fonctionnement normal d'un compte de charge, écarté de l'analyse.
+  Restent 258 écritures d'exploitation.
+  Sur celles-ci, 119 relèvent des emplois prévus, pour 279 154 834 XAF. Les 139 autres — 53,9 % des
+  lignes — portent 616 516 632 XAF, soit 68,8 % de la charge nette du compte. Le détail figure au
+  tableau ci-dessous.
+
+  III. UNE MESURE QUE JE CORRIGE
+
+  Une version antérieure de ce contrôle annonçait que des produits avaient été logés en diminution
+  de cette charge pour 1 470 811 156 XAF. Ce chiffre était faux, et il convient de le dire. Il
+  additionnait trois choses qui n'ont rien à voir :
+  - 889 759 322 XAF d'écritures de CLÔTURE ANNUELLE, qui soldent normalement un compte de charge
+    contre le résultat ;
+  - 566 852 329 XAF de CRÉDITS APPARIÉS à un débit du même montant sur le même compte : ce sont des
+    contre-passations, donc des corrections ;
+  - et seulement 14 199 505 XAF de crédits réellement non appariés.
+
+  CE DERNIER MONTANT RESTE UNE ANOMALIE, MAIS IL FAUT LE DIRE À SA MESURE. Les 36 lignes qui le
+  composent sont, pour l'essentiel, des commissions de courtage FACTURÉES À DES CLIENTS nommément
+  désignés dans le libellé. Un produit facturé au client ne se présente pas en diminution d'une
+  charge : le PCEC prohibe la compensation entre charges et produits, qui doivent figurer pour leur
+  montant brut.
+
+  IV. LE POINT LE PLUS LOURD — LES DÉCOTES
+
+  626 048 767 XAF de décotes et primes sur titres sont imputées à ce compte de commissions. Une
+  décote n'est pas un frais : c'est un élément du prix de revient du titre ou du résultat de
+  cession, selon le cas. Elle relève des comptes de revenus et résultats sur titres, ou des comptes
+  de produits comptabilisés d'avance.
+
+  ET LA BANQUE LE SAIT, CAR ELLE L'A FAIT. Le 2025-03-07, elle a elle-même reclassé 475 250 320 XAF
+  de décote hors de ce compte, vers 733200100 REVENUS DE BONS DU TRESOR. L'écriture porte le mot
+  RECLASS dans son libellé, et le compte de revenus est DÉBITÉ : la décote consentie à la vente
+  vient en diminution du revenu du titre, et non en charge de commission. Le traitement correct est
+  donc connu, et appliqué — mais une fois seulement.
+
+  V. LES INTÉRÊTS ET LES RÉSIDUS
+
+  - 83 écritures de régularisation d'intérêts, pour un effet net de 51 365 791 XAF au CRÉDIT — des
+    produits d'intérêt venant, là encore, en diminution d'une charge.
+  - 20 écritures pour 34 623 985 XAF ne portent aucune qualification : leur libellé se borne à
+    désigner une opération sur titre — « SALES security », « Purchase of the security » — sans dire
+    quelle charge elles constituent. La plus lourde atteint 27 518 938 XAF.
+  - 29 écritures portent sur 217 XAF au total, soit quelques francs chacune. Des écritures d'un ou
+    deux francs sur un compte de charge sont la trace d'un rapprochement forcé : plutôt que
     d'expliquer un écart, on l'éteint. Le contrôle 5.3 en donne l'illustration la plus nette — le
     reliquat de la correction d'apurement de la migration y a été passé en charge.
 
-  POURQUOI CELA COMPTE POUR L'AUDIT. Un compte fourre-tout empêche toute revue analytique : il
-  devient impossible de dire ce que la banque a réellement payé en commissions, ni de mesurer le
-  résultat des décotes, ni de suivre les écarts de courus. Il neutralise par construction le
-  contrôle que la piste d'audit est censée permettre.
+  VI. POURQUOI CELA COMPTE
+
+  Ce constat n'est pas un constat de perte : les montants sont bien enregistrés, et le résultat de
+  la banque n'en est pas faussé globalement. C'est un constat de PRÉSENTATION, et il a deux effets
+  concrets.
+  Le premier est que la ligne « commissions et frais sur titres » du compte de résultat est
+  surévaluée de l'ordre de 616 516 632 XAF, et que les postes qui auraient dû porter ces montants —
+  revenus sur titres, produits comptabilisés d'avance — sont sous-évalués d'autant.
+  Le second est qu'aucune revue analytique n'est possible : il devient impossible de dire ce que la
+  banque a réellement payé en commissions et en droits de garde, ni de rapprocher ce coût des
+  relevés du dépositaire et des intermédiaires.
 
     Écritures sur la période                     : 261
-    Dont relevant des emplois prévus par le PCEC : 115
-    Dont étrangères à l'objet du compte          : 146
-    Total des DÉBITS                             : 1 476 723 300 XAF
-    Total des CRÉDITS — produits logés en charge : 1 470 811 156 XAF
-    Solde net, qui masque les deux précédents    : 5 912 144 XAF
+    Dont écritures de clôture annuelle, écartées : 3
+    Écritures d'exploitation analysées           : 258
+    Relevant des emplois prévus par le PCEC      : 119 — 279 154 834 XAF
+    Étrangères à l'objet du compte               : 139 — 616 516 632 XAF
     Décotes et primes imputées à tort            : 626 048 767 XAF
-    Régularisations d'intérêts imputées à tort   : 51 365 791 XAF
-    Écritures de 100 XAF ou moins                : 29
-    Opérateurs distincts                         : 11
+    Régularisations d'intérêts                   : 51 365 791 XAF au crédit
+    Résidus sans qualification                   : 20 — 34 623 985 XAF
+    Écritures de 100 XAF ou moins                : 29 — 217 XAF
+    Crédits totaux hors clôture                  : 581 051 834 XAF
+    Dont contre-passations appariées             : 566 852 329 XAF
+    Dont produits réellement logés en charge     : 14 199 505 XAF
+    Décote reclassée par la banque elle-même     : 475 250 320 XAF
+    Opérateurs distincts                         : 9
 
-    Nature de l'opération                      Lignes  Débits XAF     Crédits XAF  Net XAF     
-    -----------------------------------------  ------  -------------  -----------  ------------
-    commission (usage prévu)                   103     156 397 334    5 137 367    151 259 967 
-    intérêt couru ou régularisation d'intérêt  83      24 096 395     75 462 186   -51 365 791 
-    autre                                      24      49 673 591     59 056       49 614 535  
-    décote ou prime sur titre                  24      1 112 000 417  485 951 650  626 048 767 
-    différence, reclassement, mise à zéro      12      7 235 246      25 575       7 209 671   
-    droit de garde (usage prévu)               12      127 320 317    14 416 000   112 904 317 
-    sans libellé — écriture de clôture         3       0              889 759 322  -889 759 322
-    Décomposition du compte par la nature de l'opération, lue dans le libellé de chaque écriture.
-    Les deux lignes « usage prévu » sont les seules que le PCEC autorise sur ce compte.
+    Nature de l'opération                        Lignes  Débits XAF     Crédits XAF  Net XAF      Emploi prévu
+    -------------------------------------------  ------  -------------  -----------  -----------  ------------
+    A. droit de garde                            17      136 515 031    14 461 000   122 054 031  oui         
+    B. commission du dépositaire CRCT            10      47 897 564     0            47 897 564   oui         
+    C. commission d'intermédiation               92      114 295 606    5 092 367    109 203 239  oui         
+    D. décote ou prime sur titre                 24      1 112 000 417  485 951 650  626 048 767  NON         
+    E. intérêt ou régularisation d'intérêt       83      24 096 395     75 462 186   -51 365 791  NON         
+    F. écart ou reclassement                     12      7 235 246      25 575       7 209 671    NON         
+    G. résidu sur opération, sans qualification  20      34 683 041     59 056       34 623 985   NON         
+    Décomposition du compte par la nature de l'opération, lue dans le libellé de chaque écriture,
+    hors écritures de clôture annuelle. Les trois premières lignes sont les seuls emplois que le
+    PCEC autorise.
 
-    Date        Référence         Sens  Montant XAF  Opérateur     Libellé                                                       
-    ----------  ----------------  ----  -----------  ------------  --------------------------------------------------------------
-    2025-02-28  0990037250590001  D     475 250 320  CHEICHEID059  DISCOUNT AT SALE TBIL CM120000018 2 500 000 000 AT 52.4588% TO
-    2025-03-07  099000n250660001  C     475 250 320  CHEICHEID059  RECLASS DISCOUNT AT SALE TBIL CM12000001897  2 500 000 000 AT 
-    2024-12-31  099ZYND243660007  C     430 997 027  ASONG0014EOD                                                                
-    2025-12-31  099ZYND253650081  C     293 414 662  SYSTEM                                                                      
-    2024-03-18  099000r240780001  D     250 000 000  BINEID00087   LIQUIDATION OF SECURITIES TRANSACTIONS BOOKED  ON SEPTEMBER 20
-    2023-12-29  099ZYND23363002U  C     165 347 633  ASONG0014EOD                                                                
-    2024-03-04  099000c240640001  D     75 000 000   BINEID00087   DISCOUNT RECIEVED SALES security CM2A00000112 5 000 000 000 6 
-    2024-03-08  099000d240680001  C     75 000 000   BINEID00087   interest of security CM2A00000112 at 6% 5.000.000.000xaf 099ot
-    2025-02-28  099003b250590001  D     75 000 000   CHEICHEID059  REGUL DISCOUNT of the security GA2B00000125 2 500 000 000 6.5%
-    2025-06-04  099001j251550001  D     45 000 000   BINEID00087   DISCOUNT RECIEVED SALES security GA2K00000025  2 000 000 000 5
-    2025-06-20  0990002251710001  D     35 000 000   CHEICHEID059  DISCOUNT AT PURCHASE SECURITY CG2A00000601 AT 5.75 % 1 000 000
-    2024-09-03  0990012242470001  D     34 345 313   BINEID00087   Droit de garde EMRALD SECURITIES SERVICES BOURSE(GA0000020396 
-    Les douze plus gros mouvements du compte sur la période.
+    Date        Référence         Sens  Montant XAF  Opérateur     Libellé                                                     
+    ----------  ----------------  ----  -----------  ------------  ------------------------------------------------------------
+    2025-02-28  0990037250590001  D     475 250 320  CHEICHEID059  DISCOUNT AT SALE TBIL CM120000018 2 500 000 000 AT 52.4588% 
+    2025-03-07  099000n250660001  C     475 250 320  CHEICHEID059  RECLASS DISCOUNT AT SALE TBIL CM12000001897  2 500 000 000 A
+    2024-03-18  099000r240780001  D     250 000 000  BINEID00087   LIQUIDATION OF SECURITIES TRANSACTIONS BOOKED  ON SEPTEMBER 
+    2024-03-04  099000c240640001  D     75 000 000   BINEID00087   DISCOUNT RECIEVED SALES security CM2A00000112 5 000 000 000 
+    2024-03-08  099000d240680001  C     75 000 000   BINEID00087   interest of security CM2A00000112 at 6% 5.000.000.000xaf 099
+    2025-02-28  099003b250590001  D     75 000 000   CHEICHEID059  REGUL DISCOUNT of the security GA2B00000125 2 500 000 000 6.
+    2025-06-04  099001j251550001  D     45 000 000   BINEID00087   DISCOUNT RECIEVED SALES security GA2K00000025  2 000 000 000
+    2025-06-20  0990002251710001  D     35 000 000   CHEICHEID059  DISCOUNT AT PURCHASE SECURITY CG2A00000601 AT 5.75 % 1 000 0
+    2024-09-03  0990012242470001  D     34 345 313   BINEID00087   Droit de garde EMRALD SECURITIES SERVICES BOURSE(GA000002039
+    2023-12-20  099000f233540001  D     29 400 000   CHEICHEID059  Discount income PURCAHSE  of the security CG2K00000062 1 400
+    Les dix plus gros mouvements d'exploitation du compte sur la période.
+
+    Date        Sens  Montant XAF  Libellé                                                                   
+    ----------  ----  -----------  --------------------------------------------------------------------------
+    2024-03-05  D     27 518 938   SALES security CM2B00000087 500.000.000  5.5 % 099OTAP232150003           
+    2024-02-02  D     3 200 000    PURCHASE of the security    CG2A00000125 6.5% 099OTAP223340002 800 000 000
+    2024-02-02  D     1 400 000    PURCHASE of the security    CG2A00000125 6.5% 099OTAP223340002 800 000 000
+    2024-04-15  D     1 345 556    SALES CM1200001467 099TBTR232920001 5%;099TBTR240320001 5%;099TBTR24068000
+    2024-03-08  D     311 286      SALES security CG2J00000503 1 931 030 000 5.9% 099OTAP240380001           
+    2024-04-17  D     247 500      SALES security CM2L00000036 5 500 000 000 5.90 % 099OTAP240950001         
+    2024-04-30  D     148 456      SALES security CM2L00000036 4.400.000.000XAF 5.90 % 099OTAP241130004      
+    2024-04-12  D     103 840      SALES security CM2L00000036 4 400 000 000 5.90 % 099OTAP240990001 TO BACM 
+    Les résidus sans qualification : leur libellé désigne une opération sur titre sans dire quelle
+    charge elle constitue.
 
   Recommandation :
-    1. Faire analyser le contenu de 622000100 sur la période et reclasser chaque écriture à son
-    compte d'origine : décotes aux comptes de régularisation 472200106 et 472200108, régularisations
-    d'intérêts aux comptes de produits sur titres, différences non justifiées en suspens documenté.
-    2. Interdire les écritures au crédit de ce compte : un produit ne s'enregistre pas en diminution
-    d'une charge.
-    3. Instaurer une règle de seuil et de justification : toute écriture de régularisation sur un
-    compte de charge titres doit porter la référence du contrat et la nature de l'écart qu'elle
-    corrige.
-    4. Rapprocher le montant des commissions réellement dues des relevés du dépositaire et des
-    intermédiaires, la comptabilité ne permettant pas aujourd'hui de les isoler.
+    1. Faire reclasser les 626 048 767 XAF de décotes et primes vers les comptes de revenus et
+    résultats sur titres ou de produits comptabilisés d'avance, selon le cas — la banque a montré la
+    voie en reclassant 475 250 320 XAF le 2025-03-07.
+    2. Interdire les écritures au crédit de ce compte : une commission facturée à un client est un
+    produit et s'enregistre comme tel, sans compensation avec la charge.
+    3. Faire justifier les 20 résidus sans qualification, et en premier lieu celui de 27 518 938 XAF
+    : quelle charge constituent-ils ?
+    4. Instaurer une règle de justification : toute écriture sur un compte de charge titres porte la
+    référence du contrat et la nature de la charge. Un libellé qui se borne à « SALES security » ne
+    permet aucun contrôle.
+    5. Rapprocher le montant des commissions et droits de garde réellement dus des relevés du CRCT,
+    du dépositaire et des intermédiaires — ce que la comptabilité ne permet pas aujourd'hui.
 
 ----------------------------------------------------------------------------------------------------
 [12.2] Les pensions livrées sont comptabilisées en emprunts au jour le jour : aucun des comptes que le PCEC leur réserve n'est servi

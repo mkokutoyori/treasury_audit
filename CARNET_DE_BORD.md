@@ -2744,3 +2744,78 @@ perte).
 
 **Règle retenue** : *mesurer « combien » ne suffit pas — il faut mesurer « quand ». La
 concentration d'un flux sur quatre jours dit une chose que son volume total masquait.*
+
+---
+
+# Session 28 — Revue manuelle du 12.1 : mon chiffre phare était faux d'un facteur cent
+
+## 28.1 L'erreur
+
+J'annonçais : *« 52 écritures sont des CRÉDITS, pour 1 470 811 156 XAF, sur un compte de
+charge — des PRODUITS enregistrés en diminution d'une CHARGE. »*
+
+**Faux.** Ce montant additionnait trois choses sans rapport :
+
+| Composante | Montant | Nature réelle |
+|---|---|---|
+| écritures `099ZYND…`, module GL, users EOD/SYSTEM | **889 759 322** | **clôture annuelle** — un compte de charge se solde normalement contre le résultat |
+| crédits appariés à un débit du même montant | **566 852 329** | **contre-passations** — des corrections |
+| crédits réellement non appariés | **14 199 505** | la vraie compensation |
+
+Le chiffre honnête est **14 199 505**, pas 1,47 Md. Soit un facteur **104**.
+
+Et ces 14,2 M sont, pour l'essentiel, des **commissions de courtage facturées à des clients
+nommément désignés** (AUGUSTIN KENDO, NJEA MBEMBE, ZELMAT FREDERIC, TCHEUT'S TENE ARCHANGE…).
+C'est bien une compensation prohibée par le PCEC — mais à sa mesure.
+
+**Règle retenue** : *avant de qualifier un crédit sur un compte de charge de « produit logé en
+charge », écarter les écritures de clôture et apparier les contre-passations. Ce qui reste est
+seul opposable.*
+
+## 28.2 Seconde correction — le CRCT est un emploi prévu
+
+Mon classificateur envoyait dans « autre » les écritures *« PRELEVEMENT COMM CRCT … FAV BEAC »*
+parce qu'il cherchait `COMMIS` et non `COMM`. Le **CRCT** — Cellule de Règlement et de
+Conservation des Titres — est le **dépositaire central de la CEMAC** : ses prélèvements sont
+des frais de conservation, donc un **emploi parfaitement prévu**. 10 lignes, 47 897 564 XAF.
+
+## 28.3 La mesure refaite
+
+258 écritures d'exploitation (hors les 3 de clôture) :
+
+| Nature | Lignes | Net | Emploi prévu |
+|---|---|---|---|
+| A. droit de garde | 17 | 122 054 031 | oui |
+| B. commission du dépositaire CRCT | 10 | 47 897 564 | oui |
+| C. commission d'intermédiation | 92 | 109 203 239 | oui |
+| D. décote ou prime sur titre | 24 | **626 048 767** | NON |
+| E. intérêt ou régularisation | 83 | −51 365 791 | NON |
+| F. écart ou reclassement | 12 | 7 209 671 | NON |
+| G. résidu sans qualification | 20 | 34 623 985 | NON |
+
+**119 lignes conformes (279 154 834) contre 139 non conformes (616 516 632)** — soit
+**68,8 % de la charge nette du compte** qui n'y a pas sa place.
+
+## 28.4 La preuve interne, une fois de plus
+
+Le **07/03/2025**, la banque **reclasse elle-même 475 250 320 XAF** de décote hors de
+`622000100` vers **`733200100 REVENUS DE BONS DU TRESOR`**, qu'elle DÉBITE.
+
+C'est exactement le traitement correct : une décote consentie à la vente vient **en diminution
+du revenu du titre**, pas en charge de commission. Le bon traitement est donc connu de la
+banque — et appliqué **une fois**.
+
+Même technique de démonstration qu'au 12.5 et au 11.8 : *laisser la banque prouver l'erreur
+par sa propre correction.*
+
+## 28.5 Ce que devient le constat
+
+Gravité maintenue à **ELEVEE**, mais le constat change de nature : ce n'est pas un constat de
+perte, c'est un constat de **présentation**. La ligne « commissions et frais sur titres » du
+compte de résultat est surévaluée d'environ **616 516 632 XAF**, et les postes qui auraient dû
+porter ces montants — revenus sur titres, produits comptabilisés d'avance — sous-évalués
+d'autant. Et aucune revue analytique n'est possible : impossible de dire ce que la banque paie
+réellement en commissions et droits de garde.
+
+Le rapport énonce lui-même la correction, au paragraphe III : *« Une version antérieure de ce
+contrôle annonçait… Ce chiffre était faux, et il convient de le dire. »*

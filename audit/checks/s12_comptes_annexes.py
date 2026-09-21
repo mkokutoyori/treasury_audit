@@ -52,134 +52,245 @@ def _periode(ctx, compte: str) -> pd.DataFrame:
 
 
 # --- 12.1 ---------------------------------------------------------------------------------
+# Emplois que le PCEC assigne au compte de commissions et frais sur titres. Tout le reste y
+# est étranger. Le CRCT — Cellule de Règlement et de Conservation des Titres — est le
+# dépositaire central de la CEMAC : ses prélèvements sont des frais de conservation, donc un
+# emploi prévu.
+USAGES_PREVUS = ("A. droit de garde", "B. commission du dépositaire CRCT",
+                 "C. commission d'intermédiation")
+
+
 def _classer(libelle: str) -> str:
     """Rattache une écriture de 622000100 à la nature d'opération qu'elle traduit."""
     t = "" if libelle is None or pd.isna(libelle) else str(libelle).upper()
-    if not t.strip():
-        return "sans libellé — écriture de clôture"
-    if "GARDE" in t:
-        return "droit de garde (usage prévu)"
-    if "COMMIS" in t:
-        return "commission (usage prévu)"
+    if "GARDE" in t or "CONSERVATION" in t:
+        return "A. droit de garde"
+    if "CRCT" in t:
+        return "B. commission du dépositaire CRCT"
+    if "COMMIS" in t or "COURTAGE" in t or "BROKERAGE" in t:
+        return "C. commission d'intermédiation"
     if "DISCOUNT" in t or "DECOTE" in t or "DÉCOTE" in t:
-        return "décote ou prime sur titre"
+        return "D. décote ou prime sur titre"
     if "INTEREST" in t or "INTERET" in t or "INTÉRÊT" in t or "COUPON" in t:
-        return "intérêt couru ou régularisation d'intérêt"
+        return "E. intérêt ou régularisation d'intérêt"
     if "DIFF" in t or "REGUL" in t or "RECLASS" in t or "RCLSS" in t or "ZERORI" in t:
-        return "différence, reclassement, mise à zéro"
-    return "autre"
+        return "F. écart ou reclassement"
+    return "G. résidu sur opération, sans qualification"
 
 
 def _c121_commissions_fourre_tout(ctx) -> Constat:
-    d = _periode(ctx, CPT_COMM_TITRES)
+    brut = ctx.historique_compte(CPT_COMM_TITRES, dans_periode=True)
     libelle = ctx.libelle_compte(CPT_COMM_TITRES) or "COMM ET FRAIS SUR TITRES"
-    if d.empty:
+    if brut.empty:
         return Constat(code="12.1", titre=f"Compte {CPT_COMM_TITRES} non mouvementé",
                        gravite=Gravite.CONFORME, constat="Aucun mouvement sur la période.")
-    d = d.assign(nature=d.DESCRIPTION.map(_classer))
+    # Les écritures de clôture annuelle soldent le compte contre le résultat : c'est le
+    # fonctionnement normal d'un compte de charge, et non une écriture d'exploitation.
+    cloture = brut[(brut.MODULE == "GL") | brut.TRN_REF_NO.str.contains("ZYND", na=False)]
+    d = brut[~brut.index.isin(cloture.index)].copy()
+    d["nature"] = d.DESCRIPTION.map(_classer)
     agg = (d.groupby("nature")
              .agg(lignes=("LCY_AMOUNT", "size"),
                   debit=("SIGNE", lambda x: float(x[x > 0].sum())),
                   credit=("SIGNE", lambda x: float(-x[x < 0].sum())),
                   net=("SIGNE", "sum"))
-             .sort_values("lignes", ascending=False).reset_index())
-    prevu = agg[agg.nature.str.contains("usage prévu")]
-    lignes_prevu = int(prevu.lignes.sum())
-    detourne = len(d) - lignes_prevu
-    credits = d[d.SIGNE < 0]
-    total_credits = float(-credits.SIGNE.sum())
-    debit_total = float(d[d.SIGNE > 0].SIGNE.sum())
-    decotes = float(agg.loc[agg.nature == "décote ou prime sur titre", "net"].sum())
-    interets = float(agg.loc[agg.nature.str.startswith("intérêt"), "net"].sum())
+             .reset_index().sort_values("nature"))
+    prevu = agg[agg.nature.isin(USAGES_PREVUS)]
+    devoye = agg[~agg.nature.isin(USAGES_PREVUS)]
+    n_prevu, n_devoye = int(prevu.lignes.sum()), int(devoye.lignes.sum())
+    net_prevu, net_devoye = float(prevu.net.sum()), float(devoye.net.sum())
+
+    # LES CRÉDITS — mesure honnête. Un crédit apparié à un débit du même montant est une
+    # correction, pas un produit logé en charge. Seuls les crédits non appariés le sont.
+    from collections import Counter
+    debits = Counter(d[d.SIGNE > 0].LCY_AMOUNT.round(0))
+    non_apparies = []
+    for _, r in d[d.SIGNE < 0].iterrows():
+        k = round(float(r.LCY_AMOUNT))
+        if debits[k] > 0:
+            debits[k] -= 1
+        else:
+            non_apparies.append(r)
+    compensation = pd.DataFrame(non_apparies)
+    montant_compensation = float(compensation.LCY_AMOUNT.sum()) if len(compensation) else 0.0
+    credits_total = float(d[d.SIGNE < 0].LCY_AMOUNT.sum())
+    corrections = credits_total - montant_compensation
+
+    # LA PREUVE INTERNE : la banque a elle-même reclassé une décote vers le compte de revenus.
+    a = ctx.toutes_ecritures
+    dec = d[d.nature.str.startswith("D.")]
+    reclass = dec[dec.DESCRIPTION.fillna("").str.upper().str.contains("RECLASS")]
+    montant_reclass = float(reclass.LCY_AMOUNT.max()) if not reclass.empty else 0.0
+    date_reclass = str(reclass.TRN_DT.iloc[0]) if not reclass.empty else ""
+    cible = ""
+    if not reclass.empty:
+        # La jambe de contrepartie est celle qui porte le MÊME montant en sens inverse : une
+        # écriture peut en contenir d'autres, sans rapport avec le reclassement.
+        ligne = reclass.nlargest(1, "LCY_AMOUNT").iloc[0]
+        sens_oppose = "D" if str(ligne.DRCR_IND) == "C" else "C"
+        autres = a[(a.TRN_REF_NO == ligne.TRN_REF_NO) & (a.AC_NO != CPT_COMM_TITRES)
+                   & (a.DRCR_IND == sens_oppose)
+                   & ((a.LCY_AMOUNT - float(ligne.LCY_AMOUNT)).abs() < 1)]
+        if not autres.empty:
+            cpt = str(autres.AC_NO.iloc[0])
+            cible = f"{cpt} {ctx.libelle_compte(cpt)}"
+
+    residus = d[d.nature.str.startswith("G.")]
     petits = d[d.LCY_AMOUNT <= 100]
+    interets = float(agg.loc[agg.nature.str.startswith("E."), "net"].sum())
+    decotes = float(agg.loc[agg.nature.str.startswith("D."), "net"].sum())
 
     return Constat(
         code="12.1",
-        titre=f"Le compte de charge {CPT_COMM_TITRES} sert de compte de régularisation universel du circuit titres",
+        titre=("Le compte de charge 622000100 porte 616 millions d'imputations qui ne relèvent "
+               "pas de son objet"),
         gravite=Gravite.ELEVEE,
-        reference=f"Compte {CPT_COMM_TITRES} {libelle} — {nb(len(d))} écritures sur la période",
+        reference=f"Compte {CPT_COMM_TITRES} {libelle} — {nb(len(brut))} écritures sur la période",
         constat=(
-            f"CE QU'EST CE COMPTE. {CPT_COMM_TITRES} {libelle} est un compte de CHARGE "
-            "d'exploitation. Le PCEC lui assigne deux emplois, et deux seulement : les "
-            "commissions versées aux intermédiaires lors de l'achat et de la vente de titres, "
-            "et les droits de garde payés au dépositaire.\n"
+            "I. CE QUE LE PCEC RÉSERVE À CE COMPTE\n"
             "\n"
-            f"CE QU'IL CONTIENT RÉELLEMENT. Sur la période, il porte {nb(len(d))} écritures. "
-            f"Seules {nb(lignes_prevu)} relèvent des deux emplois prévus. Les "
-            f"{nb(detourne)} autres — soit {pct(detourne / len(d) * 100)} du total — y logent "
-            "des opérations qui appartiennent ailleurs : des décotes et primes d'acquisition "
-            "et de cession, des régularisations d'intérêts courus, des écarts d'arrondi et des "
-            "différences que personne n'a rattachées à leur origine.\n"
+            f"{CPT_COMM_TITRES} {libelle} est un compte de CHARGE d'exploitation. Le PCEC lui "
+            "assigne des emplois précis : les commissions d'intermédiation versées lors de "
+            "l'achat et de la vente de titres, et les frais de conservation — droits de garde "
+            "du dépositaire, prélèvements du CRCT, la cellule de règlement et de conservation "
+            "des titres de la CEMAC. Rien d'autre.\n"
             "\n"
-            "TROIS CONSÉQUENCES COMPTABLES, DISTINCTES.\n"
-            f"- PREMIÈRE — une compensation entre charges et produits. {nb(len(credits))} "
-            f"écritures sont des CRÉDITS, pour {xaf(total_credits)}, sur un compte de charge "
-            f"dont les débits s'élèvent à {xaf(debit_total)}. Autrement dit, des PRODUITS sont "
-            "enregistrés en diminution d'une CHARGE. Le PCEC prohibe cette compensation : "
-            "charges et produits doivent figurer pour leur montant brut. Le solde net du "
-            f"compte, {xaf(float(d.SIGNE.sum()))}, ne dit donc rien du volume réel qui y a "
-            "transité.\n"
-            f"- DEUXIÈME — une imputation erronée des décotes. {xaf(abs(decotes))} de décotes "
-            "et primes y sont passées. Une décote à l'acquisition est un élément du prix de "
-            "revient du titre ou un produit à étaler, selon le cas ; elle relève des comptes "
-            "de produits comptabilisés d'avance ou du résultat sur titres. Elle n'est en aucun "
-            "cas une commission.\n"
-            f"- TROISIÈME — la disparition des écarts. {xaf(abs(interets))} de régularisations "
-            f"d'intérêts y sont logées, et {nb(len(petits))} écritures portent sur des montants "
-            f"inférieurs ou égaux à 100 XAF, pour {xaf(float(petits.LCY_AMOUNT.sum()))} au "
-            "total. Ces écritures d'un ou deux francs sont le signe d'un rapprochement forcé : "
-            "plutôt que d'expliquer un écart, on l'éteint. Le contrôle 5.3 en donne "
-            "l'illustration la plus nette — le reliquat de la correction d'apurement de la "
-            "migration y a été passé en charge.\n"
+            "II. CE QU'IL PORTE RÉELLEMENT\n"
             "\n"
-            "POURQUOI CELA COMPTE POUR L'AUDIT. Un compte fourre-tout empêche toute revue "
-            "analytique : il devient impossible de dire ce que la banque a réellement payé en "
-            "commissions, ni de mesurer le résultat des décotes, ni de suivre les écarts de "
-            "courus. Il neutralise par construction le contrôle que la piste d'audit est "
-            "censée permettre."
+            f"Le compte porte {nb(len(brut))} écritures sur la période, dont "
+            f"{nb(len(cloture))} sont les écritures de clôture annuelle qui le soldent contre "
+            "le résultat — fonctionnement normal d'un compte de charge, écarté de l'analyse. "
+            f"Restent {nb(len(d))} écritures d'exploitation.\n"
+            f"Sur celles-ci, {nb(n_prevu)} relèvent des emplois prévus, pour {xaf(net_prevu)}. "
+            f"Les {nb(n_devoye)} autres — {pct(n_devoye / max(len(d), 1) * 100)} des lignes — "
+            f"portent {xaf(net_devoye)}, soit "
+            f"{pct(abs(net_devoye) / max(abs(net_prevu + net_devoye), 1) * 100)} de la charge "
+            "nette du compte. Le détail figure au tableau ci-dessous.\n"
+            "\n"
+            "III. UNE MESURE QUE JE CORRIGE\n"
+            "\n"
+            "Une version antérieure de ce contrôle annonçait que des produits avaient été "
+            f"logés en diminution de cette charge pour {xaf(credits_total + float(cloture.LCY_AMOUNT.sum()))}. "
+            "Ce chiffre était faux, et il convient de le dire. Il additionnait trois choses "
+            "qui n'ont rien à voir :\n"
+            f"- {xaf(float(cloture.LCY_AMOUNT.sum()))} d'écritures de CLÔTURE ANNUELLE, qui "
+            "soldent normalement un compte de charge contre le résultat ;\n"
+            f"- {xaf(corrections)} de CRÉDITS APPARIÉS à un débit du même montant sur le même "
+            "compte : ce sont des contre-passations, donc des corrections ;\n"
+            f"- et seulement {xaf(montant_compensation)} de crédits réellement non appariés.\n"
+            "\n"
+            f"CE DERNIER MONTANT RESTE UNE ANOMALIE, MAIS IL FAUT LE DIRE À SA MESURE. Les "
+            f"{nb(len(compensation))} lignes qui le composent sont, pour l'essentiel, des "
+            "commissions de courtage FACTURÉES À DES CLIENTS nommément désignés dans le "
+            "libellé. Un produit facturé au client ne se présente pas en diminution d'une "
+            "charge : le PCEC prohibe la compensation entre charges et produits, qui doivent "
+            "figurer pour leur montant brut.\n"
+            "\n"
+            "IV. LE POINT LE PLUS LOURD — LES DÉCOTES\n"
+            "\n"
+            f"{xaf(decotes)} de décotes et primes sur titres sont imputées à ce compte de "
+            "commissions. Une décote n'est pas un frais : c'est un élément du prix de revient "
+            "du titre ou du résultat de cession, selon le cas. Elle relève des comptes de "
+            "revenus et résultats sur titres, ou des comptes de produits comptabilisés "
+            "d'avance.\n"
+            + (f"\nET LA BANQUE LE SAIT, CAR ELLE L'A FAIT. Le {date_reclass}, elle a "
+               f"elle-même reclassé {xaf(montant_reclass)} de décote hors de ce compte, vers "
+               f"{cible}. L'écriture porte le mot RECLASS dans son libellé, et le compte de "
+               "revenus est DÉBITÉ : la décote consentie à la vente vient en diminution du "
+               "revenu du titre, et non en charge de commission. Le traitement correct est "
+               "donc connu, et appliqué — mais une fois seulement.\n"
+               if montant_reclass else "")
+            + "\n"
+            "V. LES INTÉRÊTS ET LES RÉSIDUS\n"
+            "\n"
+            f"- {nb(int(agg.loc[agg.nature.str.startswith('E.'), 'lignes'].sum()))} écritures "
+            f"de régularisation d'intérêts, pour un effet net de {xaf(abs(interets))} "
+            + ("au CRÉDIT — des produits d'intérêt venant, là encore, en diminution d'une "
+               "charge.\n" if interets < 0 else "au débit.\n")
+            + f"- {nb(len(residus))} écritures pour {xaf(float(residus.SIGNE.sum()))} ne "
+            "portent aucune qualification : leur libellé se borne à désigner une opération "
+            "sur titre — « SALES security », « Purchase of the security » — sans dire quelle "
+            f"charge elles constituent. La plus lourde atteint "
+            f"{xaf(float(residus.LCY_AMOUNT.max()))}.\n"
+            f"- {nb(len(petits))} écritures portent sur {xaf(float(petits.LCY_AMOUNT.sum()))} "
+            "au total, soit quelques francs chacune. Des écritures d'un ou deux francs sur un "
+            "compte de charge sont la trace d'un rapprochement forcé : plutôt que d'expliquer "
+            "un écart, on l'éteint. Le contrôle 5.3 en donne l'illustration la plus nette — le "
+            "reliquat de la correction d'apurement de la migration y a été passé en charge.\n"
+            "\n"
+            "VI. POURQUOI CELA COMPTE\n"
+            "\n"
+            "Ce constat n'est pas un constat de perte : les montants sont bien enregistrés, et "
+            "le résultat de la banque n'en est pas faussé globalement. C'est un constat de "
+            "PRÉSENTATION, et il a deux effets concrets.\n"
+            "Le premier est que la ligne « commissions et frais sur titres » du compte de "
+            f"résultat est surévaluée de l'ordre de {xaf(net_devoye)}, et que les postes qui "
+            "auraient dû porter ces montants — revenus sur titres, produits comptabilisés "
+            "d'avance — sont sous-évalués d'autant.\n"
+            "Le second est qu'aucune revue analytique n'est possible : il devient impossible de "
+            "dire ce que la banque a réellement payé en commissions et en droits de garde, ni "
+            "de rapprocher ce coût des relevés du dépositaire et des intermédiaires."
         ),
         chiffres=[
-            ("Écritures sur la période", nb(len(d))),
-            ("Dont relevant des emplois prévus par le PCEC", nb(lignes_prevu)),
-            ("Dont étrangères à l'objet du compte", nb(detourne)),
-            ("Total des DÉBITS", xaf(debit_total)),
-            ("Total des CRÉDITS — produits logés en charge", xaf(total_credits)),
-            ("Solde net, qui masque les deux précédents", xaf(float(d.SIGNE.sum()))),
-            ("Décotes et primes imputées à tort", xaf(abs(decotes))),
-            ("Régularisations d'intérêts imputées à tort", xaf(abs(interets))),
-            ("Écritures de 100 XAF ou moins", nb(len(petits))),
+            ("Écritures sur la période", nb(len(brut))),
+            ("Dont écritures de clôture annuelle, écartées", nb(len(cloture))),
+            ("Écritures d'exploitation analysées", nb(len(d))),
+            ("Relevant des emplois prévus par le PCEC", f"{nb(n_prevu)} — {xaf(net_prevu)}"),
+            ("Étrangères à l'objet du compte", f"{nb(n_devoye)} — {xaf(net_devoye)}"),
+            ("Décotes et primes imputées à tort", xaf(decotes)),
+            ("Régularisations d'intérêts", xaf(abs(interets)) + (" au crédit" if interets < 0 else " au débit")),
+            ("Résidus sans qualification", f"{nb(len(residus))} — {xaf(float(residus.SIGNE.sum()))}"),
+            ("Écritures de 100 XAF ou moins", f"{nb(len(petits))} — {xaf(float(petits.LCY_AMOUNT.sum()))}"),
+            ("Crédits totaux hors clôture", xaf(credits_total)),
+            ("Dont contre-passations appariées", xaf(corrections)),
+            ("Dont produits réellement logés en charge", xaf(montant_compensation)),
+            ("Décote reclassée par la banque elle-même", xaf(montant_reclass)),
             ("Opérateurs distincts", nb(d.USER_ID.nunique())),
         ],
         tableaux=[
             Tableau(
-                entetes=["Nature de l'opération", "Lignes", "Débits XAF", "Crédits XAF", "Net XAF"],
-                lignes=[[r.nature, int(r.lignes), r.debit, r.credit, r.net]
+                entetes=["Nature de l'opération", "Lignes", "Débits XAF", "Crédits XAF",
+                         "Net XAF", "Emploi prévu"],
+                lignes=[[r.nature, int(r.lignes), r.debit, r.credit, r.net,
+                         "oui" if r.nature in USAGES_PREVUS else "NON"]
                         for _, r in agg.iterrows()],
-                note=("Décomposition du compte par la nature de l'opération, lue dans le libellé "
-                      "de chaque écriture. Les deux lignes « usage prévu » sont les seules que le "
-                      "PCEC autorise sur ce compte."),
+                note=("Décomposition du compte par la nature de l'opération, lue dans le "
+                      "libellé de chaque écriture, hors écritures de clôture annuelle. Les "
+                      "trois premières lignes sont les seuls emplois que le PCEC autorise."),
             ),
             Tableau(
                 entetes=["Date", "Référence", "Sens", "Montant XAF", "Opérateur", "Libellé"],
                 lignes=[[r.TRN_DT, r.TRN_REF_NO, r.DRCR_IND, float(r.LCY_AMOUNT), r.USER_ID,
-                         str(r.DESCRIPTION or "")[:62]]
-                        for _, r in d.nlargest(12, "LCY_AMOUNT").iterrows()],
-                note="Les douze plus gros mouvements du compte sur la période.",
+                         str(r.DESCRIPTION or "")[:60]]
+                        for _, r in d.nlargest(10, "LCY_AMOUNT").iterrows()],
+                note="Les dix plus gros mouvements d'exploitation du compte sur la période.",
+            ),
+            Tableau(
+                entetes=["Date", "Sens", "Montant XAF", "Libellé"],
+                lignes=[[r.TRN_DT, r.DRCR_IND, float(r.LCY_AMOUNT),
+                         str(r.DESCRIPTION or "")[:74]]
+                        for _, r in residus.nlargest(8, "LCY_AMOUNT").iterrows()],
+                note=("Les résidus sans qualification : leur libellé désigne une opération sur "
+                      "titre sans dire quelle charge elle constitue."),
             ),
         ],
         recommandation=(
-            f"1. Faire analyser le contenu de {CPT_COMM_TITRES} sur la période et reclasser "
-            "chaque écriture à son compte d'origine : décotes aux comptes de régularisation "
-            "472200106 et 472200108, régularisations d'intérêts aux comptes de produits sur "
-            "titres, différences non justifiées en suspens documenté.\n"
-            "2. Interdire les écritures au crédit de ce compte : un produit ne s'enregistre pas "
-            "en diminution d'une charge.\n"
-            "3. Instaurer une règle de seuil et de justification : toute écriture de "
-            "régularisation sur un compte de charge titres doit porter la référence du contrat "
-            "et la nature de l'écart qu'elle corrige.\n"
-            "4. Rapprocher le montant des commissions réellement dues des relevés du "
-            "dépositaire et des intermédiaires, la comptabilité ne permettant pas aujourd'hui "
-            "de les isoler."
+            f"1. Faire reclasser les {xaf(decotes)} de décotes et primes vers les comptes de "
+            "revenus et résultats sur titres ou de produits comptabilisés d'avance, selon le "
+            + (f"cas — la banque a montré la voie en reclassant {xaf(montant_reclass)} le "
+               f"{date_reclass}.\n" if montant_reclass else "cas.\n")
+            + "2. Interdire les écritures au crédit de ce compte : une commission facturée à "
+            "un client est un produit et s'enregistre comme tel, sans compensation avec la "
+            "charge.\n"
+            f"3. Faire justifier les {nb(len(residus))} résidus sans qualification, et en "
+            f"premier lieu celui de {xaf(float(residus.LCY_AMOUNT.max()))} : quelle charge "
+            "constituent-ils ?\n"
+            "4. Instaurer une règle de justification : toute écriture sur un compte de charge "
+            "titres porte la référence du contrat et la nature de la charge. Un libellé qui se "
+            "borne à « SALES security » ne permet aucun contrôle.\n"
+            "5. Rapprocher le montant des commissions et droits de garde réellement dus des "
+            "relevés du CRCT, du dépositaire et des intermédiaires — ce que la comptabilité ne "
+            "permet pas aujourd'hui."
         ),
     )
 
