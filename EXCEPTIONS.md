@@ -1251,9 +1251,21 @@ capture.
 | 7.1.30 | 2.4, 3.1, 3.2, 3.3, 3.4 |
 | 7.1.31 | 2.1, 2.6 |
 
-The following matters recorded in the detailed report have not been raised as exceptions, being
-methodological observations bearing on the interpretation of the data rather than control
-weaknesses: 1.2 and 1.3 (extraction integrity), 1.4 and 1.5 (posting conventions between the two
-systems), 6.5 (daily reversal and reinstatement of accruals by Calypso, which inflates gross volumes
-without affecting the result), 9.1 (progression of the result of the activity) and 11.7 (accounting
-scheme of the new arrangement, reconstructed and documented).
+The following matters recorded in the detailed report have not been raised as exceptions, for the
+reasons stated:
+
+- **1.2, 1.3** — extraction integrity; methodological observations bearing on the interpretation of
+  the data.
+- **1.4, 1.5** — posting conventions differing between the two systems; relevant to the reading of
+  the records rather than to the control environment.
+- **4.3** — weight of technical accounts in the accounting records; addressed directly by the
+  authorisation exception at 7.1.17.
+- **4.4** — postings made outside business hours; all ninety-five night-time entries fall on two
+  dates only, being the migration date of 16 June 2025 and the reversal campaign of 29 March 2024
+  reported at 7.1.12, and 391 of the 432 evening entries fall on those same dates together with
+  9 April 2024. They are explained by two identified exceptional events and do not constitute a
+  pattern of routine out-of-hours activity.
+- **6.5** — daily reversal and reinstatement of accruals by Calypso, which inflates gross volumes
+  without affecting the result.
+- **9.1** — progression of the result of the activity.
+- **11.7** — accounting scheme of the new arrangement, reconstructed and documented.
