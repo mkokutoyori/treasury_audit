@@ -1,0 +1,92 @@
+#!/usr/bin/env python3
+"""Revue automatisée des opérations de marché monétaire (titres) du département trésorerie.
+
+Le rapport est produit au format texte. Chaque section du rapport correspond à un module de
+contrôle indépendant (audit/checks/). Pour ajouter un contrôle, il suffit d'ajouter une
+fonction dans le module de la section concernée et de l'appeler depuis run().
+
+Usage :
+    python3 audit_titres.py [--sortie RAPPORT.txt] [--debut AAAA-MM-JJ] [--fin AAAA-MM-JJ]
+"""
+from __future__ import annotations
+
+import argparse
+import sys
+
+from audit.checks import MODULES
+from audit.core import Rapport, executer
+from audit.data import Config, Contexte
+
+LIMITES = [
+    "L'extraction des comptes de trésorerie couvre l'historique INTÉGRAL de chaque compte : le "
+    "solde d'ouverture est nul par construction et le solde est donc calculable à toute date. "
+    "Le contrôle 1.7 en apporte la démonstration. Les soldes énoncés dans ce rapport restent "
+    "néanmoins à confirmer par la balance générale avant toute conclusion définitive.",
+    "Le référentiel des deals du nouveau système n'a pas été fourni. Nominal, taux, échéance et "
+    "contrepartie des opérations postérieures à la bascule ne sont connus qu'indirectement, par "
+    "le libellé des écritures.",
+    "Aucune donnée de marché n'est disponible : les valorisations et les dépréciations ne peuvent "
+    "pas faire l'objet d'un recalcul indépendant.",
+    "Une extraction filtrée par module peut faire apparaître une anomalie inexistante. Tous les "
+    "contrôles portant sur le solde d'un compte sont établis sur une extraction tous modules "
+    "confondus.",
+    "Deux vagues d'extractions complémentaires ont couvert les comptes qui bordent le circuit "
+    "des titres sans figurer dans la liste initiale des 41 comptes clés : elles fondent la "
+    "section 12 et permettent de clore le contrôle 5.3. L'extraction séparée des comptes de "
+    "liaison Calypso a par ailleurs confirmé, ligne à ligne, que la source employée aux "
+    "contrôles 6.4, 6.7, 11.6 et 11.8 était complète. Le compte 511801100 reste à extraire "
+    "(contrôle 12.6).",
+]
+
+
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--sortie", default="RAPPORT_AUDIT_TITRES.txt",
+                        help="fichier texte produit (défaut : RAPPORT_AUDIT_TITRES.txt)")
+    parser.add_argument("--debut", default=Config.debut, help="début de la période d'audit")
+    parser.add_argument("--fin", default=Config.fin, help="fin de la période d'audit")
+    parser.add_argument("--seuil", type=float, default=Config.seuil_materialite,
+                        help="seuil de matérialité en XAF")
+    parser.add_argument("--annexe", default="ANNEXE_APUREMENT_COMPTES_LIAISON.csv",
+                        help="détail d'apurement des comptes de liaison, deal par deal")
+    args = parser.parse_args(argv)
+
+    config = Config(debut=args.debut, fin=args.fin, seuil_materialite=args.seuil)
+    contexte = Contexte(config=config)
+
+    print("Chargement des extractions...", file=sys.stderr)
+    _ = contexte.grand_livre  # force le chargement principal pour mesurer le temps ici
+    print(f"  {len(contexte.grand_livre):,} lignes de grand livre".replace(",", " "), file=sys.stderr)
+
+    print("Exécution des contrôles...", file=sys.stderr)
+    sections = executer(MODULES, contexte)
+
+    rapport = Rapport(
+        titre="Rapport d'audit — opérations de marché monétaire (titres)",
+        perimetre="Département de la trésorerie — gestion des investissements sur les marchés financiers",
+        periode=f"{config.debut} au {config.fin}",
+        sections=sections,
+        avertissements=LIMITES,
+    )
+    texte = rapport.rendu()
+    with open(args.sortie, "w", encoding="utf-8") as fichier:
+        fichier.write(texte)
+
+    # Annexe : le détail d'apurement des comptes de liaison ne tient pas dans un tableau de
+    # rapport — 329 lignes — mais il est opposable ligne à ligne. On l'exporte à côté.
+    detail = contexte.apurement_pont_detaille
+    if not detail.empty:
+        detail.to_csv(args.annexe, index=False, encoding="utf-8-sig")
+        print(f"Annexe écrite dans {args.annexe} ({len(detail)} lignes)", file=sys.stderr)
+
+    anomalies = rapport.toutes_anomalies
+    print(f"\nRapport écrit dans {args.sortie}", file=sys.stderr)
+    print(f"  {len(sections)} sections, {len(anomalies)} anomalies relevées.", file=sys.stderr)
+    for section in sections:
+        if section.erreurs:
+            print(f"  ! Section {section.numero} : {'; '.join(section.erreurs)}", file=sys.stderr)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
