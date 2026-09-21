@@ -2570,3 +2570,92 @@ manuelle. Le rapport le dit.
 **Règle retenue** : *quand l'accès au texte manque, chercher la démonstration qui s'en
 passe. Ici, l'arithmétique du coupon prouve la fixation du prix de rachat sans qu'aucun
 texte soit nécessaire.*
+
+---
+
+# Session 26 — Revue manuelle du 12.5 : je m'étais trompé de migration
+
+## 26.1 La méprise
+
+J'avais construit le 12.5 sur une prémisse fausse : que la reprise de décembre 2025 était
+une **reprise tardive de la bascule Calypso de juin**. D'où trois griefs :
+« une migration six mois après la migration », « un utilisateur technique non nominatif »,
+« un portefeuille comptabilisé manuellement ».
+
+**La période porte DEUX migrations sans rapport :**
+
+| Date | Nature |
+|---|---|
+| 16/06/2025 | **changement de plateforme** — Flexcube MM → Calypso |
+| 05/12/2025 | **migration de fusion** — Standard Chartered Bank Cameroun → Access Bank Cameroun, suite à l'acquisition de la filiale |
+
+## 26.2 Ce que les données confirment
+
+Le 05/12/2025, l'utilisateur `MIGRATION` passe **131 lignes en 53 écritures sur 11 comptes** :
+
+- `007ACB00033 SCB NEW-YORK - NOSTRO` et `007ACB00034 SCB FRANKFURT` — **les nostri propres
+  de Standard Chartered**, repris ;
+- l'intégralité du dispositif de position de change : `475000100/102/106/150` (USD ~40 Md,
+  EUR ~2 Md, GBP, ZAR) et leurs comptes de contre-valeur `476000xxx` ;
+- `454000101` compte de conversion des bons du Trésor — 27,2 Md.
+
+Les références d'écriture portent les préfixes `007`, `008`, `111`, `191`, `291`, `991`,
+`992` — les agences reprises. Et le plan de comptes porte toute une famille SCB :
+`511801100`, `265111100`, `265211100`, `454001100`, `472201100`, `466000154`, `466000173`.
+
+**C'est sans ambiguïté une migration de fusion.** Les trois griefs tombent, et je l'écris
+dans le rapport : *« une version antérieure du présent rapport les présentait à tort comme
+des anomalies »*.
+
+## 26.3 Ce qui survit — et qui est plus grave que ce que j'avais écrit
+
+Le point n'est pas la migration. C'est **la contrepartie retenue pour apurer le compte de
+conversion**.
+
+| Date | Écriture |
+|---|---|
+| 05/12/2025 | `MIGRATION` débite `454000101` de 27,2 Md — **correct**, le compte de conversion est fait pour ça |
+| 09/12/2025 | `CHEICHEID059` apure en **débitant `099ACO00001`**, le compte BEAC — *« Securities received from SCB to be booked manually »* |
+| 16/06/2026 | `NDIRID000254` **crédite `099ACO00001` de 27,2 Md et débite `511210100`** du même montant |
+
+**La banque contre-passe elle-même l'écriture de décembre vers le portefeuille titres.**
+Si le débit au nostro avait correspondu à une reprise réelle de trésorerie, il n'y aurait
+rien eu à contre-passer. C'est la preuve interne que c'était une erreur, et non un choix.
+
+## 26.4 L'effet sur l'arrêté — le chiffre qui porte le constat
+
+| | Au 31/12/2025 |
+|---|---|
+| `099ACO00001` affiché | **14 182 313 695** |
+| dont titres logés dans la trésorerie | −27 200 000 000 |
+| **corrigé** | **−13 017 686 305 → position CRÉDITRICE** |
+
+L'écriture ne surévalue pas seulement la trésorerie : **elle inverse le sens de la position
+de la banque auprès de son institut d'émission**. Les états présentent un AVOIR à la banque
+centrale là où la position corrigée fait apparaître un DÉCOUVERT. Cela touche directement
+les réserves obligatoires et le ratio de liquidité.
+
+Symétriquement, `511210100` affiche 15 210 000 000 au lieu de **42 410 000 000** — le
+portefeuille de bons du Trésor est présenté pour moins de la moitié de sa consistance.
+
+## 26.5 Ce que les 189 jours ont emporté
+
+L'écriture du 16/06/2026 **entre les titres ET les sort** dans le même mouvement. Elle nomme
+7 lignes SCB — `CM1200002036`, `CM1200002127`, `CM1300000831`, `CM1300000856`,
+`CM2A00000138`, `CM2B00000087`, `CM2K00000037` — dont les échéances s'échelonnent d'avril à
+octobre 2026, et comptabilise leur dénouement, leur décote et leurs intérêts. **Plusieurs
+sont arrivés à échéance pendant qu'ils étaient logés dans la trésorerie.**
+
+Conséquence : le portefeuille n'a jamais porté ces titres, aucun intérêt couru n'a été
+constaté sur eux, et leur produit n'est pas identifiable exercice par exercice. Cela donne
+son utilité au compte `511801100 SCB CREANCES RATTACHEES` réclamé au 12.6.
+
+## 26.6 Ce que je retiens
+
+Gravité maintenue à **CRITIQUE**, mais le constat est entièrement recentré : il ne vise plus
+la migration, il vise une imputation. Le constat en sort **plus court et plus fort** — un
+seul grief, chiffré, daté, et prouvé par la contre-passation de la banque elle-même.
+
+**Règle retenue** : *avant de qualifier une opération d'anormale parce qu'elle ressemble à
+une autre, vérifier qu'il s'agit bien de la même. Deux migrations à six mois d'intervalle ne
+sont pas une migration en deux temps.*

@@ -4,7 +4,7 @@
 
   Périmètre        : Département de la trésorerie — gestion des investissements sur les marchés financiers
   Période d'audit  : 2023-09-27 au 2026-06-30
-  Rapport généré le : 20/09/2026 à 21:28
+  Rapport généré le : 21/09/2026 à 00:56
   Référentiel      : Plan Comptable des Établissements de Crédit (PCEC) — CEMAC / COBAC
 
   Ce rapport est produit automatiquement. Chaque constat indique le test exécuté, sa
@@ -66,7 +66,7 @@ RÉCAPITULATIF DES ANOMALIES PAR GRAVITÉ
   CRITIQUE  [9.4] Comptes présentant un solde contraire à leur nature comptable à une date d'arrêté
   CRITIQUE  [11.6] Le solde des comptes de liaison mesure exactement les déversements incomplets
   CRITIQUE  [11.8] Anatomie du déversement incomplet le plus lourd — pension 3349072
-  CRITIQUE  [12.5] Un portefeuille de 27 milliards reçu en titres mais porté six mois au nostro BEAC, traversant l'arrêté annuel
+  CRITIQUE  [12.5] Le portefeuille repris de Standard Chartered est resté six mois au compte de la banque centrale au lieu du portefeuille titres
   CRITIQUE  [12.7] Un second compte de courus, jamais apuré à la migration, soldé en perte opérationnelle APRÈS la clôture de la période
   ELEVEE    [2.6] Taux contractuels aberrants au regard des opérations comparables
   ELEVEE    [3.7] Accumulation des intérêts courus au-delà d'une année de coupons
@@ -3653,91 +3653,146 @@ compte soit resté vide est ici un résultat de contrôle à part entière.
   7 contrôle(s) exécuté(s) — 7 anomalie(s), 0 sans anomalie.
 
 ----------------------------------------------------------------------------------------------------
-[12.5] Un portefeuille de 27 milliards reçu en titres mais porté six mois au nostro BEAC, traversant l'arrêté annuel
+[12.5] Le portefeuille repris de Standard Chartered est resté six mois au compte de la banque centrale au lieu du portefeuille titres
   Gravité : CRITIQUE
-  Référence : Compte 454000101 — écritures des 2025-12-05, 2025-12-09 et 2026-06-16
+  Référence : Migration de fusion SCB — écritures des 2025-12-05, 2025-12-09 et 2026-06-16
 
-  CE QU'EST UN COMPTE DE CONVERSION. Ces comptes ne servent qu'à une chose : accueillir, le temps
-  d'une reprise de données, les soldes qu'un système déverse dans un autre. Ils n'ont pas vocation à
-  vivre au-delà de l'opération technique qui les justifie, et l'utilisateur qui les mouvemente est
-  un utilisateur technique, non un opérateur de la salle des marchés.
+  I. LE CONTEXTE — DEUX MIGRATIONS DISTINCTES, À NE PAS CONFONDRE
 
-  CE QUI S'EST PASSÉ. Le 2025-12-05, le compte 454000101 COMPTE DE CONVERSION BONS DE TRESOR est
-  débité de 27 200 000 000 XAF par l'utilisateur technique MIGRATION, sans aucun libellé. 4 jours
-  plus tard, le 2025-12-09, l'opérateur CHEICHEID059 le crédite du même montant, sous le libellé «
-  Securities received from SCB to be booked manually » — titres reçus de SCB, à comptabiliser
-  manuellement.
+  La période d'audit porte deux migrations sans rapport l'une avec l'autre.
+  - Celle du 2025-06-16 est un CHANGEMENT DE PLATEFORME : la gestion des titres quitte le module
+    Money Market de Flexcube pour Calypso. C'est elle que traite la section 5.
+  - Celle du 2025-12-05 est tout autre chose : c'est la REPRISE DES DONNÉES DE STANDARD CHARTERED
+    BANK CAMEROUN dans Access Bank Cameroun, à la suite de l'acquisition de la filiale. Une
+    migration de fusion.
 
-  TROIS ANOMALIES SE SUPERPOSENT.
-  - LA DATE. Cette reprise intervient 5,7 mois APRÈS la bascule vers Calypso du 2025-06-16. Une
-    reprise de portefeuille postérieure de près de six mois à la migration n'est pas une migration :
-    c'est une entrée de portefeuille traitée avec les outils de la migration.
-  - L'UTILISATEUR. L'écriture d'origine est passée sous l'utilisateur technique de reprise
-    MIGRATION, et sans libellé. Une entrée de titres de cette taille n'a pas à être initiée par un
-    utilisateur non nominatif : la responsabilité de l'écriture n'est rattachable à personne.
-  - LE MODE OPÉRATOIRE. Le libellé annonce lui-même que les titres seront « comptabilisés
-    manuellement ». Un portefeuille entier entre donc dans les comptes sans passer par le circuit de
-    traitement des titres, donc sans les contrôles qui y sont attachés : pas de contrat, pas de
-    schéma comptable automatique, pas de calcul de courus.
+  LES ÉCRITURES LE CONFIRMENT SANS AMBIGUÏTÉ. Ce jour-là, l'utilisateur technique MIGRATION passe
+  131 lignes en 53 écritures, sur 11 comptes — et parmi eux les nostri PROPRES de Standard
+  Chartered, 007ACB00033 SCB NEW-YORK et 007ACB00034 SCB FRANKFURT, ainsi que l'intégralité du
+  dispositif de position de change, comptes de position et comptes de contre-valeur. Les références
+  d'écriture portent les préfixes des agences reprises. Il ne s'agit donc pas d'une reprise tardive
+  de la bascule de juin, mais d'une opération de fusion, datée et distincte.
 
-  MAIS L'ANOMALIE LA PLUS LOURDE EST AILLEURS — DANS LA CONTREPARTIE. Le crédit du 2025-12-09 sort
-  bien le montant du compte de conversion, mais il le sort contre un DÉBIT de 099ACO00001 BANQUE DES
-  ETATS DE LAFRIQUE CENTRA : le compte de règlement de la banque auprès de la banque centrale. Or la
-  banque n'a rien encaissé — elle a reçu des TITRES. Elle a donc enregistré, à son compte à la BEAC,
-  27 200 000 000 XAF de trésorerie qui n'existait pas.
+  II. CE QUI EST NORMAL, ET QUE LE CONSTAT NE VISE PAS
 
-  CETTE SURÉVALUATION A DURÉ 189 JOURS, du 2025-12-09 au 2026-06-16, date à laquelle l'écriture
-  d'entrée en portefeuille la reprend. ELLE TRAVERSE L'ARRÊTÉ ANNUEL DU 31 DÉCEMBRE 2025 : à cette
-  date, le nostro BEAC publié comprend 27 200 000 000 XAF de trésorerie fictive, et le portefeuille
-  titres ne comprend pas les titres correspondants. Le bilan est faux des deux côtés à la fois — en
-  nature comme en montant. Un écart de cette ampleur sur le compte de règlement de la banque
-  centrale aurait dû être arrêté par le rapprochement bancaire mensuel. C'est la même défaillance
-  que celle des contrôles 5.3 et 11.8, sur le même compte.
+  L'emploi d'un utilisateur technique de reprise, l'emploi d'un compte de conversion, et la
+  comptabilisation manuelle des positions reprises sont les procédés ordinaires d'une migration de
+  fusion. Le compte de conversion est même fait pour cela : accueillir un solde le temps qu'il soit
+  affecté. Rien de tout cela n'appelle d'observation, et une version antérieure du présent rapport
+  les présentait à tort comme des anomalies.
 
-  CE QUI S'EST PASSÉ ENSUITE. Les titres eux-mêmes n'entrent au portefeuille que le 2026-06-16, soit
-  193 jours plus tard, par une écriture manuelle unique passée par l'opérateur NDIRID000254 : 7 bons
-  et obligations du Trésor camerounais y sont enregistrés d'un seul mouvement, avec leur décote et
-  leurs intérêts, contre le nostro BEAC et le compte de nantissement du contrôle 12.4.
+  III. LE POINT QUI N'EST PAS NORMAL — LA CONTREPARTIE DE L'APUREMENT
 
-  LE DOSSIER TIENT DONC EN TROIS ÉCRITURES MANUELLES ÉTALÉES SUR SIX MOIS, et pas une de plus : une
-  reprise technique sans libellé, un apurement qui déverse le montant sur le nostro, puis une entrée
-  en portefeuille. Un portefeuille de 27 200 000 000 XAF est resté six mois hors des comptes de
-  titres, logé dans la trésorerie de la banque centrale.
+  Le 2025-12-05, MIGRATION débite le compte de conversion 454000101 COMPTE DE CONVERSION BONS DE
+  TRESOR de 27 200 000 000 XAF : les bons du Trésor repris de Standard Chartered. Correct.
+  Le 2025-12-09, l'opérateur CHEICHEID059 apure ce compte de conversion. Il aurait dû le faire en
+  DÉBITANT le portefeuille titres. Il le fait en débitant 099ACO00001 BANQUE DES ETATS DE LAFRIQUE
+  CENTRA — le compte de règlement de la banque auprès de la banque centrale.
 
-    Montant repris                                        : 27 200 000 000 XAF
-    Date de la reprise technique                          : 2025-12-05
-    Date de l'apurement manuel                            : 2025-12-09
-    Délai entre la reprise et son apurement               : 4 jours
-    Date d'entrée effective des titres au portefeuille    : 2026-06-16
-    Délai total, de la reprise à l'entrée en portefeuille : 193 jours
-    Titres enregistrés par cette écriture unique          : 7
-    Écart avec la date de bascule vers Calypso            : 5,7 mois
-    Contrepartie de l'apurement                           : 099ACO00001 BANQUE DES ETATS DE LAFRIQUE CENTRA
-    Durée de la surévaluation du nostro                   : 189 jours
-    Dates d'arrêté traversées                             : 2025-12-31
-    Utilisateur de la reprise                             : MIGRATION
-    Opérateur de l'apurement                              : CHEICHEID059
+  Autrement dit, la banque enregistre avoir reçu de la TRÉSORERIE à la banque centrale, alors
+  qu'elle a reçu des TITRES. Le libellé de l'écriture le dit lui-même : « Securities received from
+  SCB to be booked manually ». Des titres, à comptabiliser manuellement — et en attendant, ils sont
+  logés dans la trésorerie.
 
-    Date        Compte       Sens  Montant XAF     Opérateur     Libellé                                           
-    ----------  -----------  ----  --------------  ------------  --------------------------------------------------
-    2025-12-05  454000101    D     27 200 000 000  MIGRATION                                                       
-    2025-12-09  454000101    C     27 200 000 000  CHEICHEID059  Securities received from SCB to be booked manually
-    2025-12-09  099ACO00001  D     27 200 000 000  CHEICHEID059  Securities received from SCB to be booked manually
-    Les deux écritures du compte de conversion, et la jambe de contrepartie qui porte le montant au
-    compte de la banque centrale.
+  IV. LA PREUVE QU'IL S'AGIT D'UNE ERREUR, ET NON D'UN CHOIX DE PRÉSENTATION
+
+  C'est la banque elle-même qui la fournit. Le 2026-06-16, l'opérateur NDIRID000254 passe l'écriture
+  de régularisation : elle CRÉDITE 099ACO00001 de 27 200 000 000 XAF et DÉBITE 511210100 BONS DE
+  TRESOR (BTA) - PLACEMENT du même montant, sous le libellé « Clearing Securities received from SCB
+  to be booked manually during transition ». Le montant sort de la trésorerie et entre au
+  portefeuille.
+  Si le débit de décembre avait correspondu à une reprise réelle de trésorerie, il n'y aurait rien
+  eu à contre-passer. 189 JOURS SE SONT ÉCOULÉS ENTRE L'ERREUR ET SA CORRECTION.
+
+  V. L'EFFET SUR L'ARRÊTÉ ANNUEL DU 31 DÉCEMBRE 2025
+
+  C'est ici que le constat prend sa mesure, et il ne se lit pas en pourcentage mais en changement de
+  nature.
+  - Le compte de règlement auprès de la banque centrale affiche 14 182 313 695 XAF à cette date.
+  - Il contient 27 200 000 000 XAF qui ne sont pas de la trésorerie.
+  - CORRIGÉ, IL RESSORT À -13 017 686 305 XAF — c'est-à-dire en position CRÉDITRICE.
+
+  L'écriture ne surévalue donc pas seulement la trésorerie : ELLE INVERSE LE SENS DE LA POSITION DE
+  LA BANQUE AUPRÈS DE SON INSTITUT D'ÉMISSION à la date d'arrêté. Les états présentent un AVOIR à la
+  banque centrale là où la position corrigée fait apparaître un DÉCOUVERT. C'est une information qui
+  intéresse directement le suivi des réserves obligatoires et le ratio de liquidité.
+
+  Symétriquement, le compte 511210100 affiche 15 210 000 000 XAF au 31 décembre 2025, alors qu'il
+  aurait dû porter 42 410 000 000 XAF : le portefeuille de bons du Trésor est présenté pour moins de
+  la moitié de sa consistance réelle.
+
+  VI. CE QUE LES SIX MOIS ONT EMPORTÉ AU PASSAGE
+
+  L'écriture du 2026-06-16 ne fait pas qu'entrer les titres : elle les entre ET les sort. Elle nomme
+  7 lignes de titres repris de Standard Chartered — dont les échéances s'échelonnent d'avril à
+  octobre 2026 — et comptabilise dans le même mouvement leur dénouement, leur décote et leurs
+  intérêts. Plusieurs de ces titres sont donc arrivés à échéance PENDANT qu'ils étaient logés dans
+  la trésorerie.
+  Il en résulte que, sur toute la période, le portefeuille n'a jamais porté ces titres, qu'aucun
+  intérêt couru n'a été constaté sur eux dans les comptes de rattachement, et que leur produit n'est
+  pas identifiable exercice par exercice.
+
+    Nature de l'opération                        : migration de fusion Standard Chartered → Access Bank
+    Date de la reprise technique                 : 2025-12-05
+    Utilisateur technique de reprise             : MIGRATION
+    Écritures passées ce jour-là                 : 131 lignes en 53 écritures
+    Montant des titres repris                    : 27 200 000 000 XAF
+    Date d'apurement du compte de conversion     : 2025-12-09
+    Contrepartie retenue à l'apurement           : 099ACO00001 BANQUE DES ETATS DE LAFRIQUE CENTRA
+    Contrepartie qui aurait dû l'être            : 511210100 BONS DE TRESOR (BTA) - PLACEMENT
+    Date de la régularisation                    : 2026-06-16
+    Durée de l'anomalie                          : 189 jours
+    Dates d'arrêté traversées                    : 2025-12-31
+    Compte de règlement affiché au 2025-12-31    : 14 182 313 695 XAF
+    Compte de règlement corrigé au 2025-12-31    : -13 017 686 305 XAF
+    Sens de la position après correction         : CRÉDITEUR
+    Portefeuille 511210100 affiché au 2025-12-31 : 15 210 000 000 XAF
+    Portefeuille 511210100 corrigé au 2025-12-31 : 42 410 000 000 XAF
+
+    Date        Compte       Sens  Montant XAF     Opérateur     Libellé                                             
+    ----------  -----------  ----  --------------  ------------  ----------------------------------------------------
+    2025-12-05  454000101    D     27 200 000 000  MIGRATION                                                         
+    2025-12-09  454000101    C     27 200 000 000  CHEICHEID059  Securities received from SCB to be booked manually  
+    2025-12-09  099ACO00001  D     27 200 000 000  CHEICHEID059  Securities received from SCB to be booked manually  
+    2026-06-16  099ACO00001  C     27 200 000 000  NDIRID000254  Clearing Securities received from SCB to be booked m
+    2026-06-16  511210100    D     27 200 000 000  NDIRID000254  Clearing Securities received from SCB to be booked m
+    Les trois écritures qui font le dossier : la reprise technique au compte de conversion, son
+    apurement sur le compte de la banque centrale, et la régularisation six mois plus tard vers le
+    portefeuille titres.
+
+    Compte       Libellé                              Rôle dans la migration de fusion   
+    -----------  -----------------------------------  -----------------------------------
+    007ACB00033  SCB NEW-YORK  - NOSTRO               nostro repris de Standard Chartered
+    007ACB00034  SCB FRANKFURT                        nostro repris de Standard Chartered
+    454000101    COMPTE DE CONVERSION BONS DE TRESOR  compte de conversion des titres    
+    475000100    USD COMPTE POSITION DE CHANGE        position de change et contre-valeur
+    475000102    EUR COMPTE POSITION DE CHANGE        position de change et contre-valeur
+    475000106    GBP COMPTE POSITION DE CHANGE        position de change et contre-valeur
+    475000150    ZAR COMPTE POSITION DE CHANGE        position de change et contre-valeur
+    476000100    CPTE DE CONT VAL POS CHGE USD        position de change et contre-valeur
+    476000102    CPTE DE CONT VAL POS CHGE EURO       position de change et contre-valeur
+    476000106    CPTE DE CONT VAL POS CHG GBP         position de change et contre-valeur
+    476000150    CPTE DE CONT VAL POS CHGE ZAR        position de change et contre-valeur
+    Les comptes mouvementés par l'utilisateur technique le jour de la migration de fusion. La
+    présence des nostri propres de Standard Chartered établit la nature de l'opération.
 
   Recommandation :
-    1. Chiffrer l'effet sur les états arrêtés au 31 décembre 2025 : 27 200 000 000 XAF de trésorerie
-    inexistante au nostro BEAC, et autant de titres absents du portefeuille. Vérifier si les états
-    publiés à cette date en ont été corrigés.
-    2. Obtenir le dossier de reprise du portefeuille SCB : contrat de cession, état des titres
+    1. Chiffrer l'effet sur les états arrêtés au 2025-12-31 et vérifier s'ils ont été corrigés : 27
+    200 000 000 XAF de trésorerie inexistante au compte de la banque centrale, autant de titres
+    absents du portefeuille, et une position auprès de l'institut d'émission présentée en sens
+    inverse de sa réalité.
+    2. Vérifier l'incidence sur les réserves obligatoires et sur le ratio de liquidité déclarés à
+    cette date, que le rapprochement bancaire du compte de la banque centrale aurait dû faire
+    apparaître dès décembre.
+    3. Obtenir le dossier de reprise du portefeuille Standard Chartered : état des titres
     transférés, valorisation retenue, et rapprochement avec le dépositaire.
-    3. Vérifier que chacun des titres repris a bien été enregistré individuellement, avec son
-    nominal, son taux, sa date d'échéance et son calcul de courus.
-    4. Faire justifier l'emploi d'un compte de conversion et d'un utilisateur technique pour une
-    opération postérieure de six mois à la migration.
-    5. Vérifier qu'aucune autre écriture de la période n'a été passée sous cet utilisateur
-    technique.
+    4. Faire expliquer pourquoi l'apurement du compte de conversion a été imputé au compte
+    099ACO00001 plutôt qu'au portefeuille titres, et pourquoi la correction a demandé 189 jours.
+    5. Reconstituer les intérêts courus sur ces titres entre la reprise et leur comptabilisation
+    effective : ils n'ont été constatés dans aucun compte de rattachement pendant cette période.
+    6. Vérifier que les autres volets de la migration de fusion — position de change, nostri repris
+    — ont bien été imputés à leur compte définitif, et qu'aucun autre solde n'est resté logé dans un
+    compte de passage.
 
 ----------------------------------------------------------------------------------------------------
 [12.7] Un second compte de courus, jamais apuré à la migration, soldé en perte opérationnelle APRÈS la clôture de la période

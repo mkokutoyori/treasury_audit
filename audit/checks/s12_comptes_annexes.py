@@ -535,6 +535,15 @@ def _c124_nantissement(ctx) -> Constat:
 
 # --- 12.5 ---------------------------------------------------------------------------------
 def _c125_conversion(ctx) -> Constat:
+    """La reprise du portefeuille de Standard Chartered lors de la fusion.
+
+    ATTENTION AU CONTEXTE : la période porte DEUX migrations distinctes. Celle de juin 2025
+    est un changement de plateforme — Flexcube vers Calypso. Celle de décembre 2025 est la
+    reprise des données de Standard Chartered Bank Cameroun dans Access Bank Cameroun, à la
+    suite de l'acquisition de la filiale. L'emploi d'un utilisateur technique et de comptes
+    de conversion y est donc normal, et n'appelle aucune observation. Le constat porte sur un
+    point précis : la contrepartie retenue pour apurer le compte de conversion.
+    """
     d = ctx.comptes_complementaires
     mouv = d[d.AC_NO.isin(CPT_CONVERSION)].sort_values("TRN_DT")
     if mouv.empty:
@@ -548,128 +557,205 @@ def _c125_conversion(ctx) -> Constat:
     c_date = str(credits.TRN_DT.iloc[-1]) if len(credits) else ""
     user_reprise = str(debits.USER_ID.iloc[0])
     user_apurement = str(credits.USER_ID.iloc[0]) if len(credits) else ""
-    ecart_jours = (pd.Timestamp(c_date) - pd.Timestamp(d_date)).days if c_date else 0
-    # L'apurement du 454000101 n'est pas la fin de l'opération : les titres eux-mêmes n'entrent
-    # au portefeuille que six mois plus tard, par une écriture manuelle unique.
+
     a = ctx.toutes_ecritures
-    # La contrepartie de l'apurement du compte de conversion : on la retrouve par la référence
-    # de l'écriture, et non par hypothèse.
+    # L'ampleur réelle de la migration de fusion, mesurée sur l'utilisateur technique. Le
+    # compte de conversion ne vit que dans la deuxième vague : on réunit les deux sources.
+    tout = pd.concat([a, d], ignore_index=True) if not d.empty else a
+    tech = tout[tout.USER_ID == user_reprise]
+    nb_refs = int(tech.TRN_REF_NO.nunique())
+    nb_lignes = int(len(tech))
+    comptes_fusion = sorted(set(tech.AC_NO.dropna()))
+    dates_fusion = sorted(set(tech.TRN_DT.dropna()))
+
+    # La contrepartie de l'apurement du compte de conversion.
     ref_apurement = str(credits.TRN_REF_NO.iloc[0]) if len(credits) else ""
-    contrepartie = a[(a.TRN_REF_NO == ref_apurement) & (a.AC_NO != CPT_CONVERSION[0])]
+    contrepartie = a[(a.TRN_REF_NO == ref_apurement) & (~a.AC_NO.isin(CPT_CONVERSION))]
     cpt_contrepartie = str(contrepartie.AC_NO.iloc[0]) if not contrepartie.empty else ""
     lib_contrepartie = ctx.libelle_compte(cpt_contrepartie) if cpt_contrepartie else ""
-    apurement = a[a.TRN_REF_NO == "0990023261670001"]
-    ap_date = str(apurement.TRN_DT.iloc[0]) if not apurement.empty else ""
-    ap_user = str(apurement.USER_ID.iloc[0]) if not apurement.empty else ""
-    ap_titres = int(apurement.DESCRIPTION.fillna("").str.extract(
-        r"(CM[12][A-Z0-9]{8})")[0].dropna().nunique()) if not apurement.empty else 0
-    ap_jours = ((pd.Timestamp(ap_date) - pd.Timestamp(d_date)).days if ap_date else 0)
-    mois_bascule = f"{(pd.Timestamp(d_date) - pd.Timestamp(DATE_BASCULE)).days / 30.44:.1f}".replace(".", ",")
+
+    # L'écriture de régularisation, six mois plus tard.
+    regul = a[a.TRN_REF_NO == "0990023261670001"].drop_duplicates(
+        subset=["AC_NO", "DRCR_IND", "LCY_AMOUNT", "DESCRIPTION"])
+    ap_date = str(regul.TRN_DT.iloc[0]) if not regul.empty else ""
+    ap_user = str(regul.USER_ID.iloc[0]) if not regul.empty else ""
+    jours = (pd.Timestamp(ap_date) - pd.Timestamp(c_date)).days if ap_date and c_date else 0
+    titres = sorted(set(regul.DESCRIPTION.fillna("").str.extract(
+        r"(CM[0-9][A-Z0-9]{8})")[0].dropna())) if not regul.empty else []
+
+    # L'EFFET SUR L'ARRÊTÉ — le chiffre qui porte le constat.
+    def solde(compte, date):
+        b = a[(a.AC_NO == compte) & (a.TRN_DT <= date)].drop_duplicates(
+            subset=["TRN_REF_NO", "DRCR_IND", "LCY_AMOUNT", "STMT_DT", "DESCRIPTION"])
+        return float(b.SIGNE.sum())
+    arrete = "2025-12-31"
+    nostro_affiche = solde(cpt_contrepartie, arrete) if cpt_contrepartie else 0.0
+    nostro_corrige = nostro_affiche - montant
+    cpt_titres = "511210100"
+    titres_affiche = solde(cpt_titres, arrete)
 
     return Constat(
         code="12.5",
-        titre="Un portefeuille de 27 milliards reçu en titres mais porté six mois au nostro BEAC, traversant l'arrêté annuel",
+        titre=("Le portefeuille repris de Standard Chartered est resté six mois au compte de la "
+               "banque centrale au lieu du portefeuille titres"),
         gravite=Gravite.CRITIQUE,
-        reference=f"Compte {CPT_CONVERSION[0]} — écritures des {d_date}, {c_date} et {ap_date}",
+        reference=(f"Migration de fusion SCB — écritures des {d_date}, {c_date} et {ap_date}"),
         constat=(
-            "CE QU'EST UN COMPTE DE CONVERSION. Ces comptes ne servent qu'à une chose : "
-            "accueillir, le temps d'une reprise de données, les soldes qu'un système déverse "
-            "dans un autre. Ils n'ont pas vocation à vivre au-delà de l'opération technique "
-            "qui les justifie, et l'utilisateur qui les mouvemente est un utilisateur "
-            "technique, non un opérateur de la salle des marchés.\n"
+            "I. LE CONTEXTE — DEUX MIGRATIONS DISTINCTES, À NE PAS CONFONDRE\n"
             "\n"
-            f"CE QUI S'EST PASSÉ. Le {d_date}, le compte {CPT_CONVERSION[0]} "
-            f"{ctx.libelle_compte(CPT_CONVERSION[0])} est débité de {xaf(montant)} par "
-            f"l'utilisateur technique {user_reprise}, sans aucun libellé. "
-            f"{nb(ecart_jours)} jours plus tard, le {c_date}, l'opérateur {user_apurement} le "
-            "crédite du même montant, sous le libellé « Securities received from SCB to be "
-            "booked manually » — titres reçus de SCB, à comptabiliser manuellement.\n"
+            "La période d'audit porte deux migrations sans rapport l'une avec l'autre.\n"
+            f"- Celle du {str(DATE_BASCULE)[:10]} est un CHANGEMENT DE PLATEFORME : la gestion "
+            "des titres quitte le module Money Market de Flexcube pour Calypso. C'est elle que "
+            "traite la section 5.\n"
+            f"- Celle du {d_date} est tout autre chose : c'est la REPRISE DES DONNÉES DE "
+            "STANDARD CHARTERED BANK CAMEROUN dans Access Bank Cameroun, à la suite de "
+            "l'acquisition de la filiale. Une migration de fusion.\n"
             "\n"
-            "TROIS ANOMALIES SE SUPERPOSENT.\n"
-            f"- LA DATE. Cette reprise intervient {mois_bascule} mois APRÈS la bascule "
-            f"vers Calypso du {str(DATE_BASCULE)[:10]}. Une reprise de portefeuille "
-            "postérieure de près de six mois à la migration n'est pas une migration : c'est "
-            "une entrée de portefeuille traitée avec les outils de la migration.\n"
-            f"- L'UTILISATEUR. L'écriture d'origine est passée sous l'utilisateur technique de "
-            f"reprise {user_reprise}, et sans libellé. Une entrée de titres de cette taille "
-            "n'a pas à être initiée par un utilisateur non nominatif : la responsabilité de "
-            "l'écriture n'est rattachable à personne.\n"
-            "- LE MODE OPÉRATOIRE. Le libellé annonce lui-même que les titres seront "
-            "« comptabilisés manuellement ». Un portefeuille entier entre donc dans les "
-            "comptes sans passer par le circuit de traitement des titres, donc sans les "
-            "contrôles qui y sont attachés : pas de contrat, pas de schéma comptable "
-            "automatique, pas de calcul de courus.\n"
+            "LES ÉCRITURES LE CONFIRMENT SANS AMBIGUÏTÉ. Ce jour-là, l'utilisateur technique "
+            f"{user_reprise} passe {nb(nb_lignes)} lignes en {nb(nb_refs)} écritures, sur "
+            f"{nb(len(comptes_fusion))} comptes — et parmi eux les nostri PROPRES de Standard "
+            "Chartered, 007ACB00033 SCB NEW-YORK et 007ACB00034 SCB FRANKFURT, ainsi que "
+            "l'intégralité du dispositif de position de change, comptes de position et "
+            "comptes de contre-valeur. Les références d'écriture portent les préfixes des "
+            "agences reprises. Il ne s'agit donc pas d'une reprise tardive de la bascule de "
+            "juin, mais d'une opération de fusion, datée et distincte.\n"
             "\n"
-            "MAIS L'ANOMALIE LA PLUS LOURDE EST AILLEURS — DANS LA CONTREPARTIE. Le crédit du "
-            f"{c_date} sort bien le montant du compte de conversion, mais il le sort contre un "
-            f"DÉBIT de {cpt_contrepartie} {lib_contrepartie} : le compte de règlement de la "
-            "banque auprès de la banque centrale. Or la banque n'a rien encaissé — elle a reçu "
-            "des TITRES. Elle a donc enregistré, à son compte à la BEAC, "
-            f"{xaf(montant)} de trésorerie qui n'existait pas.\n"
+            "II. CE QUI EST NORMAL, ET QUE LE CONSTAT NE VISE PAS\n"
             "\n"
-            f"CETTE SURÉVALUATION A DURÉ {nb(ap_jours - ecart_jours)} JOURS, du {c_date} au "
-            f"{ap_date}, date à laquelle l'écriture d'entrée en portefeuille la reprend. ELLE "
-            "TRAVERSE L'ARRÊTÉ ANNUEL DU 31 DÉCEMBRE 2025 : à cette date, le nostro BEAC "
-            f"publié comprend {xaf(montant)} de trésorerie fictive, et le portefeuille titres "
-            "ne comprend pas les titres correspondants. Le bilan est faux des deux côtés à la "
-            "fois — en nature comme en montant. Un écart de cette ampleur sur le compte de "
-            "règlement de la banque centrale aurait dû être arrêté par le rapprochement "
-            "bancaire mensuel. C'est la même défaillance que celle des contrôles 5.3 et 11.8, "
-            "sur le même compte.\n"
+            "L'emploi d'un utilisateur technique de reprise, l'emploi d'un compte de "
+            "conversion, et la comptabilisation manuelle des positions reprises sont les "
+            "procédés ordinaires d'une migration de fusion. Le compte de conversion est même "
+            "fait pour cela : accueillir un solde le temps qu'il soit affecté. Rien de tout "
+            "cela n'appelle d'observation, et une version antérieure du présent rapport les "
+            "présentait à tort comme des anomalies.\n"
             "\n"
-            "CE QUI S'EST PASSÉ ENSUITE. Les titres eux-mêmes "
-            f"n'entrent au portefeuille que le {ap_date}, soit {nb(ap_jours)} jours plus tard, "
-            f"par une écriture manuelle unique passée par l'opérateur {ap_user} : "
-            f"{nb(ap_titres)} bons et obligations du Trésor camerounais y sont enregistrés "
-            "d'un seul mouvement, avec leur décote et leurs intérêts, contre le nostro BEAC et "
-            f"le compte de nantissement du contrôle 12.4.\n"
+            "III. LE POINT QUI N'EST PAS NORMAL — LA CONTREPARTIE DE L'APUREMENT\n"
             "\n"
-            "LE DOSSIER TIENT DONC EN TROIS ÉCRITURES MANUELLES ÉTALÉES SUR SIX MOIS, et pas "
-            "une de plus : une reprise technique sans libellé, un apurement qui déverse le "
-            "montant sur le nostro, puis une entrée en portefeuille. Un portefeuille de "
-            f"{xaf(montant)} est resté six mois hors des comptes de titres, logé dans la "
-            "trésorerie de la banque centrale."
+            f"Le {d_date}, {user_reprise} débite le compte de conversion "
+            f"{CPT_CONVERSION[0]} {ctx.libelle_compte(CPT_CONVERSION[0])} de {xaf(montant)} : "
+            "les bons du Trésor repris de Standard Chartered. Correct.\n"
+            f"Le {c_date}, l'opérateur {user_apurement} apure ce compte de conversion. Il "
+            f"aurait dû le faire en DÉBITANT le portefeuille titres. Il le fait en débitant "
+            f"{cpt_contrepartie} {lib_contrepartie} — le compte de règlement de la banque "
+            "auprès de la banque centrale.\n"
+            "\n"
+            "Autrement dit, la banque enregistre avoir reçu de la TRÉSORERIE à la banque "
+            "centrale, alors qu'elle a reçu des TITRES. Le libellé de l'écriture le dit "
+            "lui-même : « Securities received from SCB to be booked manually ». Des titres, "
+            "à comptabiliser manuellement — et en attendant, ils sont logés dans la "
+            "trésorerie.\n"
+            "\n"
+            "IV. LA PREUVE QU'IL S'AGIT D'UNE ERREUR, ET NON D'UN CHOIX DE PRÉSENTATION\n"
+            "\n"
+            f"C'est la banque elle-même qui la fournit. Le {ap_date}, l'opérateur {ap_user} "
+            f"passe l'écriture de régularisation : elle CRÉDITE {cpt_contrepartie} de "
+            f"{xaf(montant)} et DÉBITE {cpt_titres} {ctx.libelle_compte(cpt_titres)} du même "
+            "montant, sous le libellé « Clearing Securities received from SCB to be booked "
+            "manually during transition ». Le montant sort de la trésorerie et entre au "
+            "portefeuille.\n"
+            "Si le débit de décembre avait correspondu à une reprise réelle de trésorerie, il "
+            f"n'y aurait rien eu à contre-passer. {nb(jours)} JOURS SE SONT ÉCOULÉS ENTRE "
+            "L'ERREUR ET SA CORRECTION.\n"
+            "\n"
+            "V. L'EFFET SUR L'ARRÊTÉ ANNUEL DU 31 DÉCEMBRE 2025\n"
+            "\n"
+            "C'est ici que le constat prend sa mesure, et il ne se lit pas en pourcentage mais "
+            "en changement de nature.\n"
+            f"- Le compte de règlement auprès de la banque centrale affiche {xaf(nostro_affiche)} "
+            "à cette date.\n"
+            f"- Il contient {xaf(montant)} qui ne sont pas de la trésorerie.\n"
+            f"- CORRIGÉ, IL RESSORT À {xaf(nostro_corrige)} — c'est-à-dire en position "
+            "CRÉDITRICE.\n"
+            "\n"
+            "L'écriture ne surévalue donc pas seulement la trésorerie : ELLE INVERSE LE SENS "
+            "DE LA POSITION DE LA BANQUE AUPRÈS DE SON INSTITUT D'ÉMISSION à la date "
+            "d'arrêté. Les états présentent un AVOIR à la banque centrale là où la position "
+            "corrigée fait apparaître un DÉCOUVERT. C'est une information qui intéresse "
+            "directement le suivi des réserves obligatoires et le ratio de liquidité.\n"
+            "\n"
+            f"Symétriquement, le compte {cpt_titres} affiche {xaf(titres_affiche)} au "
+            f"31 décembre 2025, alors qu'il aurait dû porter {xaf(titres_affiche + montant)} : "
+            "le portefeuille de bons du Trésor est présenté pour moins de la moitié de sa "
+            "consistance réelle.\n"
+            "\n"
+            "VI. CE QUE LES SIX MOIS ONT EMPORTÉ AU PASSAGE\n"
+            "\n"
+            f"L'écriture du {ap_date} ne fait pas qu'entrer les titres : elle les entre ET les "
+            f"sort. Elle nomme {nb(len(titres))} lignes de titres repris de Standard "
+            "Chartered — dont les échéances s'échelonnent d'avril à octobre 2026 — et "
+            "comptabilise dans le même mouvement leur dénouement, leur décote et leurs "
+            "intérêts. Plusieurs de ces titres sont donc arrivés à échéance PENDANT qu'ils "
+            "étaient logés dans la trésorerie.\n"
+            "Il en résulte que, sur toute la période, le portefeuille n'a jamais porté ces "
+            "titres, qu'aucun intérêt couru n'a été constaté sur eux dans les comptes de "
+            "rattachement, et que leur produit n'est pas identifiable exercice par exercice."
         ),
         chiffres=[
-            ("Montant repris", xaf(montant)),
+            ("Nature de l'opération", "migration de fusion Standard Chartered → Access Bank"),
             ("Date de la reprise technique", d_date),
-            ("Date de l'apurement manuel", c_date),
-            ("Délai entre la reprise et son apurement", f"{nb(ecart_jours)} jours"),
-            ("Date d'entrée effective des titres au portefeuille", ap_date),
-            ("Délai total, de la reprise à l'entrée en portefeuille", f"{nb(ap_jours)} jours"),
-            ("Titres enregistrés par cette écriture unique", nb(ap_titres)),
-            ("Écart avec la date de bascule vers Calypso", f"{mois_bascule} mois"),
-            ("Contrepartie de l'apurement", f"{cpt_contrepartie} {lib_contrepartie}"),
-            ("Durée de la surévaluation du nostro", f"{nb(ap_jours - ecart_jours)} jours"),
-            ("Dates d'arrêté traversées", "2025-12-31"),
-            ("Utilisateur de la reprise", user_reprise),
-            ("Opérateur de l'apurement", user_apurement),
+            ("Utilisateur technique de reprise", user_reprise),
+            ("Écritures passées ce jour-là", f"{nb(nb_lignes)} lignes en {nb(nb_refs)} écritures"),
+            ("Montant des titres repris", xaf(montant)),
+            ("Date d'apurement du compte de conversion", c_date),
+            ("Contrepartie retenue à l'apurement", f"{cpt_contrepartie} {lib_contrepartie}"),
+            ("Contrepartie qui aurait dû l'être", f"{cpt_titres} {ctx.libelle_compte(cpt_titres)}"),
+            ("Date de la régularisation", ap_date),
+            ("Durée de l'anomalie", f"{nb(jours)} jours"),
+            ("Dates d'arrêté traversées", arrete),
+            (f"Compte de règlement affiché au {arrete}", xaf(nostro_affiche)),
+            (f"Compte de règlement corrigé au {arrete}", xaf(nostro_corrige)),
+            ("Sens de la position après correction", "CRÉDITEUR" if nostro_corrige < 0 else "débiteur"),
+            (f"Portefeuille {cpt_titres} affiché au {arrete}", xaf(titres_affiche)),
+            (f"Portefeuille {cpt_titres} corrigé au {arrete}", xaf(titres_affiche + montant)),
         ],
         tableaux=[
             Tableau(
                 entetes=["Date", "Compte", "Sens", "Montant XAF", "Opérateur", "Libellé"],
                 lignes=([[r.TRN_DT, r.AC_NO, r.DRCR_IND, float(r.LCY_AMOUNT), r.USER_ID,
-                          str(r.DESCRIPTION or "")[:58]] for _, r in mouv.iterrows()]
+                          str(r.DESCRIPTION or "")[:52]] for _, r in mouv.iterrows()]
                         + [[r.TRN_DT, r.AC_NO, r.DRCR_IND, float(r.LCY_AMOUNT), r.USER_ID,
-                            str(r.DESCRIPTION or "")[:58]]
-                           for _, r in contrepartie.iterrows()]),
-                note=("Les deux écritures du compte de conversion, et la jambe de contrepartie "
-                      "qui porte le montant au compte de la banque centrale."),
+                            str(r.DESCRIPTION or "")[:52]]
+                           for _, r in contrepartie.iterrows()]
+                        + [[r.TRN_DT, r.AC_NO, r.DRCR_IND, float(r.LCY_AMOUNT), r.USER_ID,
+                            str(r.DESCRIPTION or "")[:52]]
+                           for _, r in regul[regul.DESCRIPTION.fillna("").str.contains(
+                               "during transition")].iterrows()]),
+                note=("Les trois écritures qui font le dossier : la reprise technique au compte "
+                      "de conversion, son apurement sur le compte de la banque centrale, et la "
+                      "régularisation six mois plus tard vers le portefeuille titres."),
+            ),
+            Tableau(
+                entetes=["Compte", "Libellé", "Rôle dans la migration de fusion"],
+                lignes=[[x, ctx.libelle_compte(x) or "—",
+                         "nostro repris de Standard Chartered" if x.startswith("007")
+                         else ("compte de conversion des titres" if x in CPT_CONVERSION
+                               else "position de change et contre-valeur")]
+                        for x in comptes_fusion],
+                max_lignes=12,
+                note=("Les comptes mouvementés par l'utilisateur technique le jour de la "
+                      "migration de fusion. La présence des nostri propres de Standard "
+                      "Chartered établit la nature de l'opération."),
             ),
         ],
         recommandation=(
-            f"1. Chiffrer l'effet sur les états arrêtés au 31 décembre 2025 : {xaf(montant)} "
-            "de trésorerie inexistante au nostro BEAC, et autant de titres absents du "
-            "portefeuille. Vérifier si les états publiés à cette date en ont été corrigés.\n"
-            "2. Obtenir le dossier de reprise du portefeuille SCB : contrat de cession, état "
-            "des titres transférés, valorisation retenue, et rapprochement avec le "
-            "dépositaire.\n"
-            "3. Vérifier que chacun des titres repris a bien été enregistré individuellement, "
-            "avec son nominal, son taux, sa date d'échéance et son calcul de courus.\n"
-            "4. Faire justifier l'emploi d'un compte de conversion et d'un utilisateur "
-            "technique pour une opération postérieure de six mois à la migration.\n"
-            "5. Vérifier qu'aucune autre écriture de la période n'a été passée sous cet "
-            "utilisateur technique."
+            f"1. Chiffrer l'effet sur les états arrêtés au {arrete} et vérifier s'ils ont été "
+            f"corrigés : {xaf(montant)} de trésorerie inexistante au compte de la banque "
+            "centrale, autant de titres absents du portefeuille, et une position auprès de "
+            "l'institut d'émission présentée en sens inverse de sa réalité.\n"
+            "2. Vérifier l'incidence sur les réserves obligatoires et sur le ratio de "
+            "liquidité déclarés à cette date, que le rapprochement bancaire du compte de la "
+            "banque centrale aurait dû faire apparaître dès décembre.\n"
+            "3. Obtenir le dossier de reprise du portefeuille Standard Chartered : état des "
+            "titres transférés, valorisation retenue, et rapprochement avec le dépositaire.\n"
+            f"4. Faire expliquer pourquoi l'apurement du compte de conversion a été imputé au "
+            f"compte {cpt_contrepartie} plutôt qu'au portefeuille titres, et pourquoi la "
+            f"correction a demandé {nb(jours)} jours.\n"
+            "5. Reconstituer les intérêts courus sur ces titres entre la reprise et leur "
+            "comptabilisation effective : ils n'ont été constatés dans aucun compte de "
+            "rattachement pendant cette période.\n"
+            "6. Vérifier que les autres volets de la migration de fusion — position de change, "
+            "nostri repris — ont bien été imputés à leur compte définitif, et qu'aucun autre "
+            "solde n'est resté logé dans un compte de passage."
         ),
     )
 
