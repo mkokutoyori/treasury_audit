@@ -29,7 +29,7 @@
 | 7.1.14 | No Impairment Recognised Against the Securities Portfolio | Concern |
 | 7.1.15 | Pledged Securities Recorded in Duplicate on the Annual Reporting Date | Moderate |
 | 7.1.16 | Securities Transactions No Longer Supported by a Contract Record | High |
-| 7.1.17 | Segregation of Duties Not Operative Over Accounting Postings | High |
+| 7.1.17 | Authorisation of Securities Postings Not Evidenced | High |
 | 7.1.18 | Portfolio Income Recorded Under the Wrong Accounting Category | High |
 | 7.1.19 | Account Balances Contrary to the Nature of the Account at Reporting Dates | High |
 | 7.1.20 | Repurchase Transactions Identifiable Only Through Free-Text Narration | Concern |
@@ -708,40 +708,69 @@ mandatory coded field.
 
 ---
 
-## 7.1.17 Segregation of Duties Not Operative Over Accounting Postings
+## 7.1.17 Authorisation of Securities Postings Not Evidenced
 
 The four-eyes control configured in the core banking system does not operate over the securities
-flow. The entirety of the Calypso interface — 191,417 entries — is posted and authorised under a
-single technical account, so that capture and validation are performed by the same identity in every
-case. Across the wider population of 422,968 entries examined, 363,960 (86%) were validated by the
-same account that captured them, and in no instance was that account a named individual.
+flow. All 191,417 entries bearing the Calypso product code — of which 154,480 fall within the audit
+period — are captured and authorised under the single technical account CALYPSOUSR, without
+exception. Capture and authorisation are therefore performed by the same identity in every case,
+and the application control which governs manual entries has no effect on this flow. Since Calypso
+itself lies outside the scope of the extractions provided, we are unable to express a view on
+whether an equivalent control exists within that system.
 
-Manual postings present a distinct weakness. A total of 2,557 entries amounting to
-XAF 1,046,403,820,592 were passed over the period without any validator being recorded. We further
-noted 436 entries captured between 20:00 and midnight and 95 between midnight and 06:00, the latter
-representing XAF 127,630,759,874 and falling on two dates, one of which is the migration date.
+We should record that the position is more favourable than the overall figures suggest. Of the
+422,968 entries examined, 363,960 (86%) carry the same identifier in capture and in authorisation;
+however, 357,465 of these are posted by technical accounts and the remaining 6,495 by end-of-day
+batch accounts. **No named individual authorises an entry they have themselves captured.** The
+four-eyes principle is therefore observed by operators, and is absent by construction from the
+automated flows.
 
-The same weakness is present in the upstream system. Of the 3,480 deals in the Calypso register,
-21% were captured under generic accounts — *calypso_user* and *admin* — 709 carry no identified
-trader, and the register contains no validation field. The operator naming convention is not
-standardised, two distinct labels appearing to designate the same individual.
+A separate matter concerns entries carrying no authoriser at all. Two thousand five hundred and
+fifty-seven entries, forming 1,505 vouchers and representing XAF 858,460,551,906 on the debit side,
+carry no value whatsoever in the authorisation field. They are posted exclusively by the technical
+account ADMINUSER1 and consist, on examination, of incoming RTGS transfers received from
+correspondent banks and of daily clearing house settlement balances, the great majority of which
+are posted to the Central Bank settlement account. They are not treasury entries captured by an
+operator; they are an automated inbound payment feed. The exception lies in the fact that this feed
+posts to the bank's principal settlement account without any authorisation being evidenced, whether
+by an individual or by a system account.
+
+Finally, the position is comparable in the upstream system. Of the 3,480 deals recorded in the
+Calypso register, 731 (21%) were captured under the generic accounts *calypso_user* and *admin*;
+709 carry no identifiable trader, being recorded as *NONE*, *TRADER1*, *0* or *Trader*; and the
+register contains no authorisation field of any kind. Two individuals appear under two distinct
+labels each, the naming convention not being standardised.
+
+| Population | Entries | Capture and authorisation by the same identity |
+|---|---|---|
+| Calypso product code | 191,417 | 191,417 (100%) |
+| Technical accounts, all sources | 357,465 | 357,465 |
+| End-of-day batch accounts | 6,495 | 6,495 |
+| Named individuals | — | Nil |
+| No authoriser recorded (ADMINUSER1) | 2,557 | Not applicable |
 
 **Implications:**
-- Accountability for accounting entries cannot be established, and the four-eyes principle is not
-  achieved over the securities flow.
-- Manual entries of substantial value passed without any independent authorisation.
-- Deals captured in the front-office system without an identifiable trader, precluding any review
-  of dealing authority and limits by individual.
-- Out-of-hours postings which cannot be reconciled to any authorised processing schedule.
+- No independent authorisation over the securities flow within the core banking system, and no
+  assurance obtainable as to whether such authorisation exists in the upstream system.
+- An automated payment feed posting to the Central Bank settlement account with no evidence of
+  authorisation, so that an erroneous or unauthorised posting would not be detected at the point
+  of entry.
+- Deals captured in the front-office system under generic accounts and without an identifiable
+  trader, precluding any review of dealing authority, of limits by individual or of trading
+  patterns.
+- Absence of an authorisation field in the deal register, so that the existence of a second review
+  before execution cannot be demonstrated.
 
 **Recommendations:**
-Treasury should obtain from Information Technology the functional ownership of each technical
-account, the list of individuals permitted to use it and the application-level audit trail
-associated with it, so that entries posted under those accounts can be attributed. The four-eyes
-requirement should be enforced over manual entries without exception, and entries already passed
-without a validator should be subjected to a retrospective review. In the upstream system, deal
-capture under generic accounts should be discontinued, a validation field introduced, and the
-operator naming convention standardised.
+Treasury should obtain from Information Technology the functional ownership of the CALYPSOUSR and
+ADMINUSER1 accounts, the list of individuals permitted to use them and the application audit trail
+associated with each, and should establish where the authorisation of the securities flow is
+performed and how it is evidenced. Where that authorisation resides within Calypso, its
+configuration and the related user access matrix should be obtained and tested. The absence of any
+authoriser on the inbound payment feed should be raised with Information Technology and corrected,
+the Central Bank settlement account being the bank's principal settlement account. In the upstream
+system, deal capture under generic accounts should be discontinued, the trader field made
+mandatory, an authorisation field introduced, and the operator naming convention standardised.
 
 **Risk Rating: High.**
 
@@ -1206,7 +1235,7 @@ capture.
 | 7.1.14 | 12.6 |
 | 7.1.15 | 12.4 |
 | 7.1.16 | 6.1, 6.3, 6.6 |
-| 7.1.17 | 4.1, 4.2, 4.3, 4.4, 6.2, 10.4, 10.5 |
+| 7.1.17 | 4.1, 4.2, 6.2, 10.4, 10.5 |
 | 7.1.18 | 9.2, 5.5 |
 | 7.1.19 | 9.4 |
 | 7.1.20 | 8.1, 8.3 |

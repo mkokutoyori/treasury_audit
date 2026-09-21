@@ -2819,3 +2819,72 @@ réellement en commissions et droits de garde.
 
 Le rapport énonce lui-même la correction, au paragraphe III : *« Une version antérieure de ce
 contrôle annonçait… Ce chiffre était faux, et il convient de le dire. »*
+
+---
+
+# Session 29 — Revue manuelle de l'exception 7.1.17
+
+## 29.1 Trois corrections, dont une sérieuse
+
+### a) Les 2 557 écritures « sans validateur » ne sont pas des saisies manuelles
+
+J'écrivais : *« Manual postings present a distinct weakness. A total of 2,557 entries amounting to
+XAF 1,046,403,820,592 were passed over the period without any validator being recorded. »*
+
+Examen ligne à ligne : elles sont **toutes passées par `ADMINUSER1`**, module DE, et ce sont des
+**« RTGS RECU REF … »** — des virements interbancaires reçus par le système de règlement brut —
+et des **« SOLDE DE COMPENSE DU … »** — les soldes quotidiens de compensation. Contreparties
+nommées : SCB Cameroun, BGFI, UBA, Société Générale, Ecobank, Citibank ; bénéficiaires : MTN,
+Orange Money, CNPS, IHS.
+
+**C'est un flux entrant de paiements automatisé, pas une saisie discrétionnaire de la trésorerie.**
+
+Le constat subsiste mais change de nature : un flux automatisé impute le compte de règlement
+principal de la banque **sans qu'aucune autorisation ne soit tracée**, ni humaine ni système.
+
+### b) Le montant comptait les deux jambes
+
+1 046 403 820 592 additionnait débits et crédits. Une seule jambe : **858 460 551 906** (débits).
+Les deux côtés ne s'équilibrent d'ailleurs pas dans cette population (2 052 débits contre
+505 crédits) : les contreparties sont hors des comptes extraits.
+
+### c) Les saisies hors horaires sont entièrement expliquées
+
+J'écrivais qu'elles *« cannot be reconciled to any authorised processing schedule »*. **Faux.**
+Les 95 saisies nocturnes tombent sur **deux dates seulement** :
+
+| Date | Lignes | Montant | Ce que c'est |
+|---|---|---|---|
+| 29/03/2024 | 20 | 499 243 900 | la campagne de reprise du 7.1.12 |
+| 16/06/2025 | 75 | 127 131 515 974 | **le jour de la bascule Calypso** |
+
+Et 391 des 432 saisies du soir tombent sur ces deux dates plus le 09/04/2024 — également la
+campagne de reprise. Le constat 4.4 est donc retiré de l'exception et renvoyé en annexe avec son
+explication.
+
+## 29.2 Ce que la revue a confirmé
+
+- **191 417 écritures** au code produit Calypso, **toutes** saisies et validées par `CALYPSOUSR`.
+  Aucune exception.
+- **Aucun utilisateur nominatif ne s'auto-valide.** Les 363 960 auto-validations se répartissent en
+  357 465 comptes techniques et 6 495 comptes de traitement de fin de journée (`…EOD`). Le
+  principe des quatre yeux **est respecté par les opérateurs** — je l'écris désormais explicitement,
+  car présenter les 86 % comme une défaillance était trompeur.
+- **731 deals sur 3 480 (21 %)** saisis sous `calypso_user` ou `admin`.
+- **709 deals sans trader identifiable** : `NONE` (511), `TRADER1` (185), `0` (12), `Trader` (1).
+- **Aucun champ d'autorisation** dans le référentiel des deals — vérifié, aucune colonne.
+- **Deux personnes sous deux libellés** : *Arnold Nlep* / *Arnold Samy Nlep*, *Justin Tenku Jabong*
+  / *Justin Tenku*.
+
+## 29.3 Le titre change
+
+De *« Segregation of Duties Not Operative Over Accounting Postings »* à
+**« Authorisation of Securities Postings Not Evidenced »** — parce que le constat n'est pas que la
+séparation des tâches est violée, mais qu'on ne peut pas démontrer qu'elle existe : le contrôle
+applicatif est sans effet sur le flux, et Calypso est hors périmètre d'extraction.
+
+Cotation maintenue à **High**.
+
+**Règle retenue** : *un agrégat qui mélange un flux automatisé et des saisies humaines ne dit rien
+de l'un ni de l'autre. Avant de qualifier une population de défaillance de contrôle, regarder qui
+l'a produite et ce qu'elle contient.*
